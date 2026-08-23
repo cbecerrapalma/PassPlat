@@ -1,0 +1,170 @@
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog Options="_dialogOptions">
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudAvatar Size="Size.Small" Color="Color.Secondary" Variant="Variant.Filled">
+                <MudIcon Icon="@(IsEdit ? Icons.Material.Filled.Edit : Icons.Material.Filled.Security)" Size="Size.Small" />
+            </MudAvatar>
+            <MudText Typo="Typo.h6">@(IsEdit ? "Editar" : "Nuevo") Permiso</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.caption" Class="text-secondary mb-2 d-block">Definición del permiso</MudText>
+        <MudTextField @bind-Value="_codigo" Label="Código" Variant="Variant.Outlined" Class="mb-3"
+            Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Code"
+            HelperText="Identificador único del permiso"
+            Required="true" Error="@(_submitted && string.IsNullOrWhiteSpace(_codigo))"
+            ErrorText="El código es obligatorio" />
+        <MudTextField @bind-Value="_nombre" Label="Nombre" Variant="Variant.Outlined" Class="mb-3"
+            Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Security"
+            HelperText="Nombre descriptivo del permiso"
+            Required="true" Error="@(_submitted && string.IsNullOrWhiteSpace(_nombre))"
+            ErrorText="El nombre es obligatorio" />
+        <MudTextField @bind-Value="_descripcion" Label="Descripción" Variant="Variant.Outlined" Class="mb-3"
+            Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Description"
+            HelperText="Opcional - qué permite este permiso" />
+        <MudDivider Class="my-3" />
+        <MudSelect T="int" @bind-Value="_idModulo" Label="Módulo" Variant="Variant.Outlined" Class="mb-3"
+            Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Folder"
+            HelperText="Agrupación funcional"
+            Required="true" Error="@(_submitted && _idModulo <= 0)"
+            ErrorText="El módulo es obligatorio"
+            AnchorOrigin="Origin.BottomCenter" PopoverClass="modulo-select-popover">
+            @foreach (var mod in _modulos)
+            {
+                <MudSelectItem @key="mod.Id" Value="@mod.Id">@mod.Nombre (@mod.Codigo)</MudSelectItem>
+            }
+        </MudSelect>
+        <MudNumericField T="int" @bind-Value="_orden" Label="Orden" Variant="Variant.Outlined" Class="mb-3"
+            Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.DragHandle"
+            HelperText="Posición dentro del módulo" Min="0" Max="99" />
+        @if (IsEdit)
+        {
+            <MudDivider Class="my-3" />
+            <MudSwitch @bind-Value="_activo" Label="Activo" Color="Color.Primary" />
+            <MudText Typo="Typo.caption" Class="text-secondary ml-12">Los permisos inactivos no se pueden asignar a roles</MudText>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@Save" Disabled="@(!CanSave() || _saving)">
+            @(IsEdit ? "Guardar" : "Crear")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private DialogOptions _dialogOptions = new() { FullWidth = true, CloseButton = true };
+
+    [Parameter] public bool IsEdit { get; set; }
+    [Parameter] public PermisoDto? Permiso { get; set; }
+
+    private List<ModuloDto> _modulos = [];
+    private string _codigo = "";
+    private string _nombre = "";
+    private string _descripcion = "";
+    private int _idModulo;
+    private int _orden;
+    private bool _activo = true;
+    private bool _saving;
+    private bool _submitted;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _modulos = await Api.GetAsync<List<ModuloDto>>("api/modulos") ?? [];
+            _modulos = AplanarModulos(_modulos);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar módulos: {ex.Message}", Severity.Error);
+        }
+
+        if (IsEdit && Permiso is not null)
+        {
+            _codigo = Permiso.Codigo;
+            _nombre = Permiso.Nombre;
+            _descripcion = Permiso.Descripcion ?? "";
+            _idModulo = Permiso.IdModulo;
+            _orden = Permiso.Orden;
+            _activo = Permiso.Activo;
+        }
+    }
+
+    private static List<ModuloDto> AplanarModulos(List<ModuloDto> modulos)
+    {
+        var result = new List<ModuloDto>();
+        foreach (var mod in modulos)
+        {
+            result.Add(mod);
+            if (mod.SubModulos.Count > 0)
+                result.AddRange(AplanarModulos(mod.SubModulos));
+        }
+        return result;
+    }
+
+    private bool CanSave() => !string.IsNullOrWhiteSpace(_codigo)
+        && !string.IsNullOrWhiteSpace(_nombre)
+        && _idModulo > 0;
+
+    private async Task Save()
+    {
+        _submitted = true;
+        if (!CanSave()) return;
+        _saving = true;
+        try
+        {
+            if (IsEdit && Permiso is not null)
+            {
+                var dto = new ActualizarPermisoDto
+                {
+                    Codigo = _codigo,
+                    Nombre = _nombre,
+                    Descripcion = _descripcion,
+                    IdModulo = _idModulo,
+                    Orden = (byte)_orden
+                };
+                var result = await Api.PutAsync<PermisoDto>($"api/permisos/{Permiso.Id}", dto);
+                if (result is not null)
+                {
+                    Snackbar.Add("Permiso actualizado", Severity.Success);
+                    MudDialog.Close(DialogResult.Ok(true));
+                }
+                else
+                    Snackbar.Add(Api.LastError ?? "Error al actualizar permiso", Severity.Error);
+            }
+            else
+            {
+                var dto = new CrearPermisoDto
+                {
+                    Codigo = _codigo,
+                    Nombre = _nombre,
+                    Descripcion = _descripcion,
+                    IdModulo = _idModulo,
+                    Orden = (byte)_orden
+                };
+                var result = await Api.PostAsync<PermisoDto>("api/permisos", dto);
+                if (result is not null)
+                {
+                    Snackbar.Add("Permiso creado", Severity.Success);
+                    MudDialog.Close(DialogResult.Ok(true));
+                }
+                else
+                    Snackbar.Add(Api.LastError ?? "Error al crear permiso", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

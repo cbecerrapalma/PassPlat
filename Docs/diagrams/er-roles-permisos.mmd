@@ -1,0 +1,95 @@
+erDiagram
+    TENANTS {
+        int Id PK
+        string Codigo
+        string Nombre
+        bool Activo
+    }
+
+    APPS {
+        int Id PK
+        int IdTenant FK
+        string Nombre
+        bool Activo
+    }
+
+    ROLES {
+        int Id PK
+        int IdTenant FK
+        string Codigo
+        string Nombre
+        string Descripcion
+        bool Activo
+        datetime FecCrea
+    }
+
+    PERMISOS {
+        int Id PK
+        string Codigo
+        string Nombre
+        string Descripcion
+        string Modulo
+        bool Activo
+        int Orden
+    }
+
+    ROLES_PERMISOS {
+        int Id PK
+        int IdRol FK
+        int IdPermiso FK
+        bool Activo
+        int IdUsrMod FK
+    }
+
+    POLITICAS_PWD {
+        int Id PK
+        int IdTenant FK
+        string Codigo
+        string Nombre
+        int LongMin
+        int LongMax
+        bool ReqMayuscula
+        bool ReqMinuscula
+        bool ReqNumero
+        bool ReqEspecial
+        bool Activa
+    }
+
+    ROLES_POLITICAS_PWD {
+        int Id PK
+        int IdTenant FK
+        int IdRol FK
+        int IdPolitica FK
+        bool Activo
+    }
+
+    USUARIOS {
+        int Id PK
+        int IdTenant FK
+        int IdRol FK
+        string NomUsuario
+        string Email
+        string Nombre
+        string Apellido
+        bool Activo
+    }
+
+    ACCESOS {
+        int Id PK
+        int IdUsuario FK
+        int IdTenant FK
+        int IdApp FK
+        int IdRol FK
+        bool Activo
+        datetime FecAsignacion
+    }
+
+    ROLES ||--o{ ROLES_PERMISOS : "tiene"
+    PERMISOS ||--o{ ROLES_PERMISOS : "asignado a"
+    ROLES ||--o{ ROLES_POLITICAS_PWD : "tiene"
+    POLITICAS_PWD ||--o{ ROLES_POLITICAS_PWD : "aplicada a"
+    USUARIOS ||--o{ ACCESOS : "tiene"
+    ROLES ||--o{ ACCESOS : "asignado en"
+    APPS ||--o{ ACCESOS : "acceso a"
+    TENANTS ||--o{ ROLES : "scope"
+    TENANTS ||--o{ USUARIOS : "pertenecen"

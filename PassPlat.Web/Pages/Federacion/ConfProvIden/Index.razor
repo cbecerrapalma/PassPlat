@@ -1,0 +1,276 @@
+@page "/federacion/confproviden"
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@inject NavigationManager Navigation
+
+<div class="iam-page">
+    <MudBreadcrumbs Class="mb-3">
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
+        <MudBreadcrumbItem>Federación</MudBreadcrumbItem>
+        <MudBreadcrumbItem>Configuración Proveedores</MudBreadcrumbItem>
+    </MudBreadcrumbs>
+
+    <div class="page-header">
+        <div class="page-title-row">
+            <div>
+                <h1 class="page-title">Configuración de Proveedores</h1>
+                <p class="page-subtitle">Configura las credenciales y opciones por tenant para cada proveedor externo.</p>
+            </div>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenCreateDialog" StartIcon="@Icons.Material.Filled.Add">
+                Nueva Configuración
+            </MudButton>
+        </div>
+    </div>
+
+    <div class="kpi-row mb-4">
+        <IamKpiCard Valor="@_totalCount.ToString()" Label="Total Configs" Subtexto="@($"{_totalCount} configuraciones")" Icon="@Icons.Material.Filled.Settings" ColorClass="primary" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_activosCount.ToString()" Label="Activas" Subtexto="@($"{_activosCount} activas")" Icon="@Icons.Material.Filled.CheckCircle" ColorClass="success" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_pendientesCount.ToString()" Label="Pendientes" Subtexto="Estado 0" Icon="@Icons.Material.Filled.HourglassEmpty" ColorClass="warning" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_revocadosCount.ToString()" Label="Revocados" Subtexto="Estado 2" Icon="@Icons.Material.Filled.Block" ColorClass="error" Xs="12" Sm="6" Md="3" />
+    </div>
+
+    <div class="content-body">
+        <div class="table-panel">
+            <CrudToolbar ShowSearch="true" ShowFilter="true" FilterButtonText="Estado"
+                SearchString="@_searchString" SearchStringChanged="@OnSearchChanged"
+                OnRefresh="@Refrescar" ShowCreate="false" />
+            <div class="table-wrap">
+                <MudTable @ref="_table" T="ConfProvIdenDto" ServerData="@_serverReload" Items="@_items" Hover="true" Breakpoint="Breakpoint.Sm"
+                    SelectedItem="_selectedItem" SelectedItemChanged="@OnSelectedItemChanged" RowStyle="cursor: pointer;">
+                    <ColGroup>
+                        <col /><col /><col style="width:160px;" /><col style="width:100px;" /><col style="width:140px;" />
+                    </ColGroup>
+                    <HeaderContent>
+                        <MudTh>Tenant</MudTh><MudTh>Proveedor</MudTh><MudTh>Client ID</MudTh><MudTh>Estado</MudTh><MudTh>Acciones</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Tenant">@(context.TenantNombre ?? $"#{context.IdTenant}")</MudTd>
+                        <MudTd DataLabel="Proveedor">
+                            <div class="col-name">@(context.ProvIdenNombre ?? $"#{context.IdProvIden}")</div>
+                        </MudTd>
+                        <MudTd DataLabel="Client ID" style="font-family:'JetBrains Mono',monospace;font-size:11px;">@context.ClientId</MudTd>
+                        <MudTd DataLabel="Estado">
+                            <span class="badge @_estadoClass(context.Estado)">@_estadoNombre(context.Estado)</span>
+                        </MudTd>
+                        <MudTd DataLabel="Acciones">
+                            <MudTooltip Text="Editar">
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => OpenEditDialog(context))" />
+                            </MudTooltip>
+                            <MudTooltip Text="Desactivar">
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => ConfirmDeactivate(context))" />
+                            </MudTooltip>
+                        </MudTd>
+                    </RowTemplate>
+                    <PagerContent>
+                        <MudTablePager PageSizeOptions="new int[]{10, 25, 50}" />
+                    </PagerContent>
+                    <NoRecordsContent>
+                        <MudText Align="Align.Center" Class="py-6">
+                            <MudIcon Icon="@Icons.Material.Filled.SearchOff" Class="mr-2" />
+                            No hay registros
+                        </MudText>
+                    </NoRecordsContent>
+                </MudTable>
+            </div>
+
+            @if (_selectedItem is not null)
+            {
+                <div class="iam-inspector" style="width:380px;min-width:380px;position:sticky;top:16px;align-self:flex-start;">
+                    <div class="inspector-header">
+                        <div class="inspector-title-row">
+                            <div class="inspector-title">@(_selectedItem.ProvIdenNombre ?? $"Prov#{_selectedItem.IdProvIden}")</div>
+                            <span class="badge @_estadoClass(_selectedItem.Estado)">@_estadoNombre(_selectedItem.Estado)</span>
+                        </div>
+                        <div class="inspector-tabs" role="tablist">
+                            <MudButton Variant="Variant.Text" Color="@(_inspectorTab == 0 ? Color.Primary : Color.Default)" @onclick="() => _inspectorTab = 0" Size="Size.Small">Información</MudButton>
+                            <MudButton Variant="Variant.Text" Color="@(_inspectorTab == 1 ? Color.Primary : Color.Default)" @onclick="() => _inspectorTab = 1" Size="Size.Small">Opciones</MudButton>
+                        </div>
+                    </div>
+                    <div class="inspector-body">
+                        @if (_inspectorTab == 0)
+                        {
+                            <div class="insp-section">
+                                <div class="insp-section-title">Detalles de Configuración</div>
+                                <div class="field-row"><div class="field-label">Tenant</div><div class="field-value">@(_selectedItem.TenantNombre ?? $"#{_selectedItem.IdTenant}")</div></div>
+                                <div class="field-row"><div class="field-label">Proveedor</div><div class="field-value">@(_selectedItem.ProvIdenNombre ?? $"#{_selectedItem.IdProvIden}")</div></div>
+                                <div class="field-row"><div class="field-label">Client ID</div><div class="field-value mono">@_selectedItem.ClientId</div></div>
+                                <div class="field-row"><div class="field-label">Callback</div><div class="field-value mono" style="font-size:10px;">@_selectedItem.Callback</div></div>
+                                <div class="field-row"><div class="field-label">Redirect URI</div><div class="field-value mono" style="font-size:10px;">@(_selectedItem.RedirectUri ?? "—")</div></div>
+                                <div class="field-row"><div class="field-label">Scopes</div><div class="field-value">@(_selectedItem.Scopes ?? "—")</div></div>
+                                <div class="field-row"><div class="field-label">Estado</div><div class="field-value">@_estadoNombre(_selectedItem.Estado)</div></div>
+                                <div class="field-row"><div class="field-label">Creado</div><div class="field-value" style="color:var(--text-muted);">@(_selectedItem.FecCrea?.ToLocalTime().ToString("dd MMM yyyy") ?? "—")</div></div>
+                            </div>
+                        }
+                        @if (_inspectorTab == 1)
+                        {
+                            <div class="insp-section">
+                                <div class="insp-section-title">Opciones Base</div>
+                                <div class="field-row"><div class="field-label">Rol Defecto</div><div class="field-value">@(_selectedItem.RolDefectoNombre ?? _selectedItem.RolDefecto?.ToString() ?? "—")</div></div>
+                                <div class="field-row"><div class="field-label">Guardar Tokens</div><div class="field-value"><MudIcon Icon="@(_selectedItem.GuardarTokens ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)" Size="Size.Small" Color="@(_selectedItem.GuardarTokens ? Color.Success : Color.Error)" /></div></div>
+                                <div class="field-row"><div class="field-label">Auto Link</div><div class="field-value"><MudIcon Icon="@(_selectedItem.PermitirAutoLink ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)" Size="Size.Small" Color="@(_selectedItem.PermitirAutoLink ? Color.Success : Color.Error)" /></div></div>
+                                <div class="field-row"><div class="field-label">Auto Provisionar</div><div class="field-value"><MudIcon Icon="@(_selectedItem.AutoProvisionar ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)" Size="Size.Small" Color="@(_selectedItem.AutoProvisionar ? Color.Success : Color.Error)" /></div></div>
+                            </div>
+                            <MudDivider Class="my-3" />
+                            <div class="insp-section">
+                                <div class="insp-section-title">Políticas de Acceso</div>
+                                <div class="field-row"><div class="field-label">Login</div><div class="field-value"><MudIcon Icon="@(_selectedItem.PermitirLogin ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)" Size="Size.Small" Color="@(_selectedItem.PermitirLogin ? Color.Success : Color.Error)" /></div></div>
+                                <div class="field-row"><div class="field-label">Crear Usuario</div><div class="field-value"><MudIcon Icon="@(_selectedItem.PermitirCrearUsuario ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)" Size="Size.Small" Color="@(_selectedItem.PermitirCrearUsuario ? Color.Success : Color.Error)" /></div></div>
+                                <div class="field-row"><div class="field-label">Vincular</div><div class="field-value"><MudIcon Icon="@(_selectedItem.PermitirVincular ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)" Size="Size.Small" Color="@(_selectedItem.PermitirVincular ? Color.Success : Color.Error)" /></div></div>
+                                <div class="field-row"><div class="field-label">Desvincular</div><div class="field-value"><MudIcon Icon="@(_selectedItem.PermitirDesvincular ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)" Size="Size.Small" Color="@(_selectedItem.PermitirDesvincular ? Color.Success : Color.Error)" /></div></div>
+                                <div class="field-row"><div class="field-label">Password Local</div><div class="field-value"><MudIcon Icon="@(_selectedItem.PermitirPasswordLocal ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)" Size="Size.Small" Color="@(_selectedItem.PermitirPasswordLocal ? Color.Success : Color.Error)" /></div></div>
+                                <div class="field-row"><div class="field-label">Obligar MFA</div><div class="field-value"><MudIcon Icon="@(_selectedItem.ObligaMFA ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)" Size="Size.Small" Color="@(_selectedItem.ObligaMFA ? Color.Warning : Color.Error)" /></div></div>
+                                <div class="field-row"><div class="field-label">Cambio Email</div><div class="field-value"><MudIcon Icon="@(_selectedItem.PermitirCambioEmail ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)" Size="Size.Small" Color="@(_selectedItem.PermitirCambioEmail ? Color.Success : Color.Error)" /></div></div>
+                                <div class="field-row"><div class="field-label">Cambio Nombre</div><div class="field-value"><MudIcon Icon="@(_selectedItem.PermitirCambioNombre ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)" Size="Size.Small" Color="@(_selectedItem.PermitirCambioNombre ? Color.Success : Color.Error)" /></div></div>
+                                <div class="field-row"><div class="field-label">Sinc. Avatar</div><div class="field-value"><MudIcon Icon="@(_selectedItem.PermitirSincronizarAvatar ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)" Size="Size.Small" Color="@(_selectedItem.PermitirSincronizarAvatar ? Color.Success : Color.Error)" /></div></div>
+                                <div class="field-row"><div class="field-label">Sinc. Perfil</div><div class="field-value"><MudIcon Icon="@(_selectedItem.PermitirSincronizarPerfil ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)" Size="Size.Small" Color="@(_selectedItem.PermitirSincronizarPerfil ? Color.Success : Color.Error)" /></div></div>
+                            </div>
+                            <MudDivider Class="my-3" />
+                            <div class="insp-section">
+                                <div class="insp-section-title">Visualización</div>
+                                <div class="field-row"><div class="field-label">Prioridad</div><div class="field-value">@_selectedItem.Prioridad</div></div>
+                                <div class="field-row"><div class="field-label">Orden Visual</div><div class="field-value">@_selectedItem.OrdenVisual</div></div>
+                                <div class="field-row"><div class="field-label">Logo</div><div class="field-value">@(_selectedItem.Logo ?? "—")</div></div>
+                                <div class="field-row"><div class="field-label">Color</div><div class="field-value">
+                                    @if (!string.IsNullOrEmpty(_selectedItem.Color))
+                                    {
+                                        <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:@(_selectedItem.Color);vertical-align:middle;margin-right:4px;"></span>
+                                        <span style="font-size:11px;font-family:monospace;">@_selectedItem.Color</span>
+                                    }
+                                    else
+                                    {
+                                        <text>—</text>
+                                    }
+                                </div></div>
+                                <div class="field-row"><div class="field-label">Tooltip</div><div class="field-value">@(_selectedItem.Tooltip ?? "—")</div></div>
+                                <div class="field-row"><div class="field-label">Descripción</div><div class="field-value" style="font-size:11px;">@(_selectedItem.Descripcion ?? "—")</div></div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private MudTable<ConfProvIdenDto>? _table;
+    private IEnumerable<ConfProvIdenDto> _items = [];
+    private bool _loading;
+    private string _searchString = "";
+    private string _totalCount = "0";
+    private int _totalDesdeApi;
+    private int _activosCount;
+    private int _pendientesCount;
+    private int _revocadosCount;
+    private ConfProvIdenDto? _selectedItem;
+    private int _inspectorTab;
+    private readonly DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var todas = await Api.GetAsync<List<ConfProvIdenDto>>("api/confproviden/tenant/1");
+            _totalDesdeApi = todas?.Count ?? 0;
+            _totalCount = _totalDesdeApi.ToString();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar total: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task<TableData<ConfProvIdenDto>> _serverReload(TableState state, CancellationToken ct)
+    {
+        _loading = true;
+        try
+        {
+            var response = await Api.GetAsync<PagedResponse<ConfProvIdenDto>>(
+                $"api/confproviden/page?pageNumber={state.Page + 1}&pageSize={state.PageSize}&search={Uri.EscapeDataString(_searchString)}");
+            if (response != null)
+            {
+                _items = response.Items;
+                _activosCount = response.Items.Count(i => i.Estado == 1);
+                _pendientesCount = response.Items.Count(i => i.Estado == 0);
+                _revocadosCount = response.Items.Count(i => i.Estado == 2);
+                return new TableData<ConfProvIdenDto> { Items = response.Items, TotalItems = response.TotalCount };
+            }
+        }
+        catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error al cargar: {ex.Message}", Severity.Error); }
+        finally { _loading = false; }
+        return new TableData<ConfProvIdenDto> { Items = [], TotalItems = 0 };
+    }
+
+    private async Task OnSearchChanged(string value)
+    {
+        _searchString = value;
+        if (_table is not null) await _table.ReloadServerData();
+    }
+
+    private async Task Refrescar()
+    {
+        if (_table is not null) await _table.ReloadServerData();
+        try
+        {
+            var todas = await Api.GetAsync<List<ConfProvIdenDto>>("api/confproviden/tenant/1");
+            _totalDesdeApi = todas?.Count ?? 0;
+            _totalCount = _totalDesdeApi.ToString();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar total: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void OnSelectedItemChanged(ConfProvIdenDto? item)
+    {
+        _selectedItem = item;
+        _inspectorTab = 0;
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var parameters = new DialogParameters { ["IsEdit"] = false };
+        var dialog = await Dialog.ShowAsync<ConfProvIdenDialog>("Nueva Configuración", parameters, _dialogOptions);
+        var result = await dialog.Result;
+        if (!result.Canceled) { await Refrescar(); Snackbar.Add("Configuración creada", Severity.Success); }
+    }
+
+    private async Task OpenEditDialog(ConfProvIdenDto item)
+    {
+        var parameters = new DialogParameters { ["IsEdit"] = true, ["ConfProvIden"] = item };
+        var dialog = await Dialog.ShowAsync<ConfProvIdenDialog>("Editar Configuración", parameters, _dialogOptions);
+        var result = await dialog.Result;
+        if (!result.Canceled) { await Refrescar(); Snackbar.Add("Configuración actualizada", Severity.Success); }
+    }
+
+    private async Task ConfirmDeactivate(ConfProvIdenDto item)
+    {
+        var parameters = new DialogParameters { ["Title"] = "Confirmar", ["Message"] = $"Desactivar configuración para {item.ProvIdenNombre ?? $"#{item.IdProvIden}"}?", ["ConfirmText"] = "Si", ["CancelText"] = "Cancelar" };
+        var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parameters);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            var ok = await Api.PostVoidAsync($"api/confproviden/{item.Id}/desactivar");
+            if (ok) { Snackbar.Add("Configuración desactivada", Severity.Success); await Refrescar(); }
+            else Snackbar.Add(Api.LastError ?? "Error al desactivar", Severity.Error);
+        }
+    }
+
+    private static string _estadoNombre(byte estado) => estado switch
+    {
+        0 => "Inactivo",
+        1 => "Activo",
+        2 => "Revocado",
+        _ => "Desconocido"
+    };
+
+    private static string _estadoClass(byte estado) => estado switch
+    {
+        0 => "badge-warning",
+        1 => "badge-active",
+        2 => "badge-inactive",
+        _ => "badge-inactive"
+    };
+}

@@ -1,0 +1,795 @@
+/* ─── IAM Pages — Prototype Alignment ──────────────────────
+   Design System: Slate/Indigo (mirrors prototipos/Permisos)
+   Apply via .iam-page class on page container
+   ──────────────────────────────────────────────────────────── */
+.iam-page {
+    --bg-card: #1a1d28;
+    --bg-panel: #171a26;
+    --bg-input: #12141c;
+    --border-subtle: rgba(255,255,255,.06);
+    --border-default: rgba(255,255,255,.10);
+    --text-primary: #e8eaf0;
+    --text-secondary: #8b90a7;
+    --text-muted: #555972;
+    --radius-md: 10px;
+    --radius-sm: 6px;
+}
+
+/* ── Dark canvas ─────────────────────────────────────────── */
+.iam-page {
+    background: #0f1117;
+    min-height: 100%;
+    padding: 16px 24px;
+}
+
+/* ── KPI Cards (prototype .kpi-card) ─────────────────────── */
+.iam-page .mud-grid > [class*="col-"] > .mud-paper {
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: var(--radius-md) !important;
+    padding: 14px 16px !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+    transition: border-color .2s;
+}
+.iam-page .mud-grid > [class*="col-"] > .mud-paper:hover {
+    border-color: var(--border-default);
+}
+.iam-page .mud-grid > [class*="col-"] > .mud-paper .mud-avatar {
+    margin-bottom: 4px;
+}
+.iam-page .mud-grid > [class*="col-"] > .mud-paper .mud-typography-h5 {
+    font-size: 22px !important;
+    font-weight: 700 !important;
+    letter-spacing: -.5px !important;
+    line-height: 1.1 !important;
+}
+.iam-page .mud-grid > [class*="col-"] > .mud-paper .mud-typography-body2 {
+    font-size: 11px !important;
+    font-weight: 500 !important;
+    color: var(--text-muted) !important;
+}
+.iam-page .mud-grid > [class*="col-"] > .mud-paper .mud-typography-caption {
+    font-size: 11px !important;
+    color: var(--text-muted) !important;
+    margin-top: -4px !important;
+}
+/* Avatar icon backgrounds per color class */
+.iam-page .mud-grid > [class*="col-"] > .mud-paper .mud-avatar-filled.mud-avatar-primary {
+    background: rgba(99,102,241,.12) !important;
+    color: #818cf8 !important;
+}
+.iam-page .mud-grid > [class*="col-"] > .mud-paper .mud-avatar-filled.mud-avatar-success {
+    background: rgba(34,197,94,.12) !important;
+    color: #22c55e !important;
+}
+.iam-page .mud-grid > [class*="col-"] > .mud-paper .mud-avatar-filled.mud-avatar-secondary {
+    background: rgba(167,139,250,.12) !important;
+    color: #a78bfa !important;
+}
+.iam-page .mud-grid > [class*="col-"] > .mud-paper .mud-avatar-filled.mud-avatar-info {
+    background: rgba(59,130,246,.12) !important;
+    color: #60a5fa !important;
+}
+.iam-page .mud-grid > [class*="col-"] > .mud-paper .mud-avatar-filled.mud-avatar-warning {
+    background: rgba(245,158,11,.12) !important;
+    color: #f59e0b !important;
+}
+.iam-page .mud-grid > [class*="col-"] > .mud-paper .mud-avatar-filled.mud-avatar-error {
+    background: rgba(239,68,68,.12) !important;
+    color: #ef4444 !important;
+}
+
+/* ── Table Panel (prototype .table-panel) ──────────────────── */
+.iam-page .table-panel {
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: var(--radius-md) !important;
+    overflow: hidden;
+}
+.iam-page .table-panel .mud-paper {
+    background: transparent !important;
+    border: none !important;
+}
+.iam-page .table-panel .mud-table {
+    background: transparent !important;
+}
+.iam-page .table-panel .mud-table-container {
+    border: none !important;
+    border-radius: 0 !important;
+}
+.iam-page .table-panel thead th {
+    background: var(--bg-card) !important;
+    color: var(--text-muted) !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: .5px !important;
+    border-bottom: 1px solid var(--border-subtle) !important;
+    padding: 10px 16px !important;
+}
+.iam-page .table-panel tbody tr {
+    border-bottom: 1px solid var(--border-subtle);
+    cursor: pointer;
+}
+.iam-page .table-panel tbody tr:hover {
+    background: rgba(255,255,255,.03) !important;
+}
+.iam-page .table-panel tbody tr.selected {
+    background: rgba(99,102,241,.08) !important;
+}
+.iam-page .table-panel tbody td {
+    padding: 11px 16px !important;
+    font-size: 12px !important;
+    color: var(--text-primary) !important;
+    vertical-align: middle;
+}
+.iam-page .table-panel .mud-table-cell {
+    color: var(--text-primary) !important;
+}
+
+/* ── Inspector Panel (prototype .inspector) ───────────────── */
+.iam-page .inspector {
+    background: var(--bg-panel) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: var(--radius-md) !important;
+    overflow: hidden;
+}
+.iam-page .inspector .mud-paper {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+/* Inspector tabs — prototype style custom tabs */
+.iam-page .inspector .mud-tabs {
+    background: transparent !important;
+}
+.iam-page .inspector .mud-tabs-tabbar {
+    background: transparent !important;
+    border-bottom: 1px solid var(--border-subtle) !important;
+    padding: 0 !important;
+}
+.iam-page .inspector .mud-tab {
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    color: var(--text-secondary) !important;
+    min-height: 36px !important;
+    padding: 5px 10px !important;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0 !important;
+    border: 1px solid transparent !important;
+    border-bottom: none !important;
+    transition: all .15s;
+    text-transform: none !important;
+}
+.iam-page .inspector .mud-tab:hover {
+    color: var(--text-primary) !important;
+}
+.iam-page .inspector .mud-tab.mud-tab-active {
+    background: var(--bg-card) !important;
+    border-color: var(--border-default) !important;
+    color: var(--text-primary) !important;
+}
+.iam-page .inspector .mud-tabs-panels {
+    padding: 12px 16px !important;
+    background: transparent !important;
+}
+.iam-page .inspector .insp-section-title {
+    font-size: 10px; font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: .8px;
+    margin-bottom: 10px;
+}
+.iam-page .inspector .field-label,
+.iam-page .iam-inspector .field-label {
+    font-size: 11px; color: var(--text-muted); margin-bottom: 3px; font-weight: 500;
+}
+.iam-page .inspector .field-value,
+.iam-page .iam-inspector .field-value {
+    font-size: 12px; color: var(--text-primary);
+}
+.iam-page .field-row {
+    display: flex; flex-direction: column; gap: 2px;
+    margin-bottom: 12px;
+}
+.iam-page .mono {
+    font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
+    font-size: 12px;
+}
+.iam-page .assign-chip {
+    display: inline-flex; align-items: center;
+    font-size: 11px; font-weight: 600;
+    padding: 2px 10px; border-radius: 4px;
+    background: rgba(99,102,241,.12); color: #818cf8;
+}
+.iam-page .assign-chip.sys { background: rgba(99,102,241,.12); color: #818cf8; }
+.iam-page .assign-chip.tenant { background: rgba(167,139,250,.12); color: #a78bfa; }
+.iam-page .assign-chip.perm { background: rgba(34,197,94,.12); color: #22c55e; }
+
+/* ── Chip/Badge overrides for dark theme ─────────────────── */
+.iam-page .mud-chip-filled.mud-chip-success {
+    background: rgba(34,197,94,.12) !important;
+    color: #22c55e !important;
+}
+.iam-page .mud-chip-filled.mud-chip-error {
+    background: rgba(239,68,68,.12) !important;
+    color: #ef4444 !important;
+}
+.iam-page .mud-chip-filled.mud-chip-warning {
+    background: rgba(245,158,11,.12) !important;
+    color: #f59e0b !important;
+}
+.iam-page .mud-chip-filled.mud-chip-info {
+    background: rgba(99,102,241,.14) !important;
+    color: #818cf8 !important;
+}
+.iam-page .mud-chip-filled.mud-chip-default {
+    background: rgba(139,144,167,.10) !important;
+    color: var(--text-secondary) !important;
+}
+
+/* ── Filter toolbar ──────────────────────────────────────── */
+.iam-page .filter-bar {
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: var(--radius-sm) !important;
+    padding: 12px 16px;
+}
+.iam-page .filter-bar .mud-input {
+    color: var(--text-primary) !important;
+}
+.iam-page .filter-bar .mud-input > .mud-input-outlined-border {
+    border-color: var(--border-default) !important;
+}
+.iam-page .filter-row {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.iam-page .filter-bar .form-select {
+    background: var(--bg-input); border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm); padding: 5px 10px;
+    color: var(--text-primary); font-size: 12px; min-width: 130px;
+    outline: none; cursor: pointer;
+}
+.iam-page .filter-bar .form-select:hover { border-color: #6366f1; }
+.iam-page .filter-bar .table-search {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--bg-input); border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm); padding: 5px 10px;
+    flex: 1; max-width: 260px;
+}
+.iam-page .filter-bar .table-search svg { width: 14px; height: 14px; color: var(--text-muted); flex-shrink: 0; }
+.iam-page .filter-bar .table-search input {
+    background: transparent; border: none; outline: none;
+    color: var(--text-primary); font-size: 12px; width: 100%;
+}
+.iam-page .filter-bar .table-search input::placeholder { color: var(--text-muted); }
+.iam-page .filter-bar .table-header-count {
+    font-size: 11px; color: var(--text-muted); white-space: nowrap;
+}
+
+/* ── Breadcrumb overrides for dark ───────────────────────── */
+.iam-page .mud-breadcrumbs li .mud-breadcrumb-item {
+    color: var(--text-muted) !important;
+}
+.iam-page .mud-breadcrumbs li:last-child .mud-breadcrumb-item {
+    color: var(--text-primary) !important;
+}
+
+/* ── Button overrides for dark ────────────────────────────── */
+.iam-page .mud-button.mud-button-variant-outlined {
+    border-color: var(--border-default) !important;
+    color: var(--text-primary) !important;
+}
+.iam-page .mud-button.mud-button-variant-outlined:hover {
+    border-color: #6366f1 !important;
+}
+.iam-page .mud-button.mud-button-variant-text {
+    color: #818cf8 !important;
+}
+
+/* ── Overlay loading ──────────────────────────────────────── */
+.iam-page .mud-overlay {
+    background: rgba(0,0,0,.55) !important;
+}
+
+/* ── Info bar (prototype .info-bar) ───────────────────────── */
+.iam-page .info-bar {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(99,102,241,.08);
+    border: 1px solid rgba(99,102,241,.15);
+    border-radius: var(--radius-sm);
+    padding: 8px 14px;
+    margin-bottom: 14px;
+    font-size: 12px; color: var(--text-secondary);
+}
+.iam-page .info-bar svg {
+    width: 14px; height: 14px; color: #818cf8; flex-shrink: 0;
+}
+
+/* ── KPI Row (prototype .kpi-row) ────────────────────────── */
+.iam-page .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+.iam-page .kpi-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+    display: flex; flex-direction: column; gap: 6px;
+    transition: border-color .2s;
+}
+.iam-page .kpi-card:hover { border-color: var(--border-default); }
+.iam-page .kpi-top {
+    display: flex; align-items: center; gap: 8px;
+}
+.iam-page .kpi-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.iam-page .kpi-icon svg { width: 16px; height: 16px; }
+.iam-page .kpi-delta {
+    font-size: 10px; font-weight: 600; padding: 2px 6px;
+    border-radius: 4px;
+}
+.iam-page .kpi-delta.up { background: rgba(34,197,94,.12); color: #22c55e; }
+.iam-page .kpi-delta.down { background: rgba(239,68,68,.12); color: #ef4444; }
+.iam-page .kpi-delta.neutral { background: rgba(139,144,167,.10); color: var(--text-secondary); }
+.iam-page .kpi-value {
+    font-size: 26px; font-weight: 700; line-height: 1.1;
+    letter-spacing: -1px; color: var(--text-primary);
+}
+.iam-page .kpi-label { font-size: 12px; font-weight: 600; color: var(--text-primary); }
+.iam-page .kpi-subtext { font-size: 11px; color: var(--text-muted); }
+
+/* ── Table Toolbar (prototype .table-toolbar) ─────────────── */
+.iam-page .table-toolbar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+.iam-page .table-search {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    padding: 5px 10px;
+    flex: 1; max-width: 280px;
+}
+.iam-page .table-search svg { width: 14px; height: 14px; color: var(--text-muted); flex-shrink: 0; }
+.iam-page .table-search input {
+    background: transparent; border: none; outline: none;
+    color: var(--text-primary); font-size: 12px; width: 100%;
+}
+.iam-page .table-search input::placeholder { color: var(--text-muted); }
+.iam-page .filter-btn {
+    display: flex; align-items: center; gap: 5px;
+    background: transparent; border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm); padding: 5px 10px;
+    color: var(--text-secondary); font-size: 11px; font-weight: 500;
+    cursor: pointer; transition: all .15s;
+}
+.iam-page .filter-btn:hover { border-color: #6366f1; color: var(--text-primary); }
+.iam-page .filter-btn svg { width: 12px; height: 12px; }
+.iam-page .toolbar-spacer { flex: 1; }
+.iam-page .table-header-count {
+    font-size: 11px; color: var(--text-muted); white-space: nowrap;
+}
+
+/* ── Table Wrap ───────────────────────────────────────────── */
+.iam-page .table-wrap { overflow-x: auto; }
+.iam-page .table-wrap .mud-table { margin: 0; }
+
+/* ── Badge Dot (prototype .badge-dot) ─────────────────────── */
+.iam-page .badge-dot {
+    display: inline-block; width: 7px; height: 7px;
+    border-radius: 50%; margin-right: 5px;
+}
+.iam-page .badge-active .badge-dot { background: #22c55e; }
+.iam-page .badge-inactive .badge-dot { background: #ef4444; }
+.iam-page .badge-default .badge-dot { background: var(--text-muted); }
+
+/* ── Badge variants (prototype) ───────────────────────────── */
+.iam-page .badge {
+    display: inline-flex; align-items: center;
+    font-size: 10px; font-weight: 600;
+    padding: 2px 8px; border-radius: 4px;
+}
+.iam-page .badge-active { background: rgba(34,197,94,.12); color: #22c55e; }
+.iam-page .badge-inactive { background: rgba(239,68,68,.12); color: #ef4444; }
+.iam-page .badge-default { background: rgba(139,144,167,.10); color: var(--text-secondary); }
+
+/* ── Matrix Column Highlight ──────────────────────────────── */
+.iam-page .matrix-col-selected {
+    background: rgba(99,102,241,.06) !important;
+}
+.iam-page .matrix-table thead th.matrix-col-selected {
+    background: rgba(99,102,241,.10) !important;
+    color: #818cf8 !important;
+    border-bottom-color: rgba(99,102,241,.25) !important;
+}
+.iam-page .matrix-table tbody td.matrix-col-selected {
+    background: rgba(99,102,241,.04) !important;
+}
+
+/* ── Matrix Table (prototype .matrix-table) ───────────────── */
+.iam-page .matrix-table {
+    width: 100%; border-collapse: collapse;
+    font-size: 12px;
+}
+.iam-page .matrix-table thead th {
+    background: var(--bg-card);
+    color: var(--text-muted);
+    font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .5px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-subtle);
+    text-align: center;
+    white-space: nowrap;
+}
+.iam-page .matrix-table thead th:first-child { text-align: left; }
+.iam-page .matrix-table tbody td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-subtle);
+    text-align: center;
+    vertical-align: middle;
+}
+.iam-page .matrix-table tbody td:first-child { text-align: left; }
+.iam-page .matrix-table tbody tr:hover td { background: rgba(255,255,255,.02); }
+.iam-page .matrix-group-header td {
+    background: rgba(99,102,241,.06) !important;
+    color: var(--text-muted);
+    font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .8px;
+    padding: 8px 12px !important;
+    border-bottom: 1px solid var(--border-subtle);
+    text-align: left !important;
+}
+.iam-page .matrix-row-label {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; font-weight: 500; color: var(--text-primary);
+}
+.iam-page .matrix-check {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px; border-radius: 5px;
+    cursor: pointer; transition: all .15s;
+}
+.iam-page .matrix-check svg { width: 14px; height: 14px; }
+.iam-page .matrix-check.on { background: rgba(34,197,94,.12); color: #22c55e; }
+.iam-page .matrix-check.on:hover { background: rgba(34,197,94,.2); }
+.iam-page .matrix-check.off { background: rgba(239,68,68,.08); color: #ef4444; }
+.iam-page .matrix-check.off:hover { background: rgba(239,68,68,.16); }
+.iam-page .matrix-check.inactive { background: rgba(139,144,167,.06); color: var(--text-muted); }
+.iam-page .matrix-check.inactive:hover { background: rgba(139,144,167,.12); }
+.iam-page .matrix-inherited {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px; border-radius: 5px;
+    border: 1.5px dashed rgba(99,102,241,.35);
+    background: rgba(99,102,241,.05);
+    color: #818cf8; cursor: default;
+}
+.iam-page .matrix-inherited svg { width: 14px; height: 14px; }
+
+/* ── Summary Section (prototype .summary-section) ─────────── */
+.iam-page .summary-layout {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+}
+.iam-page .summary-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md); overflow: hidden;
+}
+.iam-page .summary-card-header {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+.iam-page .summary-card-title { font-size: 12px; font-weight: 600; color: var(--text-primary); }
+.iam-page .summary-card-body { padding: 12px 14px; }
+.iam-page .permission-counts {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
+    margin-bottom: 10px;
+}
+.iam-page .perm-count-card { text-align: center; }
+.iam-page .perm-count-val { font-size: 22px; font-weight: 700; }
+.iam-page .perm-count-val.total { color: var(--text-primary); }
+.iam-page .perm-count-val.granted { color: #22c55e; }
+.iam-page .perm-count-val.denied { color: #ef4444; }
+.iam-page .perm-count-val.inherited { color: #818cf8; }
+.iam-page .perm-count-label { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+.iam-page .module-stat-row {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 8px;
+}
+.iam-page .module-stat-label {
+    font-size: 11px; color: var(--text-secondary); min-width: 80px;
+}
+.iam-page .module-stat-bar {
+    flex: 1; height: 6px; background: rgba(255,255,255,.06);
+    border-radius: 3px; overflow: hidden;
+}
+.iam-page .module-stat-fill { height: 100%; border-radius: 3px; transition: width .3s; }
+.iam-page .module-stat-nums { font-size: 10px; color: var(--text-muted); min-width: 36px; text-align: right; }
+
+/* ── Role Selector Bar (prototype .role-selector-bar) ─────── */
+.iam-page .role-selector-bar {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 14px;
+    padding: 10px 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+}
+.iam-page .role-selector-bar label {
+    font-size: 12px; color: var(--text-secondary); font-weight: 500;
+}
+.iam-page .role-selector-bar .form-select {
+    background: var(--bg-input); border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm); padding: 5px 10px;
+    color: var(--text-primary); font-size: 12px; min-width: 160px;
+    outline: none;
+}
+.iam-page .role-selector-bar .role-selector-hint {
+    font-size: 11px; color: var(--text-muted);
+}
+.iam-page .matrix-summary-divider { border-top: 1px solid var(--border-subtle); padding-top: 10px; margin-top: 10px; }
+
+/* ── Explorer Layout (prototype .explorer-layout) ─────────── */
+.iam-page .explorer-layout {
+    display: flex; gap: 14px; align-items: flex-start;
+}
+.iam-page .tree-panel {
+    width: 260px; min-width: 260px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+}
+.iam-page .tree-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-subtle);
+    font-size: 12px; font-weight: 600; color: var(--text-primary);
+}
+.iam-page .tree-header svg { width: 14px; height: 14px; color: var(--text-muted); }
+.iam-page .tree-header-count {
+    margin-left: auto; font-size: 11px; font-weight: 500;
+    color: var(--text-muted); background: rgba(139,144,167,.1);
+    padding: 1px 8px; border-radius: 10px;
+}
+.iam-page .tree-search {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+.iam-page .tree-search input {
+    background: transparent; border: none; outline: none;
+    color: var(--text-primary); font-size: 12px; width: 100%;
+}
+.iam-page .tree-search input::placeholder { color: var(--text-muted); }
+.iam-page .tree-search svg { width: 12px; height: 12px; color: var(--text-muted); flex-shrink: 0; }
+.iam-page .tree-scroll {
+    flex: 1; overflow-y: auto; padding: 4px 0;
+    max-height: 560px;
+}
+.iam-page .tree-node {
+    display: flex; align-items: center; gap: 5px;
+    padding: 5px 14px; cursor: pointer;
+    font-size: 12px; color: var(--text-secondary);
+    transition: background .1s;
+}
+.iam-page .tree-node:hover { background: rgba(255,255,255,.03); color: var(--text-primary); }
+.iam-page .tree-node.selected { background: rgba(99,102,241,.08); color: var(--text-primary); }
+.iam-page .tree-arrow {
+    width: 10px; height: 10px; flex-shrink: 0;
+    transition: transform .15s; color: var(--text-muted);
+}
+.iam-page .tree-arrow.open { transform: rotate(90deg); }
+.iam-page .tree-node-icon { width: 14px; height: 14px; flex-shrink: 0; }
+.iam-page .tree-node-label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.iam-page .tree-node-count {
+    font-size: 10px; color: var(--text-muted);
+    background: rgba(139,144,167,.08);
+    padding: 0 6px; border-radius: 8px;
+}
+.iam-page .tree-children { padding-left: 20px; }
+
+/* ── Inspector (prototype) ────────────────────────────────── */
+.iam-page .iam-inspector {
+    display: flex; flex-direction: column;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+.iam-page .inspector-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+.iam-page .inspector-title-row {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+}
+.iam-page .inspector-title {
+    font-size: 14px; font-weight: 600; color: var(--text-primary); flex: 1;
+}
+.iam-page .inspector-tabs {
+    display: flex; gap: 0;
+    border-bottom: 1px solid var(--border-subtle);
+    overflow-x: auto;
+    white-space: nowrap;
+    scrollbar-width: none;
+}
+.iam-page .inspector-tabs::-webkit-scrollbar { display: none; }
+.iam-page .tab-btn {
+    background: transparent; border: none;
+    padding: 6px 12px; cursor: pointer;
+    font-size: 12px; font-weight: 500; color: var(--text-secondary);
+    border-bottom: 2px solid transparent;
+    transition: all .15s;
+}
+.iam-page .tab-btn:hover { color: var(--text-primary); }
+.iam-page .tab-btn.active {
+    color: #818cf8; border-bottom-color: #818cf8;
+}
+.iam-page .inspector-body {
+    flex: 1; overflow-y: auto; padding: 12px 16px;
+    max-height: 420px;
+}
+.iam-page .insp-section {
+    margin-bottom: 14px;
+}
+.iam-page .insp-section-title {
+    font-size: 10px; font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: .8px;
+    margin-bottom: 10px;
+}
+.iam-page .inspector-footer {
+    display: flex; gap: 8px;
+    padding: 10px 16px;
+    border-top: 1px solid var(--border-subtle);
+}
+
+/* ── App Badge (prototype .app-badge) ─────────────────────── */
+.iam-page .app-badge {
+    display: inline-flex; align-items: center;
+    font-size: 10px; font-weight: 600;
+    padding: 2px 8px; border-radius: 4px;
+}
+.iam-page .app-badge-core { background: rgba(99,102,241,.12); color: #818cf8; }
+.iam-page .app-badge-portal { background: rgba(59,130,246,.12); color: #60a5fa; }
+.iam-page .app-badge-api { background: rgba(34,197,94,.12); color: #22c55e; }
+.iam-page .app-badge-mobile { background: rgba(245,158,11,.12); color: #f59e0b; }
+
+/* ── Mini Table (prototype .mini-table) ───────────────────── */
+.iam-page .mini-table {
+    width: 100%; border-collapse: collapse;
+    font-size: 11px;
+}
+.iam-page .mini-table thead th {
+    color: var(--text-muted); font-weight: 600;
+    text-transform: uppercase; letter-spacing: .5px;
+    padding: 6px 8px; text-align: left;
+    border-bottom: 1px solid var(--border-subtle);
+    font-size: 10px;
+}
+.iam-page .mini-table tbody td {
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+}
+.iam-page .mini-table tbody tr:hover { background: rgba(255,255,255,.02); }
+.iam-page .mini-table .name-cell { font-weight: 500; }
+
+/* ── Audit Entry (prototype .audit-entry) ─────────────────── */
+.iam-page .audit-entry {
+    display: flex; gap: 10px; padding: 6px 0;
+    border-bottom: 1px solid var(--border-subtle);
+}
+.iam-page .audit-icon {
+    width: 22px; height: 22px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; flex-shrink: 0;
+}
+.iam-page .audit-content { flex: 1; }
+.iam-page .audit-text { font-size: 12px; color: var(--text-primary); }
+.iam-page .audit-action { color: var(--text-secondary); }
+.iam-page .audit-meta { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+/* ── Page Header (prototype .page-header) ─────────────────── */
+.iam-page .page-header {
+    margin-bottom: 16px;
+}
+.iam-page .page-title-row {
+    display: flex; align-items: center; gap: 10px;
+}
+.iam-page .page-title {
+    flex: 1; font-size: 20px; font-weight: 700; color: var(--text-primary);
+    margin: 0; letter-spacing: -.4px;
+}
+.iam-page .page-actions {
+    display: flex; align-items: center; gap: 8px;
+}
+.iam-page .page-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 600; padding: 6px 14px;
+    border: none; border-radius: var(--radius-sm); cursor: pointer;
+    transition: all .15s;
+}
+.iam-page .page-btn-primary {
+    background: #6366f1; color: #fff;
+}
+.iam-page .page-btn-primary:hover { background: #5558e6; }
+.iam-page .page-btn-outline {
+    background: transparent; color: var(--text-primary);
+    border: 1px solid var(--border-default);
+}
+.iam-page .page-btn-outline:hover { border-color: #6366f1; }
+.iam-page .page-btn-icon {
+    background: transparent; color: var(--text-secondary);
+    border: 1px solid var(--border-default);
+    padding: 6px; border-radius: var(--radius-sm);
+}
+.iam-page .page-btn-icon:hover { border-color: #6366f1; color: var(--text-primary); }
+
+/* ── Detail Tabs (for role detail section) ───────────────── */
+.iam-page .detail-panel {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+.iam-page .detail-panel .mud-paper { background: transparent !important; border: none !important; }
+.iam-page .detail-panel .mud-tabs { background: transparent !important; }
+.iam-page .detail-panel .mud-tabs-tabbar { background: transparent !important; border-bottom: 1px solid var(--border-subtle) !important; }
+.iam-page .detail-panel .mud-tab {
+    font-size: 12px !important; font-weight: 500 !important;
+    color: var(--text-secondary) !important;
+    min-height: 36px !important; padding: 5px 10px !important;
+    text-transform: none !important;
+}
+.iam-page .detail-panel .mud-tab.mud-tab-active { color: #818cf8 !important; }
+.iam-page .detail-panel .mud-tabs-panels { padding: 0 !important; background: transparent !important; }
+
+/* ── Main Tabs (navigation tabs) ────────────────────────── */
+.iam-page .main-tabs.mud-tabs { background: transparent; }
+.iam-page .main-tabs .mud-tabs-tabbar {
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: var(--radius-md) var(--radius-md) 0 0 !important;
+    padding: 0 4px !important;
+}
+.iam-page .main-tabs .mud-tab {
+    font-size: 13px !important; font-weight: 500 !important;
+    color: var(--text-secondary) !important;
+    min-height: 42px !important; padding: 6px 16px !important;
+    text-transform: none !important;
+    border-bottom: 2px solid transparent !important;
+    transition: all .15s;
+}
+.iam-page .main-tabs .mud-tab:hover { color: var(--text-primary) !important; }
+.iam-page .main-tabs .mud-tab.mud-tab-active {
+    color: #818cf8 !important;
+    border-bottom-color: #818cf8 !important;
+}
+.iam-page .main-tabs .mud-tabs-panels {
+    background: transparent !important;
+    padding: 0 !important;
+}
+
+/* ── Table-actions icon positioning ──────────────────────── */
+.iam-page .table-actions .mud-menu { display: inline-flex; }
+
+/* ── Table Column Styles (prototype .col-mono/.col-name) ──── */
+.iam-page .col-mono { font-family: 'JetBrains Mono', 'Cascadia Code', monospace; font-size: 12px; }
+.iam-page .col-name { font-weight: 500; }
+.iam-page .sort-icon { font-size: 8px; margin-left: 3px; color: var(--text-muted); }
+
+/* ── Content Body (prototype .content-body) ───────────────── */
+.iam-page .content-body {
+    display: flex; gap: 14px; align-items: flex-start;
+}
+.iam-page .content-body .table-panel { flex: 1; }

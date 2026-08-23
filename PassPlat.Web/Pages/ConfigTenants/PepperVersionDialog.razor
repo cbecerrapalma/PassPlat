@@ -1,0 +1,65 @@
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+@using PassPlat.Web.Models
+
+<MudDialog Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Actualizar Pepper Version</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText Class="mb-3">
+            Configuración ID: @ConfigTenant.Id (Tenant: @ConfigTenant.TenantNombre)
+        </MudText>
+        <MudText Class="mb-3">
+            Versión actual: @ConfigTenant.PepperVersionActual
+        </MudText>
+        <MudTextField @bind-Value="_nuevaVersion" Label="Nueva Versión Pepper" Variant="Variant.Outlined"
+            Type="InputType.Number" HelperText="Incrementar para regenerar hashes de contraseñas" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Warning" OnClick="@Save" Disabled="@_saving">
+            Actualizar
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+
+    [Parameter] public ConfigTenantDto ConfigTenant { get; set; } = null!;
+
+    private byte _nuevaVersion;
+    private bool _saving;
+
+    protected override void OnInitialized()
+    {
+        _nuevaVersion = (byte)(ConfigTenant.PepperVersionActual + 1);
+    }
+
+    private async Task Save()
+    {
+        _saving = true;
+        try
+        {
+            var ok = await Api.PostVoidAsync($"api/ConfigTenants/{ConfigTenant.Id}/pepper-version", new { pepperVersion = _nuevaVersion });
+            if (ok)
+            {
+                Snackbar.Add("Pepper version actualizada", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+                Snackbar.Add(Api.LastError ?? "Error al actualizar", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

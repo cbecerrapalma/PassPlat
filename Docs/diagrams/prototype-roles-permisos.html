@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AccessPlat — Roles y Permisos (Prototipo)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #594AE1;
+            --primary-light: #7C6FF0;
+            --primary-bg: rgba(89,74,225,0.08);
+            --success: #1DB954;
+            --success-bg: rgba(29,185,84,0.08);
+            --warning: #F59E0B;
+            --warning-bg: rgba(245,158,11,0.08);
+            --error: #EF4444;
+            --error-bg: rgba(239,68,68,0.08);
+            --info: #3B82F6;
+            --info-bg: rgba(59,130,246,0.08);
+            --text: #1E293B;
+            --text-secondary: #64748B;
+            --border: #E2E8F0;
+            --bg: #F8FAFC;
+            --surface: #FFFFFF;
+            --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+            --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
+            --radius: 12px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+        /* Appbar */
+        .appbar {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 0 24px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow);
+        }
+        .appbar-brand {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-right: 32px;
+        }
+        .appbar-brand span { color: var(--text-secondary); font-weight: 400; font-size: 13px; margin-left: 8px; }
+
+        /* Breadcrumb */
+        .breadcrumb {
+            padding: 16px 24px 0;
+            display: flex;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .breadcrumb a { color: var(--primary); text-decoration: none; }
+        .breadcrumb a:hover { text-decoration: underline; }
+
+        /* Container */
+        .container { max-width: 1280px; margin: 0 auto; padding: 16px 24px 48px; }
+
+        /* Stat Cards */
+        .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .stat-avatar {
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+        }
+        .stat-label { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+        .stat-value { font-size: 22px; font-weight: 700; }
+
+        /* Toolbar */
+        .toolbar {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .toolbar-title { font-size: 18px; font-weight: 600; flex-grow: 1; }
+        .btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.15s;
+            font-family: inherit;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-light); }
+        .btn-outlined { background: transparent; border: 1px solid var(--border); color: var(--text); }
+        .btn-outlined:hover { background: var(--bg); }
+        .btn-icon { background: transparent; border: none; color: var(--text-secondary); cursor: pointer; padding: 8px; border-radius: 8px; }
+        .btn-icon:hover { background: var(--bg); }
+        .btn-success { background: var(--success); color: white; }
+        .btn-error { background: var(--error); color: white; }
+        .btn-error:hover { background: #dc2626; }
+        .btn-sm { padding: 4px 10px; font-size: 12px; }
+
+        /* Tabs */
+        .tabs-container {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+        .tabs-header {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+        }
+        .tab-btn {
+            padding: 14px 24px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.15s;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .tab-btn:hover { color: var(--text); background: var(--bg); }
+        .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+        .tab-btn .badge {
+            background: var(--primary-bg);
+            color: var(--primary);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .tab-content { display: none; padding: 20px; }
+        .tab-content.active { display: block; }
+
+        /* Filters */
+        .filters {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .filter-count { font-size: 12px; color: var(--text-secondary); margin-left: auto; }
+        .input, .select {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: inherit;
+            background: var(--surface);
+            color: var(--text);
+            min-width: 140px;
+        }
+        .input:focus, .select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-bg); }
+
+        /* Table */
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th {
+            text-align: left;
+            padding: 10px 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg);
+        }
+        td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        tr:hover td { background: var(--bg); }
+        tr.selected td { background: var(--primary-bg); }
+        .avatar-sm {
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            background: var(--primary-bg);
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+            border: 1px solid;
+        }
+        .chip-primary { color: var(--primary); border-color: var(--primary); background: var(--primary-bg); }
+        .chip-success { color: var(--success); border-color: var(--success); background: var(--success-bg); }
+        .chip-error { color: var(--error); border-color: var(--error); background: var(--error-bg); }
+        .chip-default { color: var(--text-secondary); border-color: var(--border); background: var(--bg); }
+        .chip-tertiary { color: #8B5CF6; border-color: #8B5CF6; background: rgba(139,92,246,0.08); }
+        .row-actions { display: flex; gap: 4px; }
+        .row-actions button { background: none; border: none; cursor: pointer; color: var(--text-secondary); padding: 4px; border-radius: 4px; }
+        .row-actions button:hover { background: var(--bg); color: var(--text); }
+
+        /* Detail Panel */
+        .detail-panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-top: 20px;
+            overflow: hidden;
+        }
+        .detail-header {
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+        .detail-header h3 { flex-grow: 1; font-size: 16px; }
+        .detail-tabs { display: flex; border-bottom: 1px solid var(--border); }
+        .detail-tab {
+            padding: 12px 20px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .detail-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .detail-content { padding: 20px; }
+
+        /* Module Group */
+        .module-group {
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+        .module-header {
+            padding: 12px 16px;
+            background: var(--bg);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+        }
+        .module-header h4 { font-size: 14px; display: flex; align-items: center; gap: 8px; }
+        .module-body { padding: 4px 0; }
+        .permiso-row {
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+        .permiso-row:last-child { border-bottom: none; }
+        .permiso-row:hover { background: var(--bg); }
+        .permiso-info { flex-grow: 1; }
+        .permiso-name { font-size: 13px; font-weight: 500; }
+        .permiso-code { font-size: 11px; color: var(--text-secondary); }
+
+        /* Toggle Switch */
+        .toggle {
+            position: relative;
+            width: 40px;
+            height: 22px;
+        }
+        .toggle input { opacity: 0; width: 0; height: 0; }
+        .toggle .slider {
+            position: absolute;
+            inset: 0;
+            background: #CBD5E1;
+            border-radius: 22px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .toggle .slider::before {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: white;
+            top: 3px;
+            left: 3px;
+            transition: 0.2s;
+        }
+        .toggle input:checked + .slider { background: var(--primary); }
+        .toggle input:checked + .slider::before { transform: translateX(18px); }
+
+        /* Select All Bar */
+        .select-all-bar {
+            padding: 8px 16px;
+            background: var(--primary-bg);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+            font-size: 12px;
+        }
+        .select-all-bar label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 500; color: var(--primary); }
+
+        /* User Assignment Table */
+        .user-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        .user-row:hover { background: var(--bg); }
+        .user-avatar {
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            background: var(--info-bg);
+            color: var(--info);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .user-info { flex-grow: 1; }
+        .user-name { font-size: 13px; font-weight: 500; }
+        .user-email { font-size: 11px; color: var(--text-secondary); }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 48px 24px;
+            color: var(--text-secondary);
+        }
+        .empty-state .material-icons { font-size: 48px; opacity: 0.3; margin-bottom: 12px; }
+
+        /* Policy Detail */
+        .policy-card {
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-top: 12px;
+        }
+        .policy-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+
+        /* Banner */
+        .banner {
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .banner-info { background: var(--info-bg); color: var(--info); border: 1px solid rgba(59,130,246,0.2); }
+
+        /* Dialog Overlay */
+        .dialog-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 200;
+            justify-content: center;
+            align-items: center;
+        }
+        .dialog-overlay.show { display: flex; }
+        .dialog {
+            background: var(--surface);
+            border-radius: var(--radius);
+            width: 520px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+        .dialog-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .dialog-header h3 { font-size: 16px; flex-grow: 1; }
+        .dialog-body { padding: 20px; }
+        .dialog-footer {
+            padding: 12px 20px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 12px; font-weight: 500; margin-bottom: 4px; color: var(--text-secondary); }
+        .form-group .input { width: 100%; }
+        .form-group .helper { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+
+        /* Role Selector */
+        .role-selector {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .role-chip {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 2px solid var(--border);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.15s;
+            background: var(--surface);
+        }
+        .role-chip:hover { border-color: var(--primary-light); }
+        .role-chip.active { border-color: var(--primary); background: var(--primary-bg); color: var(--primary); }
+
+        /* Pulse animation for new features */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .new-badge {
+            background: var(--error);
+            color: white;
+            font-size: 9px;
+            padding: 1px 6px;
+            border-radius: 8px;
+            font-weight: 700;
+            text-transform: uppercase;
+            animation: pulse 2s infinite;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .stat-grid { grid-template-columns: repeat(2, 1fr); }
+            .dialog { width: 95%; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Appbar -->
+<div class="appbar">
+    <div class="appbar-brand">AccessPlat <span>v1.0.0</span></div>
+    <span style="color:var(--text-secondary); font-size:13px;">Panel de Administración</span>
+</div>
+
+<!-- Breadcrumb -->
+<div class="breadcrumb">
+    <a href="#">Panel Principal</a> / <a href="#">Administración</a> / <span>Roles y Permisos</span>
+</div>
+
+<div class="container">
+    <!-- Stat Cards -->
+    <div class="stat-grid">
+        <div class="stat-card">
+            <div class="stat-avatar" style="background:var(--primary-bg); color:var(--primary);">
+                <span class="material-icons">badge</span>
+            </div>
+            <div>
+                <div class="stat-label">Roles</div>
+                <div class="stat-value">5</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-avatar" style="background:var(--success-bg); color:var(--success);">
+                <span class="material-icons">check_circle</span>
+            </div>
+            <div>
+                <div class="stat-label">Roles Activos</div>
+                <div class="stat-value">4</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-avatar" style="background:rgba(139,92,246,0.08); color:#8B5CF6;">
+                <span class="material-icons">security</span>
+            </div>
+            <div>
+                <div class="stat-label">Total Permisos</div>
+                <div class="stat-value">18</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-avatar" style="background:var(--warning-bg); color:var(--warning);">
+                <span class="material-icons">policy</span>
+            </div>
+            <div>
+                <div class="stat-label">Políticas</div>
+                <div class="stat-value">3</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+        <div class="toolbar-title">Roles y Permisos</div>
+        <button class="btn-icon" title="Actualizar"><span class="material-icons">refresh</span></button>
+        <button class="btn btn-primary" onclick="showDialog('dialog-rol')">
+            <span class="material-icons" style="font-size:16px">add</span> Nuevo Rol
+        </button>
+        <button class="btn btn-outlined" onclick="showDialog('dialog-permiso')">
+            <span class="material-icons" style="font-size:16px">add</span> Nuevo Permiso
+        </button>
+    </div>
+
+    <!-- Main Tabs -->
+    <div class="tabs-container">
+        <div class="tabs-header">
+            <button class="tab-btn active" onclick="switchTab(this, 'tab-roles')">
+                <span class="material-icons" style="font-size:18px">badge</span>
+                Roles
+            </button>
+            <button class="tab-btn" onclick="switchTab(this, 'tab-permisos')">
+                <span class="material-icons" style="font-size:18px">security</span>
+                Permisos
+                <span class="badge">18</span>
+            </button>
+            <button class="tab-btn" onclick="switchTab(this, 'tab-asignacion')">
+                <span class="material-icons" style="font-size:18px">people</span>
+                Asignación de Usuarios
+                <span class="new-badge">NUEVO</span>
+            </button>
+        </div>
+
+        <!-- TAB: ROLES -->
+        <div id="tab-roles" class="tab-content active">
+            <div class="filters">
+                <input class="input" placeholder="Buscar rol..." style="flex-grow:1;">
+                <select class="select">
+                    <option>Todos</option>
+                    <option>Activos</option>
+                    <option>Inactivos</option>
+                </select>
+                <select class="select">
+                    <option>Todos</option>
+                    <option>Global</option>
+                    <option>ACME Corp</option>
+                </select>
+                <span class="filter-count">Mostrando 5 de 5 roles</span>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:50px"></th>
+                        <th>Código</th>
+                        <th>Nombre</th>
+                        <th>Descripción</th>
+                        <th>Tenant</th>
+                        <th>Usuarios</th>
+                        <th>Activo</th>
+                        <th style="width:80px"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="selected" onclick="selectRole(this)">
+                        <td><div class="avatar-sm">SU</div></td>
+                        <td><span class="chip chip-primary">SUPERADMIN</span></td>
+                        <td><strong>Super Administrador</strong></td>
+                        <td>Acceso total al sistema</td>
+                        <td><span class="chip chip-default">Global</span></td>
+                        <td><span class="chip chip-tertiary">2</span></td>
+                        <td><span class="chip chip-success">Activo</span></td>
+                        <td class="row-actions">
+                            <button title="Editar"><span class="material-icons" style="font-size:16px">edit</span></button>
+                            <button title="Desactivar"><span class="material-icons" style="font-size:16px;color:var(--error)">delete</span></button>
+                        </td>
+                    </tr>
+                    <tr onclick="selectRole(this)">
+                        <td><div class="avatar-sm">AD</div></td>
+                        <td><span class="chip chip-primary">ADMIN</span></td>
+                        <td><strong>Administrador</strong></td>
+                        <td>Gestión de usuarios y configuración</td>
+                        <td><span class="chip chip-tertiary">ACME Corp</span></td>
+                        <td><span class="chip chip-tertiary">3</span></td>
+                        <td><span class="chip chip-success">Activo</span></td>
+                        <td class="row-actions">
+                            <button title="Editar"><span class="material-icons" style="font-size:16px">edit</span></button>
+                            <button title="Desactivar"><span class="material-icons" style="font-size:16px;color:var(--error)">delete</span></button>
+                        </td>
+                    </tr>
+                    <tr onclick="selectRole(this)">
+                        <td><div class="avatar-sm">OP</div></td>
+                        <td><span class="chip chip-primary">OPERADOR</span></td>
+                        <td><strong>Operador</strong></td>
+                        <td>Operaciones diarias</td>
+                        <td><span class="chip chip-tertiary">ACME Corp</span></td>
+                        <td><span class="chip chip-tertiary">5</span></td>
+                        <td><span class="chip chip-success">Activo</span></td>
+                        <td class="row-actions">
+                            <button title="Editar"><span class="material-icons" style="font-size:16px">edit</span></button>
+                            <button title="Desactivar"><span class="material-icons" style="font-size:16px;color:var(--error)">delete</span></button>
+                        </td>
+                    </tr>
+                    <tr onclick="selectRole(this)">
+                        <td><div class="avatar-sm">CO</div></td>
+                        <td><span class="chip chip-primary">CONSULTA</span></td>
+                        <td><strong>Consulta</strong></td>
+                        <td>Solo lectura</td>
+                        <td><span class="chip chip-tertiary">ACME Corp</span></td>
+                        <td><span class="chip chip-tertiary">8</span></td>
+                        <td><span class="chip chip-success">Activo</span></td>
+                        <td class="row-actions">
+                            <button title="Editar"><span class="material-icons" style="font-size:16px">edit</span></button>
+                            <button title="Desactivar"><span class="material-icons" style="font-size:16px;color:var(--error)">delete</span></button>
+                        </td>
+                    </tr>
+                    <tr onclick="selectRole(this)">
+                        <td><div class="avatar-sm">DE</div></td>
+                        <td><span class="chip chip-primary">DEMO</span></td>
+                        <td><strong>Demo</strong></td>
+                        <td>Usuario de demostración</td>
+                        <td><span class="chip chip-tertiary">ACME Corp</span></td>
+                        <td><span class="chip chip-tertiary">0</span></td>
+                        <td><span class="chip chip-error">Inactivo</span></td>
+                        <td class="row-actions">
+                            <button title="Editar"><span class="material-icons" style="font-size:16px">edit</span></button>
+                            <button title="Desactivar"><span class="material-icons" style="font-size:16px;color:var(--error)">delete</span></button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Detail Panel -->
+            <div class="detail-panel">
+                <div class="detail-header">
+                    <span class="material-icons" style="color:var(--primary)">shield</span>
+                    <h3>Permisos de: <strong>Super Administrador</strong></h3>
+                    <span class="chip chip-primary">SUPERADMIN</span>
+                    <span class="chip chip-default">Global</span>
+                    <span style="flex-grow:1"></span>
+                    <span style="font-size:12px;color:var(--text-secondary)">8 de 18 permisos asignados</span>
+                </div>
+                <div class="detail-tabs">
+                    <button class="detail-tab active" onclick="switchDetailTab(this, 'detail-permisos')">
+                        <span class="material-icons" style="font-size:16px">security</span>
+                        Permisos (8/18)
+                    </button>
+                    <button class="detail-tab" onclick="switchDetailTab(this, 'detail-politica')">
+                        <span class="material-icons" style="font-size:16px">lock</span>
+                        Política (Asignada)
+                    </button>
+                    <button class="detail-tab" onclick="switchDetailTab(this, 'detail-usuarios-rol')">
+                        <span class="material-icons" style="font-size:16px">people</span>
+                        Usuarios (2)
+                        <span class="new-badge">NUEVO</span>
+                    </button>
+                </div>
+
+                <!-- Detail: Permisos -->
+                <div id="detail-permisos" class="detail-content active">
+                    <input class="input" placeholder="Buscar permiso..." style="width:100%; margin-bottom:16px;">
+
+                    <!-- Security Module -->
+                    <div class="module-group">
+                        <div class="module-header">
+                            <h4><span class="material-icons" style="color:var(--primary);font-size:18px">folder</span> Seguridad</h4>
+                            <span class="chip chip-primary">3/5</span>
+                        </div>
+                        <div class="select-all-bar">
+                            <label>
+                                <input type="checkbox" checked onchange="toggleAll(this)">
+                                Seleccionar todos
+                            </label>
+                            <span>3 de 5 asignados</span>
+                        </div>
+                        <div class="module-body">
+                            <div class="permiso-row">
+                                <label class="toggle"><input type="checkbox" checked><span class="slider"></span></label>
+                                <span class="material-icons" style="color:var(--success);font-size:18px">check_circle</span>
+                                <div class="permiso-info">
+                                    <div class="permiso-name">Ver Login</div>
+                                    <div class="permiso-code">VER_LOGIN · Seguridad</div>
+                                </div>
+                                <button class="btn-icon" title="Editar"><span class="material-icons" style="font-size:16px">edit</span></button>
+                                <button class="btn-icon" title="Eliminar"><span class="material-icons" style="font-size:16px;color:var(--error)">delete</span></button>
+                            </div>
+                            <div class="permiso-row">
+                                <label class="toggle"><input type="checkbox" checked><span class="slider"></span></label>
+                                <span class="material-icons" style="color:var(--success);font-size:18px">check_circle</span>
+                                <div class="permiso-info">
+                                    <div class="permiso-name">Crear Usuario</div>
+                                    <div class="permiso-code">CREAR_USR · Seguridad</div>
+                                </div>
+                                <button class="btn-icon" title="Editar"><span class="material-icons" style="font-size:16px">edit</span></button>
+                                <button class="btn-icon" title="Eliminar"><span class="material-icons" style="font-size:16px;color:var(--error)">delete</span></button>
+                            </div>
+                            <div class="permiso-row">
+                                <label class="toggle"><input type="checkbox" checked><span class="slider"></span></label>
+                                <span class="material-icons" style="color:var(--success);font-size:18px">check_circle</span>
+                                <div class="permiso-info">
+                                    <div class="permiso-name">Eliminar Usuario</div>
+                                    <div class="permiso-code">ELIM_USR · Seguridad</div>
+                                </div>
+                                <button class="btn-icon" title="Editar"><span class="material-icons" style="font-size:16px">edit</span></button>
+                                <button class="btn-icon" title="Eliminar"><span class="material-icons" style="font-size:16px;color:var(--error)">delete</span></button>
+                            </div>
+                            <div class="permiso-row">
+                                <label class="toggle"><input type="checkbox"><span class="slider"></span></label>
+                                <span class="material-icons" style="color:var(--text-secondary);font-size:18px">check_circle</span>
+                                <div class="permiso-info">
+                                    <div class="permiso-name">Cambiar Password</div>
+                                    <div class="permiso-code">CAMB_PWD · Seguridad</div>
+                                </div>
+                                <button class="btn-icon" title="Editar"><span class="material-icons" style="font-size:16px">edit</span></button>
+                                <button class="btn-icon" title="Eliminar"><span class="material-icons" style="font-size:16px;color:var(--error)">delete</span></button>
+                            </div>
+                            <div class="permiso-row">
+                                <label class="toggle"><input type="checkbox"><span class="slider"></span></label>
+                                <span class="material-icons" style="color:var(--text-secondary);font-size:18px">check_circle</span>
+                                <div class="permiso-info">
+                                    <div class="permiso-name">Reset Password</div>
+                                    <div class="permiso-code">RESET_PWD · Seguridad</div>
+                                </div>
+                                <button class="btn-icon" title="Editar"><span class="material-icons" style="font-size:16px">edit</span></button>
+                                <button class="btn-icon" title="Eliminar"><span class="material-icons" style="font-size:16px;color:var(--error)">delete</span></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Reports Module -->
+                    <div class="module-group">
+                        <div class="module-header">
+                            <h4><span class="material-icons" style="color:var(--primary);font-size:18px">folder</span> Reportes</h4>
+                            <span class="chip chip-primary">2/2</span>
+                        </div>
+                        <div class="select-all-bar">
+                            <label>
+                                <input type="checkbox" checked disabled>
+                                Seleccionar todos
+                            </label>
+                            <span>2 de 2 asignados</span>
+                        </div>
+                        <div class="module-body">
+                            <div class="permiso-row">
+                                <label class="toggle"><input type="checkbox" checked><span class="slider"></span></label>
+                                <span class="material-icons" style="color:var(--success);font-size:18px">check_circle</span>
+                                <div class="permiso-info">
+                                    <div class="permiso-name">Ver Dashboard</div>
+                                    <div class="permiso-code">VER_DASH · Reportes</div>
+                                </div>
+                                <button class="btn-icon" title="Editar"><span class="material-icons" style="font-size:16px">edit</span></button>
+                                <button class="btn-icon" title="Eliminar"><span class="material-icons" style="font-size:16px;color:var(--error)">delete</span></button>
+                            </div>
+                            <div class="permiso-row">
+                                <label class="toggle"><input type="checkbox" checked><span class="slider"></span></label>
+                                <span class="material-icons" style="color:var(--success);font-size:18px">check_circle</span>
+                                <div class="permiso-info">
+                                    <div class="permiso-name">Exportar Reportes</div>
+                                    <div class="permiso-code">EXP_REPORT · Reportes</div>
+                                </div>
+                                <button class="btn-icon" title="Editar"><span class="material-icons" style="font-size:16px">edit</span></button>
+                                <button class="btn-icon" title="Eliminar"><span class="material-icons" style="font-size:16px;color:var(--error)">delete</span></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Config Module -->
+                    <div class="module-group">
+                        <div class="module-header">
+                            <h4><span class="material-icons" style="color:var(--primary);font-size:18px">folder</span> Configuración</h4>
+                            <span class="chip chip-primary">3/6</span>
+                        </div>
+                        <div class="select-all-bar">
+                            <label>
+                                <input type="checkbox" onchange="toggleAll(this)">
+                                Seleccionar todos
+                            </label>
+                            <span>3 de 6 asignados</span>
+                        </div>
+                        <div class="module-body">
+                            <div class="permiso-row">
+                                <label class="toggle"><input type="checkbox" checked><span class="slider"></span></label>
+                                <span class="material-icons" style="color:var(--success);font-size:18px">check_circle</span>
+                                <div class="permiso-info">
+                                    <div class="permiso-name">Ver Configuración</div>
+                                    <div class="permiso-code">VER_CONFIG · Configuración</div>
+                                </div>
+                                <button class="btn-icon" title="Editar"><span class="material-icons" style="font-size:16px">edit</span></button>
+                                <button class="btn-icon" title="Eliminar"><span class="material-icons" style="font-size:16px;color:var(--error)">delete</span></button>
+                            </div>
+                            <div class="permiso-row">
+                                <label class="toggle"><input type="checkbox" checked><span class="slider"></span></label>
+                                <span class="material-icons" style="color:var(--success);font-size:18px">check_circle</span>
+                                <div class="permiso-info">
+                                    <div class="permiso-name">Editar Configuración</div>
+                                    <div class="permiso-code">EDIT_CONFIG · Configuración</div>
+                                </div>
+                                <button class="btn-icon" title="Editar"><span class="material-icons" style="font-size:16px">edit</span></button>
+                                <button class="btn-icon" title="Eliminar"><span class="material-icons" style="font-size:16px;color:var(--error)">delete</span></button>
+                            </div>
+                            <div class="permiso-row">
+                                <label class="toggle"><input type="checkbox" checked><span class="slider"></span></label>
+                                <span class="material-icons" style="color:var(--success);font-size:18px">check_circle</span>
+                                <div class="permiso-info">
+                                    <div class="permiso-name">Gestionar Tenants</div>
+                                    <div class="permiso-code">GEST_TENANT · Configuración</div>
+                                </div>
+                                <button class="btn-icon" title="Editar"><span class="material-icons" style="font-size:16px">edit</span></button>
+                                <button class="btn-icon" title="Eliminar"><span class="material-icons" style="font-size:16px;color:var(--error)">delete</span></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detail: Política -->
+                <div id="detail-politica" class="detail-content" style="display:none">
+                    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                        <span class="chip chip-success" style="font-size:13px;padding:6px 14px;">Política Corporativa</span>
+                        <button class="btn btn-outlined btn-sm" style="color:var(--error);border-color:var(--error)">Quitar</button>
+                        <span style="flex-grow:1"></span>
+                        <button class="btn btn-primary btn-sm">Cambiar Política</button>
+                    </div>
+                    <div class="policy-card">
+                        <h4 style="font-size:14px;margin-bottom:12px;">Requisitos de Complejidad</h4>
+                        <div class="policy-chips">
+                            <span class="chip chip-primary">Min 8 - Max 128</span>
+                            <span class="chip chip-primary">Mayúscula</span>
+                            <span class="chip chip-primary">Minúscula</span>
+                            <span class="chip chip-primary">Número</span>
+                            <span class="chip chip-primary">Especial</span>
+                        </div>
+                    </div>
+                    <div class="policy-card" style="margin-top:12px">
+                        <h4 style="font-size:14px;margin-bottom:12px;">Seguridad</h4>
+                        <div class="policy-chips">
+                            <span class="chip chip-primary">MaxIntentos: 5</span>
+                            <span class="chip chip-primary">DurBloqueo: 30 min</span>
+                            <span class="chip chip-primary">Vigencia: 90 días</span>
+                            <span class="chip chip-primary">Recordar: 7</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detail: Usuarios del Rol (NUEVO) -->
+                <div id="detail-usuarios-rol" class="detail-content" style="display:none">
+                    <div class="banner banner-info">
+                        <span class="material-icons" style="font-size:18px">info</span>
+                        Usuarios que tienen asignado el rol <strong style="margin:0 4px">Super Administrador</strong>. 
+                        Para gestionar accesos por app, vaya a la pestaña "Asignación de Usuarios".
+                    </div>
+
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                        <span style="font-size:13px;color:var(--text-secondary)">2 usuarios asignados</span>
+                        <button class="btn btn-primary btn-sm">
+                            <span class="material-icons" style="font-size:14px">add</span> Asignar Usuario
+                        </button>
+                    </div>
+
+                    <div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
+                        <div class="user-row">
+                            <div class="user-avatar">JP</div>
+                            <div class="user-info">
+                                <div class="user-name">Juan Pérez</div>
+                                <div class="user-email">juan.perez@acme.com</div>
+                            </div>
+                            <span class="chip chip-tertiary">ACME Corp</span>
+                            <span class="chip chip-success">Activo</span>
+                            <button class="btn-icon" title="Revocar"><span class="material-icons" style="font-size:16px;color:var(--error)">person_remove</span></button>
+                        </div>
+                        <div class="user-row">
+                            <div class="user-avatar">ML</div>
+                            <div class="user-info">
+                                <div class="user-name">María López</div>
+                                <div class="user-email">maria.lopez@acme.com</div>
+                            </div>
+                            <span class="chip chip-tertiary">ACME Corp</span>
+                            <span class="chip chip-success">Activo</span>
+                            <button class="btn-icon" title="Revocar"><span class="material-icons" style="font-size:16px;color:var(--error)">person_remove</span></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: PERMISOS (NUEVO) -->
+        <div id="tab-permisos" class="tab-content">
+            <div class="filters">
+                <input class="input" placeholder="Buscar permiso..." style="flex-grow:1;">
+                <select class="select">
+                    <option>Todos los módulos</option>
+                    <option>Seguridad</option>
+                    <option>Reportes</option>
+                    <option>Configuración</option>
+                    <option>Usuarios</option>
+                </select>
+                <select class="select">
+                    <option>Todos</option>
+                    <option>Activos</option>
+                    <option>Inactivos</option>
+                </select>
+                <span class="filter-count">18 permisos</span>
+            </div>
+
+            <div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Nombre</th>
+                            <th>Descripción</th>
+                            <th>Módulo</th>
+                            <th>Activo</th>
+                            <th style="width:80px"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="chip chip-primary">VER_LOGIN</span></td>
+                            <td><strong>Ver Login</strong></td>
+                            <td>Acceder a la pantalla de login</td>
+                            <td><span class="chip chip-tertiary">Seguridad</span></td>
+                            <td><span class="chip chip-success">Activo</span></td>
+                            <td class="row-actions">
+                                <button title="Editar"><span class="material-icons" style="font-size:16px">edit</span></button>
+                                <button title="Desactivar"><span class="material-icons" style="font-size:16px;color:var(--error)">delete</span></button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><span class="chip chip-primary">CREAR_USR</span></td>
+                            <td><strong>Crear Usuario</strong></td>
+                            <td>Crear nuevos usuarios en el sistema</td>
+                            <td><span class="chip chip-tertiary">Seguridad</span></td>
+                            <td><span class="chip chip-success">Activo</span></td>
+                            <td class="row-actions">
+                                <button title="Editar"><span class="material-icons" style="font-size:16px">edit</span></button>
+                                <button title="Desactivar"><span class="material-icons" style="font-size:16px;color:var(--error)">delete</span></button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><span class="chip chip-primary">ELIM_USR</span></td>
+                            <td><strong>Eliminar Usuario</strong></td>
+                            <td>Eliminar usuarios del sistema</td>
+                            <td><span class="chip chip-tertiary">Seguridad</span></td>
+                            <td><span class="chip chip-success">Activo</span></td>
+                            <td class="row-actions">
+                                <button title="Editar"><span class="material-icons" style="font-size:16px">edit</span></button>
+                                <button title="Desactivar"><span class="material-icons" style="font-size:16px;color:var(--error)">delete</span></button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><span class="chip chip-primary">VER_DASH</span></td>
+                            <td><strong>Ver Dashboard</strong></td>
+                            <td>Acceder al panel principal</td>
+                            <td><span class="chip chip-tertiary">Reportes</span></td>
+                            <td><span class="chip chip-success">Activo</span></td>
+                            <td class="row-actions">
+                                <button title="Editar"><span class="material-icons" style="font-size:16px">edit</span></button>
+                                <button title="Desactivar"><span class="material-icons" style="font-size:16px;color:var(--error)">delete</span></button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><span class="chip chip-primary">EXP_REPORT</span></td>
+                            <td><strong>Exportar Reportes</strong></td>
+                            <td>Exportar datos a CSV/Excel</td>
+                            <td><span class="chip chip-tertiary">Reportes</span></td>
+                            <td><span class="chip chip-success">Activo</span></td>
+                            <td class="row-actions">
+                                <button title="Editar"><span class="material-icons" style="font-size:16px">edit</span></button>
+                                <button title="Desactivar"><span class="material-icons" style="font-size:16px;color:var(--error)">delete</span></button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><span class="chip chip-primary">GEST_TENANT</span></td>
+                            <td><strong>Gestionar Tenants</strong></td>
+                            <td>Crear y configurar tenants</td>
+                            <td><span class="chip chip-tertiary">Configuración</span></td>
+                            <td><span class="chip chip-success">Activo</span></td>
+                            <td class="row-actions">
+                                <button title="Editar"><span class="material-icons" style="font-size:16px">edit</span></button>
+                                <button title="Desactivar"><span class="material-icons" style="font-size:16px;color:var(--error)">delete</span></button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TAB: ASIGNACIÓN DE USUARIOS (NUEVO) -->
+        <div id="tab-asignacion" class="tab-content">
+            <div class="banner banner-info" style="margin-bottom:16px">
+                <span class="material-icons" style="font-size:18px">info</span>
+                Seleccione un rol para ver y gestionar los usuarios asignados.
+            </div>
+
+            <div style="margin-bottom:20px;">
+                <label style="font-size:12px;font-weight:500;color:var(--text-secondary);display:block;margin-bottom:6px;">Seleccionar Rol</label>
+                <select class="select" style="width:300px;" id="roleSelect" onchange="showRoleUsers()">
+                    <option value="">— Seleccionar rol —</option>
+                    <option value="1" selected>Super Administrador (SUPERADMIN)</option>
+                    <option value="2">Administrador (ADMIN)</option>
+                    <option value="3">Operador (OPERADOR)</option>
+                    <option value="4">Consulta (CONSULTA)</option>
+                    <option value="5">Demo (DEMO)</option>
+                </select>
+            </div>
+
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
+                <div style="padding:16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;">
+                    <span class="material-icons" style="color:var(--primary)">people</span>
+                    <div style="flex-grow:1">
+                        <div style="font-size:14px;font-weight:600;">Usuarios con rol: <span style="color:var(--primary)">Super Administrador</span></div>
+                        <div style="font-size:12px;color:var(--text-secondary);">2 usuarios · 1 aplicación</div>
+                    </div>
+                    <button class="btn btn-primary btn-sm">
+                        <span class="material-icons" style="font-size:14px">person_add</span> Asignar Usuario
+                    </button>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Usuario</th>
+                            <th>Email</th>
+                            <th>Aplicación</th>
+                            <th>Tenant</th>
+                            <th>Estado</th>
+                            <th style="width:80px"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>
+                                <div style="display:flex;align-items:center;gap:10px;">
+                                    <div class="user-avatar" style="width:32px;height:32px;font-size:11px;">JP</div>
+                                    <strong>Juan Pérez</strong>
+                                </div>
+                            </td>
+                            <td>juan.perez@acme.com</td>
+                            <td><span class="chip chip-primary">PassPlat</span></td>
+                            <td><span class="chip chip-tertiary">ACME Corp</span></td>
+                            <td><span class="chip chip-success">Activo</span></td>
+                            <td class="row-actions">
+                                <button title="Revocar acceso"><span class="material-icons" style="font-size:16px;color:var(--error)">person_remove</span></button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div style="display:flex;align-items:center;gap:10px;">
+                                    <div class="user-avatar" style="width:32px;height:32px;font-size:11px;">ML</div>
+                                    <strong>María López</strong>
+                                </div>
+                            </td>
+                            <td>maria.lopez@acme.com</td>
+                            <td><span class="chip chip-primary">PassPlat</span></td>
+                            <td><span class="chip chip-tertiary">ACME Corp</span></td>
+                            <td><span class="chip chip-success">Activo</span></td>
+                            <td class="row-actions">
+                                <button title="Revocar acceso"><span class="material-icons" style="font-size:16px;color:var(--error)">person_remove</span></button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Dialog: Nuevo Rol -->
+<div class="dialog-overlay" id="dialog-rol">
+    <div class="dialog">
+        <div class="dialog-header">
+            <div style="width:32px;height:32px;border-radius:50%;background:var(--primary-bg);color:var(--primary);display:flex;align-items:center;justify-content:center;">
+                <span class="material-icons" style="font-size:16px">add</span>
+            </div>
+            <h3>Nuevo Rol</h3>
+            <button class="btn-icon" onclick="hideDialog('dialog-rol')"><span class="material-icons">close</span></button>
+        </div>
+        <div class="dialog-body">
+            <div style="font-size:12px;color:var(--text-secondary);margin-bottom:16px;">Información básica del rol</div>
+            <div class="form-group">
+                <label>Código <span style="color:var(--error)">*</span></label>
+                <input class="input" placeholder="Ej: ADMIN">
+                <div class="helper">Identificador único del rol (no se puede cambiar)</div>
+            </div>
+            <div class="form-group">
+                <label>Nombre <span style="color:var(--error)">*</span></label>
+                <input class="input" placeholder="Ej: Administrador">
+                <div class="helper">Nombre descriptivo del rol</div>
+            </div>
+            <div class="form-group">
+                <label>Descripción</label>
+                <input class="input" placeholder="Opcional">
+                <div class="helper">Descripción del propósito del rol</div>
+            </div>
+        </div>
+        <div class="dialog-footer">
+            <button class="btn btn-outlined" onclick="hideDialog('dialog-rol')">Cancelar</button>
+            <button class="btn btn-primary">Crear</button>
+        </div>
+    </div>
+</div>
+
+<!-- Dialog: Nuevo Permiso (con modo edición) -->
+<div class="dialog-overlay" id="dialog-permiso">
+    <div class="dialog" style="width:560px">
+        <div class="dialog-header">
+            <div style="width:32px;height:32px;border-radius:50%;background:rgba(139,92,246,0.08);color:#8B5CF6;display:flex;align-items:center;justify-content:center;">
+                <span class="material-icons" style="font-size:16px">security</span>
+            </div>
+            <h3>Nuevo Permiso <span class="new-badge" style="margin-left:8px">Editable</span></h3>
+            <button class="btn-icon" onclick="hideDialog('dialog-permiso')"><span class="material-icons">close</span></button>
+        </div>
+        <div class="dialog-body">
+            <div style="font-size:12px;color:var(--text-secondary);margin-bottom:16px;">Definición del permiso</div>
+            <div class="form-group">
+                <label>Código <span style="color:var(--error)">*</span></label>
+                <input class="input" placeholder="Ej: VER_LOGIN">
+            </div>
+            <div class="form-group">
+                <label>Nombre <span style="color:var(--error)">*</span></label>
+                <input class="input" placeholder="Ej: Ver Login">
+            </div>
+            <div class="form-group">
+                <label>Descripción</label>
+                <input class="input" placeholder="Opcional">
+            </div>
+            <div style="border-top:1px solid var(--border);margin:16px 0;"></div>
+            <div class="form-group">
+                <label>Módulo <span style="color:var(--error)">*</span></label>
+                <select class="select" style="width:100%">
+                    <option value="">Seleccionar módulo</option>
+                    <option>Seguridad</option>
+                    <option>Reportes</option>
+                    <option>Configuración</option>
+                    <option>Usuarios</option>
+                </select>
+                <div class="helper">Agrupación funcional del permiso</div>
+            </div>
+        </div>
+        <div class="dialog-footer">
+            <button class="btn btn-outlined" onclick="hideDialog('dialog-permiso')">Cancelar</button>
+            <button class="btn btn-primary">Crear</button>
+        </div>
+    </div>
+</div>
+
+<!-- Dialog: Asignar Usuario a Rol -->
+<div class="dialog-overlay" id="dialog-asignar">
+    <div class="dialog" style="width:520px">
+        <div class="dialog-header">
+            <div style="width:32px;height:32px;border-radius:50%;background:var(--success-bg);color:var(--success);display:flex;align-items:center;justify-content:center;">
+                <span class="material-icons" style="font-size:16px">person_add</span>
+            </div>
+            <h3>Asignar Usuario a Rol</h3>
+            <button class="btn-icon" onclick="hideDialog('dialog-asignar')"><span class="material-icons">close</span></button>
+        </div>
+        <div class="dialog-body">
+            <div class="form-group">
+                <label>Rol</label>
+                <input class="input" value="Super Administrador (SUPERADMIN)" disabled style="background:var(--bg);">
+            </div>
+            <div class="form-group">
+                <label>Aplicación <span style="color:var(--error)">*</span></label>
+                <select class="select" style="width:100%">
+                    <option>PassPlat</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Usuario <span style="color:var(--error)">*</span></label>
+                <input class="input" placeholder="Buscar por email o nombre...">
+            </div>
+            <div style="background:var(--warning-bg);border:1px solid rgba(245,158,11,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#92400E;display:flex;align-items:center;gap:8px;">
+                <span class="material-icons" style="font-size:16px">warning</span>
+                El usuario ya tiene un rol en esta app. Asignar un nuevo rol reemplazará el anterior.
+            </div>
+        </div>
+        <div class="dialog-footer">
+            <button class="btn btn-outlined" onclick="hideDialog('dialog-asignar')">Cancelar</button>
+            <button class="btn btn-success">Asignar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function switchTab(btn, tabId) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(tabId).classList.add('active');
+    }
+
+    function switchDetailTab(btn, tabId) {
+        document.querySelectorAll('.detail-tab').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.detail-content').forEach(c => c.style.display = 'none');
+        btn.classList.add('active');
+        document.getElementById(tabId).style.display = 'block';
+    }
+
+    function selectRole(row) {
+        document.querySelectorAll('table tbody tr').forEach(r => r.classList.remove('selected'));
+        row.classList.add('selected');
+    }
+
+    function toggleAll(checkbox) {
+        const module = checkbox.closest('.module-group');
+        module.querySelectorAll('.module-body .toggle input').forEach(cb => cb.checked = checkbox.checked);
+    }
+
+    function showDialog(id) {
+        document.getElementById(id).classList.add('show');
+    }
+
+    function hideDialog(id) {
+        document.getElementById(id).classList.remove('show');
+    }
+
+    document.querySelectorAll('.dialog-overlay').forEach(overlay => {
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) overlay.classList.remove('show');
+        });
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,250 @@
+- generic [ref=e94]:
+  - banner [ref=e95]:
+    - toolbar [ref=e96]:
+      - button [ref=e97] [cursor=pointer]:
+        - img [ref=e99]
+      - generic [ref=e104]: AccessPlat
+      - generic [ref=e106]:
+        - heading "Grupos" [level=6] [ref=e1681]
+        - generic [ref=e108]: Gestión de grupos
+      - generic [ref=e109]:
+        - generic [ref=e110]: Buenas noches
+        - generic [ref=e112]: 23:06:51
+      - separator [ref=e113]
+      - generic [ref=e114]:
+        - button [ref=e116] [cursor=pointer]:
+          - img [ref=e118]
+        - button [ref=e122] [cursor=pointer]:
+          - img [ref=e124]
+        - button [ref=e128] [cursor=pointer]:
+          - img [ref=e130]
+        - generic [ref=e135]:
+          - img [ref=e137]
+          - status [ref=e140]: "5"
+        - separator [ref=e141]
+        - generic [ref=e143] [cursor=pointer]:
+          - img [ref=e145]:
+            - generic [ref=e146]: SI
+          - paragraph [ref=e148]: sistema
+          - generic [ref=e151]: Plataforma
+          - img [ref=e152]
+  - complementary [ref=e155]:
+    - generic [ref=e156]:
+      - generic [ref=e157]:
+        - img [ref=e158]:
+          - paragraph [ref=e159]: SI
+        - generic [ref=e160]:
+          - paragraph [ref=e161]: sistema
+          - text: Administrador
+      - separator [ref=e162]
+      - navigation [ref=e163]:
+        - link "Panel Principal" [ref=e165] [cursor=pointer]:
+          - /url: /
+          - img [ref=e166]
+          - generic [ref=e169]: Panel Principal
+        - generic [ref=e170]: CATÁLOGOS
+        - navigation "Gestión" [ref=e171]:
+          - button "Toggle Gestión" [expanded]:
+            - img
+            - generic: Gestión
+            - img [ref=e172] [cursor=pointer]
+          - navigation [ref=e178]:
+            - link "Tenants" [ref=e180] [cursor=pointer]:
+              - /url: /tenants
+              - img [ref=e181]
+              - generic [ref=e184]: Tenants
+            - link "Apps" [ref=e186] [cursor=pointer]:
+              - /url: /apps
+              - img [ref=e187]
+              - generic [ref=e190]: Apps
+            - link "Roles y Permisos" [ref=e192] [cursor=pointer]:
+              - /url: /admin/roles
+              - img [ref=e193]
+              - generic [ref=e200]: Roles y Permisos
+            - link "Políticas de Contraseña" [ref=e202] [cursor=pointer]:
+              - /url: /politicas-pwd
+              - img [ref=e203]
+              - generic [ref=e206]: Políticas de Contraseña
+            - link "Config App" [ref=e208] [cursor=pointer]:
+              - /url: /config-app
+              - img [ref=e209]
+              - generic [ref=e213]: Config App
+        - generic [ref=e214]: SEGURIDAD
+        - navigation "Control" [ref=e215]:
+          - button "Toggle Control" [expanded]:
+            - img
+            - generic: Control
+            - img [ref=e216] [cursor=pointer]
+          - navigation [ref=e222]:
+            - link "Usuarios" [ref=e224] [cursor=pointer]:
+              - /url: /usuarios
+              - img [ref=e225]
+              - generic [ref=e228]: Usuarios
+            - link "Accesos" [ref=e230] [cursor=pointer]:
+              - /url: /accesos
+              - img [ref=e231]
+              - generic [ref=e236]: Accesos
+        - generic [ref=e237]: IAM
+        - navigation "Permisos" [ref=e238]:
+          - button "Toggle Permisos" [expanded]:
+            - img
+            - generic: Permisos
+            - img [ref=e239] [cursor=pointer]
+          - navigation [ref=e1368]:
+            - link "Permisos" [ref=e1370] [cursor=pointer]:
+              - /url: /admin/permisos
+              - img [ref=e1371]
+              - generic [ref=e1374]: Permisos
+            - link "Grupos" [ref=e1376] [cursor=pointer]:
+              - /url: /admin/grupos
+              - img [ref=e1377]
+              - generic [ref=e1380]: Grupos
+            - link "Permisos Directos" [ref=e1382] [cursor=pointer]:
+              - /url: /admin/roles-permisos
+              - img [ref=e1383]
+              - generic [ref=e1391]: Permisos Directos
+            - link "Matriz de Permisos" [ref=e1393] [cursor=pointer]:
+              - /url: /admin/matriz-permisos
+              - img [ref=e1394]
+              - generic [ref=e1397]: Matriz de Permisos
+        - generic [ref=e242]: MONITOREO
+        - navigation "Registros" [ref=e243]:
+          - button "Toggle Registros":
+            - img
+            - generic: Registros
+            - img [ref=e244] [cursor=pointer]
+        - generic [ref=e247]: COMUNICACIONES
+        - navigation "Email" [ref=e248]:
+          - button "Toggle Email" [expanded]:
+            - img
+            - generic: Email
+            - img [ref=e249] [cursor=pointer]
+          - navigation [ref=e255]:
+            - link "Providers" [ref=e257] [cursor=pointer]:
+              - /url: /email/providers
+              - img [ref=e258]
+              - generic [ref=e261]: Providers
+            - link "Cuentas de Correo" [ref=e263] [cursor=pointer]:
+              - /url: /email/accounts
+              - img [ref=e264]
+              - generic [ref=e267]: Cuentas de Correo
+            - link "Cuentas x Tenant" [ref=e269] [cursor=pointer]:
+              - /url: /email/tenant-accounts
+              - img [ref=e270]
+              - generic [ref=e273]: Cuentas x Tenant
+            - link "Cuentas x App" [ref=e275] [cursor=pointer]:
+              - /url: /email/app-accounts
+              - img [ref=e276]
+              - generic [ref=e279]: Cuentas x App
+            - link "Plantillas de Email" [ref=e281] [cursor=pointer]:
+              - /url: /email-templates
+              - img [ref=e282]
+              - generic [ref=e285]: Plantillas de Email
+      - generic [ref=e286]:
+        - separator [ref=e287]
+        - generic [ref=e288]: AccessPlat v1.0.0
+  - generic [ref=e289]:
+    - generic [ref=e1684]:
+      - generic [ref=e1686]:
+        - generic [ref=e1687]:
+          - heading "Grupos" [level=1] [ref=e1688]
+          - paragraph [ref=e1689]: Administra los grupos de acceso y membresias por aplicacion y tenant.
+        - generic [ref=e1690]:
+          - button "Refrescar" [ref=e1691] [cursor=pointer]:
+            - img [ref=e1692]
+            - text: Refrescar
+          - button "Nuevo Grupo" [ref=e1694] [cursor=pointer]:
+            - img [ref=e1695]
+            - text: Nuevo Grupo
+      - region "Listado de grupos" [ref=e1698]:
+        - generic [ref=e1699]:
+          - generic [ref=e1700]:
+            - img [ref=e1701]
+            - searchbox "Buscar grupos" [ref=e1704]
+          - button "Estado" [ref=e1705] [cursor=pointer]:
+            - img [ref=e1706]
+            - text: Estado
+          - generic [ref=e1708]: 3 de 3 grupos
+        - generic [ref=e1709]:
+          - table [ref=e1711]:
+            - rowgroup [ref=e1719]:
+              - row "Grupo Miembros Roles Tenant Estado" [ref=e1720]:
+                - columnheader [ref=e1721]
+                - columnheader "Grupo" [ref=e1722]
+                - columnheader "Miembros" [ref=e1723]
+                - columnheader "Roles" [ref=e1724]
+                - columnheader "Tenant" [ref=e1725]
+                - columnheader "Estado" [ref=e1726]
+            - rowgroup [ref=e1727]:
+              - row "Administradores Grupo de administradores del sistema con acceso total 2 2 Plataforma Activo" [ref=e1728] [cursor=pointer]:
+                - cell [ref=e1729]:
+                  - img [ref=e1730]:
+                    - generic [ref=e1731]: Ad
+                - cell "Administradores Grupo de administradores del sistema con acceso total" [ref=e1732]:
+                  - generic [ref=e1733]: Administradores
+                  - generic [ref=e1734]: Grupo de administradores del sistema con acceso total
+                - cell "2" [ref=e1735]
+                - cell "2" [ref=e1736]
+                - cell "Plataforma" [ref=e1737]:
+                  - generic [ref=e1738]: Plataforma
+                - cell "Activo" [ref=e1739]:
+                  - generic [ref=e1740]: Activo
+              - row "Auditoría Grupo dedicado al monitoreo y revisión de eventos 0 0 Plataforma Activo" [ref=e1742] [cursor=pointer]:
+                - cell [ref=e1743]:
+                  - img [ref=e1744]:
+                    - generic [ref=e1745]: Au
+                - cell "Auditoría Grupo dedicado al monitoreo y revisión de eventos" [ref=e1746]:
+                  - generic [ref=e1747]: Auditoría
+                  - generic [ref=e1748]: Grupo dedicado al monitoreo y revisión de eventos
+                - cell "0" [ref=e1749]
+                - cell "0" [ref=e1750]
+                - cell "Plataforma" [ref=e1751]:
+                  - generic [ref=e1752]: Plataforma
+                - cell "Activo" [ref=e1753]:
+                  - generic [ref=e1754]: Activo
+              - row "Usuarios General Usuarios estándar con permisos básicos de lectura 1 1 Plataforma Activo" [ref=e1756] [cursor=pointer]:
+                - cell [ref=e1757]:
+                  - img [ref=e1758]:
+                    - generic [ref=e1759]: Us
+                - cell "Usuarios General Usuarios estándar con permisos básicos de lectura" [ref=e1760]:
+                  - generic [ref=e1761]: Usuarios General
+                  - generic [ref=e1762]: Usuarios estándar con permisos básicos de lectura
+                - cell "1" [ref=e1763]
+                - cell "1" [ref=e1764]
+                - cell "Plataforma" [ref=e1765]:
+                  - generic [ref=e1766]: Plataforma
+                - cell "Activo" [ref=e1767]:
+                  - generic [ref=e1768]: Activo
+          - toolbar [ref=e1771]:
+            - generic [ref=e1772]:
+              - generic [ref=e1774]: "Rows per page:"
+              - generic [ref=e1778] [cursor=pointer]:
+                - generic [ref=e1779]: "10"
+                - img [ref=e1781]
+            - generic [ref=e1785]: 1-3 of 3
+            - generic [ref=e1786]:
+              - button "First page" [disabled]:
+                - generic:
+                  - img
+              - button "Previous page" [disabled]:
+                - generic:
+                  - img
+              - button "Next page" [disabled]:
+                - generic:
+                  - img
+              - button "Last page" [disabled]:
+                - generic:
+                  - img
+    - generic [ref=e476]:
+      - generic [ref=e477]:
+        - generic [ref=e478]: © 2026 Plataforma de Acceso
+        - generic [ref=e481]:
+          - img [ref=e482]
+          - text: Producción
+      - generic [ref=e485]:
+        - button [ref=e487] [cursor=pointer]:
+          - img [ref=e489]
+        - button [ref=e500] [cursor=pointer]:
+          - img [ref=e502]
+        - separator [ref=e505]
+        - generic [ref=e506]: v1.0.0

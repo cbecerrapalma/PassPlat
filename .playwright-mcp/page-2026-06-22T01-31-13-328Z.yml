@@ -1,0 +1,276 @@
+- generic [ref=e2]:
+  - dialog "Nuevo Tenant" [ref=e673]:
+    - heading "Nuevo Tenant" [level=6] [ref=e675]
+    - generic [ref=e677]:
+      - generic [ref=e678]:
+        - generic [ref=e680]:
+          - generic [ref=e681]:
+            - textbox "Código*" [active] [ref=e682]: TESTCBD
+            - group "Código"
+          - generic: Código*
+        - generic [ref=e684]:
+          - generic [ref=e685]:
+            - textbox "Nombre*" [ref=e686]: Tenant de Prueba CRUD
+            - group "Nombre"
+          - generic: Nombre*
+        - generic [ref=e689] [cursor=pointer]:
+          - switch "Activo" [checked] [ref=e693]
+          - generic [ref=e696]: Activo
+      - generic [ref=e697]:
+        - button "Cancelar" [ref=e698] [cursor=pointer]:
+          - generic [ref=e699]: Cancelar
+        - button "Crear" [ref=e700] [cursor=pointer]:
+          - generic [ref=e701]: Crear
+  - generic [ref=e94]:
+    - banner [ref=e95]:
+      - toolbar [ref=e96]:
+        - button [ref=e97] [cursor=pointer]:
+          - img [ref=e99]
+        - generic [ref=e104]: AccessPlat
+        - heading "Tenants" [level=6] [ref=e506]
+        - generic [ref=e108]:
+          - generic [ref=e109]: Buenas noches
+          - generic [ref=e111]: 21:31:12
+        - separator [ref=e112]
+        - generic [ref=e113]:
+          - button [ref=e115] [cursor=pointer]:
+            - img [ref=e117]
+          - button [ref=e121] [cursor=pointer]:
+            - img [ref=e123]
+          - button [ref=e127] [cursor=pointer]:
+            - img [ref=e129]
+          - generic [ref=e134]:
+            - img [ref=e136]
+            - status [ref=e139]: "5"
+          - separator [ref=e140]
+          - generic [ref=e142] [cursor=pointer]:
+            - img [ref=e144]:
+              - generic [ref=e145]: SI
+            - paragraph [ref=e147]: sistema
+            - generic [ref=e150]: Plataforma
+            - img [ref=e151]
+    - complementary [ref=e154]:
+      - generic [ref=e155]:
+        - generic [ref=e156]:
+          - img [ref=e157]:
+            - paragraph [ref=e158]: SI
+          - generic [ref=e159]:
+            - paragraph [ref=e160]: sistema
+            - text: Administrador
+        - separator [ref=e161]
+        - navigation [ref=e162]:
+          - link "Panel Principal" [ref=e164] [cursor=pointer]:
+            - /url: /
+            - img [ref=e165]
+            - generic [ref=e168]: Panel Principal
+          - generic [ref=e169]: CATÁLOGOS
+          - navigation "Gestión" [ref=e170]:
+            - button "Toggle Gestión" [expanded]:
+              - img
+              - generic: Gestión
+              - img [ref=e171] [cursor=pointer]
+            - navigation [ref=e177]:
+              - link "Tenants" [ref=e179] [cursor=pointer]:
+                - /url: /tenants
+                - img [ref=e180]
+                - generic [ref=e183]: Tenants
+              - link "Apps" [ref=e185] [cursor=pointer]:
+                - /url: /apps
+                - img [ref=e186]
+                - generic [ref=e189]: Apps
+              - link "Roles y Permisos" [ref=e191] [cursor=pointer]:
+                - /url: /admin/roles
+                - img [ref=e192]
+                - generic [ref=e199]: Roles y Permisos
+              - link "Políticas de Contraseña" [ref=e201] [cursor=pointer]:
+                - /url: /politicas-pwd
+                - img [ref=e202]
+                - generic [ref=e205]: Políticas de Contraseña
+              - link "Config App" [ref=e207] [cursor=pointer]:
+                - /url: /config-app
+                - img [ref=e208]
+                - generic [ref=e212]: Config App
+          - generic [ref=e213]: SEGURIDAD
+          - navigation "Control" [ref=e214]:
+            - button "Toggle Control" [expanded]:
+              - img
+              - generic: Control
+              - img [ref=e215] [cursor=pointer]
+            - navigation [ref=e221]:
+              - link "Usuarios" [ref=e223] [cursor=pointer]:
+                - /url: /usuarios
+                - img [ref=e224]
+                - generic [ref=e227]: Usuarios
+              - link "Accesos" [ref=e229] [cursor=pointer]:
+                - /url: /accesos
+                - img [ref=e230]
+                - generic [ref=e235]: Accesos
+          - generic [ref=e236]: IAM
+          - navigation "Permisos" [ref=e237]:
+            - button "Toggle Permisos":
+              - img
+              - generic: Permisos
+              - img [ref=e238] [cursor=pointer]
+          - generic [ref=e241]: MONITOREO
+          - navigation "Registros" [ref=e242]:
+            - button "Toggle Registros" [expanded]:
+              - img
+              - generic: Registros
+              - img [ref=e243] [cursor=pointer]
+            - navigation [ref=e635]:
+              - link "Auditoría" [ref=e637] [cursor=pointer]:
+                - /url: /auditoria
+                - img [ref=e638]
+                - generic [ref=e641]: Auditoría
+              - link "Historial de Contraseñas" [ref=e643] [cursor=pointer]:
+                - /url: /historial-pwd
+                - img [ref=e644]
+                - generic [ref=e650]: Historial de Contraseñas
+              - link "Intentos Acceso" [ref=e652] [cursor=pointer]:
+                - /url: /intentos-acceso
+                - img [ref=e653]
+                - generic [ref=e656]: Intentos Acceso
+              - link "Notificaciones" [ref=e658] [cursor=pointer]:
+                - /url: /notificaciones
+                - img [ref=e659]
+                - generic [ref=e661]: Notificaciones
+              - link "Mantenimiento" [ref=e663] [cursor=pointer]:
+                - /url: /mantenimiento
+                - img [ref=e664]
+                - generic [ref=e669]: Mantenimiento
+          - generic [ref=e246]: COMUNICACIONES
+          - navigation "Email" [ref=e247]:
+            - button "Toggle Email" [expanded]:
+              - img
+              - generic: Email
+              - img [ref=e248] [cursor=pointer]
+            - navigation [ref=e254]:
+              - link "Providers" [ref=e256] [cursor=pointer]:
+                - /url: /email/providers
+                - img [ref=e257]
+                - generic [ref=e260]: Providers
+              - link "Cuentas de Correo" [ref=e262] [cursor=pointer]:
+                - /url: /email/accounts
+                - img [ref=e263]
+                - generic [ref=e266]: Cuentas de Correo
+              - link "Cuentas x Tenant" [ref=e268] [cursor=pointer]:
+                - /url: /email/tenant-accounts
+                - img [ref=e269]
+                - generic [ref=e272]: Cuentas x Tenant
+              - link "Cuentas x App" [ref=e274] [cursor=pointer]:
+                - /url: /email/app-accounts
+                - img [ref=e275]
+                - generic [ref=e278]: Cuentas x App
+              - link "Plantillas de Email" [ref=e280] [cursor=pointer]:
+                - /url: /email-templates
+                - img [ref=e281]
+                - generic [ref=e284]: Plantillas de Email
+        - generic [ref=e285]:
+          - separator [ref=e286]
+          - generic [ref=e287]: AccessPlat v1.0.0
+    - generic [ref=e288]:
+      - generic [ref=e508]:
+        - generic [ref=e509]:
+          - generic [ref=e511]:
+            - img [ref=e512]:
+              - img [ref=e513]
+            - generic [ref=e516]:
+              - heading "1" [level=5] [ref=e517]
+              - paragraph [ref=e518]: Total Tenants
+              - text: Registrados en sistema
+          - generic [ref=e520]:
+            - img [ref=e521]:
+              - img [ref=e522]
+            - generic [ref=e525]:
+              - heading "1" [level=5] [ref=e526]
+              - paragraph [ref=e527]: Activos
+              - text: Vigentes
+          - generic [ref=e529]:
+            - img [ref=e530]:
+              - img [ref=e531]
+            - generic [ref=e534]:
+              - heading "0" [level=5] [ref=e535]
+              - paragraph [ref=e536]: Inactivos
+              - text: Deshabilitados
+          - generic [ref=e538]:
+            - img [ref=e539]:
+              - img [ref=e540]
+            - generic [ref=e543]:
+              - heading "1" [level=5] [ref=e544]
+              - paragraph [ref=e545]: Dominios
+              - text: Asociados
+        - generic [ref=e546]:
+          - heading "Tenants" [level=5] [ref=e547]
+          - button [ref=e548] [cursor=pointer]:
+            - img [ref=e550]
+          - button "Nuevo Tenant" [ref=e553] [cursor=pointer]:
+            - generic [ref=e554]:
+              - img [ref=e556]
+              - text: Nuevo Tenant
+        - generic [ref=e562]:
+          - generic [ref=e563]:
+            - img [ref=e565]
+            - textbox "Buscar por código o nombre..." [ref=e568]
+            - group "Buscar por código o nombre..."
+          - generic: Buscar por código o nombre...
+        - generic [ref=e569]:
+          - table [ref=e571]:
+            - rowgroup [ref=e579]:
+              - row "Código Nombre Tipo Estado" [ref=e580]:
+                - columnheader [ref=e581]
+                - columnheader "Código" [ref=e582]
+                - columnheader "Nombre" [ref=e583]
+                - columnheader "Tipo" [ref=e584]
+                - columnheader "Estado" [ref=e585]
+                - columnheader [ref=e586]
+            - rowgroup [ref=e587]:
+              - row "PLATFORM Plataforma Sistema Activo" [ref=e588] [cursor=pointer]:
+                - cell [ref=e589]:
+                  - img [ref=e590]:
+                    - generic [ref=e591]: Pl
+                - cell "PLATFORM" [ref=e592]:
+                  - paragraph [ref=e593]: PLATFORM
+                - cell "Plataforma" [ref=e594]:
+                  - paragraph [ref=e595]: Plataforma
+                - cell "Sistema" [ref=e596]:
+                  - generic [ref=e598]:
+                    - img [ref=e599]
+                    - generic [ref=e602]: Sistema
+                - cell "Activo" [ref=e603]:
+                  - generic [ref=e606]: Activo
+                - cell [ref=e607]:
+                  - button [ref=e610]:
+                    - img [ref=e612]
+          - toolbar [ref=e616]:
+            - generic [ref=e617]:
+              - generic [ref=e619]: "Rows per page:"
+              - generic [ref=e623] [cursor=pointer]:
+                - generic [ref=e624]: "10"
+                - img [ref=e626]
+            - generic [ref=e630]: 1-1 of 1
+            - generic [ref=e631]:
+              - button "First page" [disabled]:
+                - generic:
+                  - img
+              - button "Previous page" [disabled]:
+                - generic:
+                  - img
+              - button "Next page" [disabled]:
+                - generic:
+                  - img
+              - button "Last page" [disabled]:
+                - generic:
+                  - img
+      - generic [ref=e475]:
+        - generic [ref=e476]:
+          - generic [ref=e477]: © 2026 Plataforma de Acceso
+          - generic [ref=e480]:
+            - img [ref=e481]
+            - text: Producción
+        - generic [ref=e484]:
+          - button [ref=e486] [cursor=pointer]:
+            - img [ref=e488]
+          - button [ref=e499] [cursor=pointer]:
+            - img [ref=e501]
+          - separator [ref=e504]
+          - generic [ref=e505]: v1.0.0

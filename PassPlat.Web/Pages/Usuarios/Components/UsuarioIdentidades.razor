@@ -1,0 +1,265 @@
+@using PassPlat.Aplicacion.Dtos.Core
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+
+@if (IsActive)
+{
+    @if (_loading)
+    {
+        <MudSkeleton Animation="Animation.Pulse" Height="200px" />
+    }
+    else
+    {
+        <div class="pa-4">
+            <div class="d-flex align-center gap-3 mb-4">
+                <MudText Typo="Typo.h6" Class="font-weight-bold flex-grow-1">Identidades Externas Vinculadas</MudText>
+                <MudChip T="int" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">@_identidades.Count</MudChip>
+            </div>
+            <div class="d-flex gap-2 mb-4">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                    Disabled="@_saving" OnClick="@(() => MostrarDialogoAgregarProveedor())">
+                    <MudIcon Icon="@Icons.Material.Filled.AddLink" Size="Size.Small" Class="mr-1" />
+                    Agregar proveedor
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Warning" Size="Size.Small"
+                    Disabled="@_saving" OnClick="@ForzarMFA">
+                    <MudIcon Icon="@Icons.Material.Filled.Shield" Size="Size.Small" Class="mr-1" />
+                    Forzar MFA
+                </MudButton>
+            </div>
+
+            @if (_identidades.Count > 0)
+            {
+                <MudTable Items="@_identidades" Dense="true" Hover="true" Elevation="0" Outlined="false">
+                    <ColGroup>
+                        <col style="width:5%" />
+                        <col style="width:15%" />
+                        <col style="width:20%" />
+                        <col style="width:15%" />
+                        <col style="width:15%" />
+                        <col style="width:15%" />
+                        <col style="width:15%" />
+                    </ColGroup>
+                    <HeaderContent>
+                        <MudTh>Estado</MudTh>
+                        <MudTh>Proveedor</MudTh>
+                        <MudTh>Email / Usuario</MudTh>
+                        <MudTh>Último Login</MudTh>
+                        <MudTh>Última IP</MudTh>
+                        <MudTh>Dispositivo</MudTh>
+                        <MudTh>Acciones</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>
+                            <MudChip T="string" Size="Size.Small" Color="@EstadoColor(context.EstadoNombre)">
+                                @(context.EstadoNombre ?? "Sin estado")
+                            </MudChip>
+                        </MudTd>
+                        <MudTd>
+                            <div class="d-flex align-center gap-1">
+                                <MudIcon Icon="@Icons.Material.Filled.VpnKey" Size="Size.Small" Color="Color.Primary" />
+                                <span>@(context.ProvIdenNombre ?? "—")</span>
+                            </div>
+                        </MudTd>
+                        <MudTd>
+                            <div>
+                                <MudText Typo="Typo.body2">@(context.EmailExterno ?? "—")</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@(context.ProviderUserName ?? "—")</MudText>
+                            </div>
+                        </MudTd>
+                        <MudTd>
+                            <MudText Typo="Typo.body2">
+                                @(context.UltimoLogin?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Nunca")
+                            </MudText>
+                        </MudTd>
+                        <MudTd>
+                            <MudText Typo="Typo.body2">@(context.UltimaIP ?? "—")</MudText>
+                        </MudTd>
+                        <MudTd>
+                            <MudText Typo="Typo.body2">@(context.DispositivoModelo ?? "—")</MudText>
+                        </MudTd>
+                        <MudTd>
+                            <div class="d-flex" style="gap:4px;">
+                                @if (context.IdEstado != 3)
+                                {
+                                    <MudTooltip Text="Revocar identidad">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Block" Size="Size.Small" Color="Color.Error"
+                                            OnClick="@(() => RevocarAsync(context))" />
+                                    </MudTooltip>
+                                }
+                                @if (!context.EsPrincipal && context.IdEstado == 2)
+                                {
+                                    <MudTooltip Text="Establecer como principal">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Star" Size="Size.Small" Color="Color.Warning"
+                                            OnClick="@(() => CambiarPrincipalAsync(context))" />
+                                    </MudTooltip>
+                                }
+                                @if (context.EsPrincipal)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">Principal</MudChip>
+                                }
+                            </div>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+            else
+            {
+                <div class="pa-8 text-center">
+                    <MudIcon Icon="@Icons.Material.Filled.LinkOff" Size="Size.Large" Style="opacity:0.3;font-size:3rem;" />
+                    <MudText Typo="Typo.body1" Class="mt-2" Style="opacity:0.5;">Sin identidades externas vinculadas</MudText>
+                    <MudText Typo="Typo.body2" Style="opacity:0.4;">Este usuario solo utiliza autenticación local.</MudText>
+                </div>
+            }
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public int UserId { get; set; }
+    [Parameter] public bool IsActive { get; set; }
+    [Parameter] public EventCallback<int> CountChanged { get; set; }
+
+    private List<IdenExtDto> _identidades = [];
+    private List<ConfProvIdenDto> _proveedoresConfig = [];
+    private bool _loading = true;
+    private bool _saving;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsActive && _identidades.Count == 0 && UserId > 0)
+            await CargarIdentidadesAsync();
+    }
+
+    private async Task CargarIdentidadesAsync()
+    {
+        _loading = true;
+        try
+        {
+            _identidades = await Api.GetAsync<List<IdenExtDto>>($"api/iden-ext/usuario/{UserId}") ?? [];
+            await CountChanged.InvokeAsync(_identidades.Count);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar identidades: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task MostrarDialogoAgregarProveedor()
+    {
+        try
+        {
+            _proveedoresConfig = await Api.GetAsync<List<ConfProvIdenDto>>($"api/confproviden/tenant/1") ?? [];
+        }
+        catch { }
+
+        var parameters = new DialogParameters
+        {
+            ["UserId"] = UserId,
+            ["Proveedores"] = _proveedoresConfig
+        };
+        var dialog = await Dialog.ShowAsync<AgregarProveedorDialog>("Agregar proveedor externo", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true });
+        var result = await dialog.Result;
+        if (!result.Canceled && result.Data is bool ok && ok)
+            await CargarIdentidadesAsync();
+    }
+
+    private async Task ForzarMFA()
+    {
+        var parameters = new DialogParameters
+        {
+            ["Title"] = "Forzar MFA",
+            ["Message"] = "¿Revocar todos los métodos MFA de este usuario? Deberá registrar un nuevo método en el próximo inicio de sesión.",
+            ["ConfirmText"] = "Forzar MFA",
+            ["CancelText"] = "Cancelar"
+        };
+        var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parameters);
+        var result = await dialog.Result;
+        if (result.Canceled) return;
+
+        _saving = true;
+        try
+        {
+            var ok = await Api.PostVoidAsync($"api/iden-ext/{UserId}/forzar-mfa?idUsuarioAdmin={UserId}");
+            if (ok)
+            {
+                Snackbar.Add("MFA forzado correctamente", Severity.Success);
+                await CargarIdentidadesAsync();
+            }
+            else
+                Snackbar.Add(Api.LastError ?? "Error al forzar MFA", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task RevocarAsync(IdenExtDto identidad)
+    {
+        var parameters = new DialogParameters
+        {
+            ["Title"] = "Revocar identidad externa",
+            ["Message"] = $"¿Revocar la identidad de {identidad.ProvIdenNombre} ({identidad.EmailExterno})? Esta acción no se puede deshacer.",
+            ["ConfirmText"] = "Revocar",
+            ["CancelText"] = "Cancelar"
+        };
+        var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parameters);
+        var result = await dialog.Result;
+        if (result.Canceled) return;
+
+        try
+        {
+            var ok = await Api.PutVoidAsync($"api/iden-ext/{identidad.Id}/revocar?idUsuarioRevoca=1&motivo=Revocado desde administración");
+            if (ok)
+            {
+                Snackbar.Add("Identidad revocada", Severity.Success);
+                await CargarIdentidadesAsync();
+            }
+            else
+                Snackbar.Add(Api.LastError ?? "Error al revocar", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task CambiarPrincipalAsync(IdenExtDto identidad)
+    {
+        try
+        {
+            var ok = await Api.PutVoidAsync($"api/iden-ext/{identidad.Id}/cambiar-principal?idUsuario={UserId}");
+            if (ok)
+            {
+                Snackbar.Add("Identidad principal actualizada", Severity.Success);
+                await CargarIdentidadesAsync();
+            }
+            else
+                Snackbar.Add(Api.LastError ?? "Error al cambiar principal", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private static Color EstadoColor(string? estado) => estado switch
+    {
+        "Autorizada" => Color.Success,
+        "Pendiente" => Color.Warning,
+        "Revocada" => Color.Error,
+        "Suspendida" => Color.Warning,
+        _ => Color.Default
+    };
+}

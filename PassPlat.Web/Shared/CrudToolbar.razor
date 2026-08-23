@@ -1,0 +1,59 @@
+@namespace PassPlat.Web.Shared
+
+<MudPaper Class="pa-4 mb-4 d-flex flex-wrap align-center gap-4" Elevation="0" Outlined="true">
+    @if (!string.IsNullOrEmpty(Title))
+    {
+        <MudText Typo="Typo.h6" Class="flex-grow-1 mb-0 mud-primary-text">@Title</MudText>
+    }
+    @if (ShowSearch)
+    {
+        <MudTextField Value="@SearchString" ValueChanged="@(EventCallback.Factory.Create<string>(this, OnSearchChanged))"
+                      Label="@SearchLabel" Variant="Variant.Outlined" Immediate="true" Clearable="true"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                      Class="mt-1" Style="min-width:200px;max-width:300px;" />
+    }
+    <div class="d-flex align-center gap-4 flex-grow-1 justify-end">
+        @ChildContent
+        @if (ShowFilter && OnFilterClick.HasDelegate)
+        {
+            <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Filled.FilterList"
+                       OnClick="@OnFilterClick">
+                @FilterButtonText
+            </MudButton>
+        }
+        @if (OnRefresh.HasDelegate)
+        {
+            <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium" OnClick="@OnRefresh" />
+        }
+        @if (ShowCreate && OnCreate.HasDelegate)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@OnCreate" Size="Size.Medium"
+                       StartIcon="@CreateButtonIcon">
+                @CreateButtonText
+            </MudButton>
+        }
+    </div>
+</MudPaper>
+
+@code {
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string SearchString { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> SearchStringChanged { get; set; }
+    [Parameter] public EventCallback OnRefresh { get; set; }
+    [Parameter] public bool ShowCreate { get; set; } = true;
+    [Parameter] public EventCallback OnCreate { get; set; }
+    [Parameter] public string CreateButtonText { get; set; } = "Nuevo";
+    [Parameter] public string CreateButtonIcon { get; set; } = Icons.Material.Filled.Add;
+    [Parameter] public bool ShowFilter { get; set; }
+    [Parameter] public EventCallback OnFilterClick { get; set; }
+    [Parameter] public string FilterButtonText { get; set; } = "Filtros";
+    [Parameter] public bool ShowSearch { get; set; } = true;
+    [Parameter] public string SearchLabel { get; set; } = "Buscar...";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private async Task OnSearchChanged(string value)
+    {
+        SearchString = value;
+        await SearchStringChanged.InvokeAsync(value);
+    }
+}

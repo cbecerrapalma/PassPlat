@@ -1,0 +1,21 @@
+- generic [ref=f2e2]:
+  - listbox [ref=f2e37]:
+    - option [ref=f2e38] [cursor=pointer]:
+      - paragraph [ref=f2e40]: Plataforma
+    - option [ref=f2e41] [cursor=pointer]:
+      - paragraph [ref=f2e43]: Abarrotes del Sur
+    - option [ref=f2e44] [cursor=pointer]:
+      - paragraph [ref=f2e46]: Vestuario del Norte
+  - generic [ref=f2e17]:
+    - generic [ref=f2e18]:
+      - generic [ref=f2e19]: 🔒
+      - heading "AccessPlat" [level=5] [ref=f2e23]
+      - paragraph [ref=f2e24]: Inicia sesión para continuar
+    - paragraph [ref=f2e25]: Selecciona un tenant para continuar
+    - generic [ref=f2e28]:
+      - generic [ref=f2e29] [cursor=pointer]:
+        - combobox "Tenant" [expanded] [active] [ref=f2e30]
+        - group "Tenant"
+      - generic: Tenant
+    - button "Continuar" [disabled]
+    - generic [ref=f2e35]: Plataforma de Acceso — v1.0

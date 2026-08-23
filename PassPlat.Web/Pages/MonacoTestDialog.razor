@@ -1,0 +1,39 @@
+@using BlazorMonaco.Editor
+@inject IJSRuntime JS
+
+<MudDialog>
+    <TitleContent><MudText Typo="Typo.h6">Monaco Dialog Lifecycle Test</MudText></TitleContent>
+    <DialogContent>
+        <div style="height:300px; border:1px solid var(--mud-palette-lines-default);">
+            <StandaloneCodeEditor @ref="_dlgEditor" Id="monaco-dialog-editor" ConstructionOptions="DlgOptions" OnDidInit="OnDlgInit" />
+        </div>
+        <MudText Typo="Typo.caption" Class="mt-2">Dialog editor ready: @(_dlgReady ? "sí" : "no") — cerrar y reabrir debe no lanzar ObjectDisposedException</MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Cerrar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="GetDlgValue">Get Value</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    private StandaloneCodeEditor _dlgEditor = null!;
+    private bool _dlgReady;
+
+    private StandaloneEditorConstructionOptions DlgOptions(StandaloneCodeEditor e) => new()
+    {
+        Language = "html",
+        Theme = "vs",
+        AutomaticLayout = true,
+        Minimap = new() { Enabled = false },
+        Value = "<p>{{AppName}} dialog {{UserName}}</p>"
+    };
+
+    private Task OnDlgInit() { _dlgReady = true; return Task.CompletedTask; }
+
+    private async Task GetDlgValue()
+    {
+        var v = await _dlgEditor.GetValue();
+        await JS.InvokeVoidAsync("alert", v.Length > 200 ? v[..200] : v);
+    }
+}

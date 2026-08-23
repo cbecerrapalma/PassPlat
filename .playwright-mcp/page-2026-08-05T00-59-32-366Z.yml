@@ -1,0 +1,45 @@
+- generic [ref=f7e3]:
+  - generic [ref=f7e4]:
+    - generic [ref=f7e6]:
+      - generic [ref=f7e7]: Cargando
+      - progressbar [ref=f7e8]
+    - main [ref=f7e15]:
+      - generic [ref=f7e16]:
+        - generic [ref=f7e17]: Iniciar sesión con Google
+        - generic [ref=f7e27]:
+          - heading "Vas a volver a iniciar sesión en PassPlat" [level=1] [ref=f7e28]
+          - link "Se ha seleccionado cbecerrapalma@gmail.com. Cambiar de cuenta" [ref=f7e30] [cursor=pointer]:
+            - generic [ref=f7e33]: cbecerrapalma@gmail.com
+      - generic [ref=f7e47]:
+        - generic [ref=f7e48]: Consulta la Política de Privacidad y los Términos del Servicio de PassPlat para saber cómo tratará y protegerá PassPlat tus datos.
+        - generic [ref=f7e49]:
+          - text: Para hacer cambios en cualquier momento, ve a tu
+          - link "Configuración de la cuenta de Google (enlace externo, se abre en una ventana nueva)" [ref=f7e50] [cursor=pointer]:
+            - /url: https://myaccount.google.com/connections#filter=4
+            - text: cuenta de Google
+          - text: .
+        - generic [ref=f7e51]:
+          - text: Consulta más información sobre
+          - link "Más información sobre Iniciar sesión con Google (enlace externo, se abre en una ventana nueva)" [ref=f7e52] [cursor=pointer]:
+            - /url: https://support.google.com/accounts/answer/12921417?sjid=1919169284593837430-NC
+            - text: Iniciar sesión con Google
+          - text: .
+      - generic [ref=f7e55]:
+        - button "Cancelar" [ref=f7e59]
+        - button "Continuar" [ref=f7e65]
+  - contentinfo [ref=f7e71]:
+    - combobox "Cómo cambiar de idioma Español (España)" [ref=f7e75] [cursor=pointer]:
+      - generic: Español (España)
+    - list [ref=f7e77]:
+      - listitem [ref=f7e78]:
+        - link "Abrir el Centro de Ayuda de Cuenta de Google (enlace externo, se abre en una ventana nueva)" [ref=f7e79] [cursor=pointer]:
+          - /url: https://support.google.com/accounts?hl=es&p=account_iph
+          - text: Ayuda
+      - listitem [ref=f7e80]:
+        - link "Política de Privacidad (enlace externo, se abre en una ventana nueva)" [ref=f7e81] [cursor=pointer]:
+          - /url: https://accounts.google.com/TOS?loc=CL&hl=es&privacy=true
+          - text: Privacidad
+      - listitem [ref=f7e82]:
+        - link "Términos del Servicio de Google (enlace externo, se abre en una ventana nueva)" [ref=f7e83] [cursor=pointer]:
+          - /url: https://accounts.google.com/TOS?loc=CL&hl=es
+          - text: Términos

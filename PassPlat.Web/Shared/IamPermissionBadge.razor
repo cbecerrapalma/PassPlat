@@ -1,0 +1,14 @@
+<MudChip T="string" Size="Size.Small" Color="@GetColor()" Class="@Class">
+    @(EsDirecto ? "Directo" : EsHeredado ? "Heredado" : EsSistema ? "Sistema" : Origen)
+</MudChip>
+
+@code {
+    [Parameter] public string Origen { get; set; } = "Directo";
+    [Parameter] public bool EsDirecto { get; set; }
+    [Parameter] public bool EsHeredado { get; set; }
+    [Parameter] public bool EsSistema { get; set; }
+    [Parameter] public string Class { get; set; } = "";
+
+    private Color GetColor() =>
+        EsDirecto ? Color.Primary : EsHeredado ? Color.Info : EsSistema ? Color.Warning : Color.Default;
+}

@@ -1,0 +1,422 @@
+@page "/admin/matriz-permisos"
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+@inject AuthService Auth
+@inject NavigationManager Navigation
+@using PassPlat.Web.Models
+@using PassPlat.Web.Shared
+
+@if (!Auth.TienePermiso("MATRIZ_PERMISOS_VER"))
+{
+    <SinPermiso PermisoRequerido="MATRIZ_PERMISOS_VER" />
+}
+else
+{
+<div class="iam-page">
+    <MudBreadcrumbs Class="mb-3">
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/usuarios"))">Seguridad</MudBreadcrumbItem>
+        <MudBreadcrumbItem>Matriz de Permisos</MudBreadcrumbItem>
+    </MudBreadcrumbs>
+
+    <div class="page-header">
+        <div class="page-title-row">
+            <div>
+                <h1 class="page-title">Matriz de Permisos</h1>
+                <p class="page-subtitle">Visualiza y gestiona la asignación de permisos por rol. Los permisos heredados se muestran con borde discontinuo.</p>
+            </div>
+        </div>
+    </div>
+
+    <MudAlert Severity="Severity.Info" Class="mb-4">
+        <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="mr-2" />
+        Seleccione un rol para visualizar los permisos asignados.
+    </MudAlert>
+
+    <div class="role-selector-bar">
+        <MudText Typo="Typo.body2">Rol seleccionado:</MudText>
+        <MudSelect T="int" Value="_idRolSeleccionado" Variant="Variant.Outlined" Dense="true"
+                   ValueChanged="async (int val) => { _idRolSeleccionado = val; await OnRoleChanged(); }">
+            <MudSelectItem Value="0">-- Seleccionar Rol --</MudSelectItem>
+            @foreach (var r in _roles)
+            {
+                <MudSelectItem Value="r.Id" Key="r.Id">@r.Nombre</MudSelectItem>
+            }
+        </MudSelect>
+    </div>
+
+    @if (_cargando)
+    {
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="100%" Height="400px" />
+    }
+    else if (_roles.Count > 0 && _modulos.Count > 0)
+    {
+        <div class="matrix-layout">
+            <div class="matrix-wrap" style="overflow-x:auto;">
+                <table class="matrix-table mud-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Permiso</th>
+                            @foreach (var r in _roles)
+                            {
+                                var isSelected = r.Id == _idRolSeleccionado && _idRolSeleccionado > 0;
+                                <th @key="r.Id" scope="col" class="@(isSelected ? "matrix-col-selected" : "") mud-table-cell"
+                                    style="max-width:100px;overflow:hidden;text-overflow:ellipsis;"
+                                    title="@r.Nombre">@r.Nombre</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var mod in _modulos)
+                        {
+                            <tr @key="mod.IdModulo" class="matrix-group-header">
+                                <td colspan="@(_roles.Count + 1)" class="mud-table-cell">@mod.NombreModulo</td>
+                            </tr>
+                            @foreach (var perm in mod.Permisos)
+                            {
+                                <tr @key="perm.IdPermiso">
+                                    <td class="mud-table-cell">
+                                        <div class="matrix-row-label">
+                                            <MudText Typo="Typo.body2">@perm.NombrePermiso</MudText>
+                                            <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="font-family:'JetBrains Mono',monospace;">@perm.CodigoPermiso</MudText>
+                                        </div>
+                                    </td>
+                                    @foreach (var r in _roles)
+                                    {
+                                        var cell = ObtenerCelda(perm.IdPermiso, r.Id);
+                                        var isSelected = r.Id == _idRolSeleccionado && _idRolSeleccionado > 0;
+                                        var tdClass = isSelected ? "matrix-col-selected mud-table-cell" : "mud-table-cell";
+                                        if (cell is not null)
+                                        {
+                                            if (cell.EsHeredado)
+                                            {
+                                                <td @key="r.Id" class="@tdClass">
+                                                    <MudTooltip Text="Heredado">
+                                                        <span class="matrix-inherited"><MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" /></span>
+                                                    </MudTooltip>
+                                                </td>
+                                            }
+                                            else if (cell.Estado == "on")
+                                            {
+                                                <td @key="r.Id" class="@tdClass">
+                                                    <MudTooltip Text="Asignado">
+                                                        <span class="matrix-check on"><MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" /></span>
+                                                    </MudTooltip>
+                                                </td>
+                                            }
+                                            else if (cell.Estado == "off")
+                                            {
+                                                <td @key="r.Id" class="@tdClass">
+                                                    <MudTooltip Text="Denegado">
+                                                        <span class="matrix-check off"><MudIcon Icon="@Icons.Material.Filled.Close" Size="Size.Small" /></span>
+                                                    </MudTooltip>
+                                                </td>
+                                            }
+                                            else
+                                            {
+                                                <td @key="r.Id" class="@tdClass">
+                                                    <MudTooltip Text="Inactivo">
+                                                        <span class="matrix-check inactive"><MudIcon Icon="@Icons.Material.Filled.HorizontalRule" Size="Size.Small" /></span>
+                                                    </MudTooltip>
+                                                </td>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <td @key="r.Id" class="@tdClass">
+                                                <MudTooltip Text="Sin datos">
+                                                    <span class="matrix-check inactive"><MudIcon Icon="@Icons.Material.Filled.HorizontalRule" Size="Size.Small" /></span>
+                                                </MudTooltip>
+                                            </td>
+                                        }
+                                    }
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="summary-section" style="margin-top:16px;">
+            <div class="summary-layout">
+                <MudPaper Elevation="0" Outlined="true" Class="pa-4">
+                    <MudText Typo="Typo.subtitle2" Class="mb-3">
+                        @(_rolSeleccionado?.Nombre ?? "Ninguno") — Resumen de Permisos
+                    </MudText>
+                    @if (_rolSeleccionado is not null)
+                    {
+                        var res = ObtenerResumen(_rolSeleccionado.Id);
+                        <div class="permission-counts">
+                            <div class="perm-count-card"><div class="perm-count-val total">@res.Total</div><div class="perm-count-label">Totales</div></div>
+                            <div class="perm-count-card"><div class="perm-count-val granted">@res.Concedidos</div><div class="perm-count-label">Concedidos</div></div>
+                            <div class="perm-count-card"><div class="perm-count-val denied">@res.Denegados</div><div class="perm-count-label">Denegados</div></div>
+                            <div class="perm-count-card"><div class="perm-count-val inherited">@res.Heredados</div><div class="perm-count-label">Heredados</div></div>
+                            <div class="perm-count-card"><div class="perm-count-val total mud-text-disabled">@res.Inactivos</div><div class="perm-count-label">Inactivos</div></div>
+                        </div>
+                        <div class="matrix-summary-divider">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                Permisos directos: <strong class="mud-text-primary">@res.Directos</strong>
+                            </MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary ml-4">
+                                Por herencia: <strong class="mud-primary-text">@res.Heredados</strong>
+                            </MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary ml-4">
+                                Inactivos: <strong class="mud-text-disabled">@res.Inactivos</strong>
+                            </MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary ml-4">
+                                Cobertura: <strong class="mud-success-text">@res.Cobertura%</strong>
+                            </MudText>
+                        </div>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary pa-2">Seleccione un rol para ver el resumen</MudText>
+                    }
+                </MudPaper>
+                <MudPaper Elevation="0" Outlined="true" Class="pa-4">
+                    <MudText Typo="Typo.subtitle2" Class="mb-3">Distribución por Módulo</MudText>
+                    <div id="module-distribution">
+                        @if (_rolSeleccionado is not null)
+                        {
+                            var modStats = ObtenerModuloStats(_rolSeleccionado.Id);
+                            foreach (var ms in modStats)
+                            {
+                                <div class="module-stat-row">
+                                    <MudText Typo="Typo.caption" Class="module-stat-label">@ms.Nombre</MudText>
+                                    <div class="module-stat-bar">
+                                        <div class="module-stat-fill" style="width:@ms.Porcentaje%;background:@ms.Color;"></div>
+                                    </div>
+                                    <MudText Typo="Typo.caption" Class="module-stat-nums">@ms.Concedidos/@ms.Total</MudText>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary pa-2">Seleccione un rol para ver la distribución</MudText>
+                        }
+                    </div>
+                </MudPaper>
+            </div>
+        </div>
+    }
+    else if (_cargado && _modulos.Count == 0)
+    {
+        <div class="table-panel" style="padding:40px;text-align:center;">
+            <div style="color:var(--text-muted);font-size:14px;">No se encontraron datos de matriz de permisos</div>
+        </div>
+    }
+
+    <MudOverlay Visible="_loadingOverlay">
+        <MudProgressCircular Indeterminate="true" />
+    </MudOverlay>
+</div>
+}
+
+@code {
+    private List<RolDto> _roles = [];
+    private List<MatrizPermisoRow> _items = [];
+    private int _idRolSeleccionado;
+    private bool _cargando;
+    private bool _cargado;
+    private bool _loadingOverlay;
+
+    private List<ModuloMatriz> _modulos => _items
+        .GroupBy(i => new { i.IdModulo, i.NombreModulo, i.OrdenModulo })
+        .OrderBy(g => g.Key.OrdenModulo)
+        .Select(g => new ModuloMatriz
+        {
+            IdModulo = g.Key.IdModulo,
+            NombreModulo = g.Key.NombreModulo,
+            OrdenModulo = g.Key.OrdenModulo,
+            Permisos = g
+                .GroupBy(p => new { p.IdPermiso, p.NombrePermiso, p.CodigoPermiso, p.OrdenPermiso })
+                .OrderBy(pg => pg.Key.OrdenPermiso)
+                .Select(pg => new PermisoMatriz
+                {
+                    IdPermiso = pg.Key.IdPermiso,
+                    NombrePermiso = pg.Key.NombrePermiso,
+                    CodigoPermiso = pg.Key.CodigoPermiso,
+                    OrdenPermiso = pg.Key.OrdenPermiso,
+                    Celdas = pg.Select(c => new CeldaMatriz
+                    {
+                        IdRol = c.IdRol,
+                        Estado = c.Estado,
+                        EsDirecto = c.EsDirecto,
+                        EsHeredado = c.EsHeredado
+                    }).ToList()
+                }).ToList()
+        }).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.TienePermiso("MATRIZ_PERMISOS_VER")) return;
+        await CargarDatos();
+    }
+
+    private async Task CargarDatos()
+    {
+        _cargando = true;
+        _cargado = false;
+        try
+        {
+            var tRoles = Api.GetAsync<List<RolDto>>("api/roles");
+            var tMatriz = Api.GetAsync<List<MatrizPermisoRow>>("api/MatrizPermisos");
+            await Task.WhenAll(tRoles, tMatriz);
+            _roles = tRoles.Result ?? [];
+            _items = tMatriz.Result ?? [];
+            _cargado = true;
+        }
+        catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error al cargar datos: {ex.Message}", Severity.Error); }
+        finally { _cargando = false; }
+    }
+
+    private CeldaMatriz? ObtenerCelda(int idPermiso, int idRol)
+    {
+        foreach (var m in _modulos)
+        {
+            foreach (var p in m.Permisos)
+            {
+                if (p.IdPermiso == idPermiso)
+                {
+                    return p.Celdas.FirstOrDefault(c => c.IdRol == idRol);
+                }
+            }
+        }
+        return null;
+    }
+
+    private ResumenRol ObtenerResumen(int idRol)
+    {
+        var res = new ResumenRol();
+        foreach (var mod in _modulos)
+        {
+            foreach (var perm in mod.Permisos)
+            {
+                var celda = perm.Celdas.FirstOrDefault(c => c.IdRol == idRol);
+                if (celda is null) continue;
+                res.Total++;
+                if (celda.EsHeredado) { res.Heredados++; res.Concedidos++; }
+                else if (celda.Estado == "on") { res.Concedidos++; res.Directos++; }
+                else if (celda.Estado == "off") res.Denegados++;
+                else if (celda.Estado == "inactive") res.Inactivos++;
+            }
+        }
+        res.Cobertura = res.Total > 0 ? (int)Math.Round((double)res.Concedidos / res.Total * 100) : 0;
+        return res;
+    }
+
+    private List<ModuloStat> ObtenerModuloStats(int idRol)
+    {
+        var colores = new[] { "#818cf8", "#a78bfa", "#60a5fa", "#22c55e", "#f59e0b", "#f472b6", "#34d399", "#fb923c" };
+        var idx = 0;
+        return _modulos.Select(mod =>
+        {
+            var concedidos = 0;
+            var total = 0;
+            foreach (var perm in mod.Permisos)
+            {
+                var celda = perm.Celdas.FirstOrDefault(c => c.IdRol == idRol);
+                if (celda is null) continue;
+                total++;
+                if (celda.Estado == "on" || celda.EsHeredado) concedidos++;
+            }
+            var pct = total > 0 ? (int)Math.Round((double)concedidos / total * 100) : 0;
+            var color = colores[idx % colores.Length];
+            idx++;
+            return new ModuloStat { Nombre = mod.NombreModulo, Concedidos = concedidos, Total = total, Porcentaje = pct, Color = color };
+        }).ToList();
+    }
+
+    private RolDto? _rolSeleccionado
+    {
+        get => _roles.FirstOrDefault(r => r.Id == _idRolSeleccionado);
+    }
+
+    private async Task OnRoleChanged()
+    {
+        _cargando = true;
+        try
+        {
+            var url = _idRolSeleccionado > 0
+                ? $"api/MatrizPermisos?idRol={_idRolSeleccionado}"
+                : "api/MatrizPermisos";
+            var result = await Api.GetAsync<List<MatrizPermisoRow>>(url);
+            _items = result ?? [];
+            if (Api.LastError != null)
+                Snackbar.Add(Api.LastError, Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al filtrar: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _cargando = false;
+            StateHasChanged();
+        }
+    }
+
+    public class MatrizPermisoRow
+    {
+        public int IdRol { get; set; }
+        public string RolNombre { get; set; } = "";
+        public string RolCodigo { get; set; } = "";
+        public int IdPermiso { get; set; }
+        public string CodigoPermiso { get; set; } = "";
+        public string NombrePermiso { get; set; } = "";
+        public byte OrdenPermiso { get; set; }
+        public int IdModulo { get; set; }
+        public string NombreModulo { get; set; } = "";
+        public string CodigoModulo { get; set; } = "";
+        public byte OrdenModulo { get; set; }
+        public string Estado { get; set; } = "off";
+        public bool EsDirecto { get; set; }
+        public bool EsHeredado { get; set; }
+    }
+
+    public class ModuloMatriz
+    {
+        public int IdModulo { get; set; }
+        public string NombreModulo { get; set; } = "";
+        public byte OrdenModulo { get; set; }
+        public List<PermisoMatriz> Permisos { get; set; } = [];
+    }
+
+    public class PermisoMatriz
+    {
+        public int IdPermiso { get; set; }
+        public string NombrePermiso { get; set; } = "";
+        public string CodigoPermiso { get; set; } = "";
+        public byte OrdenPermiso { get; set; }
+        public List<CeldaMatriz> Celdas { get; set; } = [];
+    }
+
+    public class CeldaMatriz
+    {
+        public int IdRol { get; set; }
+        public string Estado { get; set; } = "off";
+        public bool EsDirecto { get; set; }
+        public bool EsHeredado { get; set; }
+    }
+
+    public class ResumenRol
+    {
+        public int Total { get; set; }
+        public int Concedidos { get; set; }
+        public int Denegados { get; set; }
+        public int Heredados { get; set; }
+        public int Inactivos { get; set; }
+        public int Directos { get; set; }
+        public int Cobertura { get; set; }
+    }
+
+    public class ModuloStat
+    {
+        public string Nombre { get; set; } = "";
+        public int Concedidos { get; set; }
+        public int Total { get; set; }
+        public int Porcentaje { get; set; }
+        public string Color { get; set; } = "#818cf8";
+    }
+}

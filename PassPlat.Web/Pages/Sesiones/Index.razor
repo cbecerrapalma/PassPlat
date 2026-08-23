@@ -1,0 +1,239 @@
+@page "/sesiones"
+@inject ApiClient Api
+@inject AuthService Auth
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@using PassPlat.Web.Models
+@using PassPlat.Web.Shared
+
+@if (!Auth.TienePermiso("SESIONES_VER"))
+{
+    <SinPermiso PermisoRequerido="SESIONES_VER" />
+}
+else
+{
+<MudContainer>
+    <MudBreadcrumbs Class="mb-3">
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/usuarios"))">Core</MudBreadcrumbItem>
+        <MudBreadcrumbItem>Sesiones</MudBreadcrumbItem>
+    </MudBreadcrumbs>
+
+    <div class="mud-grid mud-grid-spacing-3 mb-4">
+        <IamKpiCard Valor="@_items.Count.ToString()" Label="Sesiones" Subtexto="En página actual" Icon="@Icons.Material.Filled.LockClock" ColorClass="primary" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_items.Count(s => s.EsActiva).ToString()" Label="Activas" Subtexto="Vigentes" Icon="@Icons.Material.Filled.CheckCircle" ColorClass="success" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_items.Count(s => !s.EsActiva).ToString()" Label="Inactivas" Subtexto="Cerradas/Expiradas" Icon="@Icons.Material.Filled.Cancel" ColorClass="warning" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_items.Select(s => s.IdUsuario).Distinct().Count().ToString()" Label="Usuarios" Subtexto="Con sesión abierta" Icon="@Icons.Material.Filled.People" ColorClass="info" Xs="12" Sm="6" Md="3" />
+    </div>
+
+    <MudPaper Class="pa-4 mb-4 d-flex flex-wrap align-center gap-4" Elevation="0" Outlined="true">
+        <MudText Typo="Typo.h5" Class="flex-grow-1 mb-0">Sesiones</MudText>
+        <MudButton StartIcon="@Icons.Material.Filled.RemoveCircle" Color="Color.Error" Variant="Variant.Outlined"
+            OnClick="@RevocarTodas" Disabled="@(_items.Count == 0)">
+            Cerrar todas
+        </MudButton>
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium"
+            OnClick="@LoadData" />
+    </MudPaper>
+
+    <MudGrid Class="mb-3" AlignItems="AlignItems.Center">
+        <MudItem xs="12" sm="6" md="4">
+            <MudAutocomplete T="UsuarioDto" @bind-Value="_usuarioSelected" @bind-Value:after="@LoadData"
+                SearchFunc="@SearchUsuarios" ToStringFunc="@(u => u is null ? "" : $"{u.NomUsuario} ({u.Nombre} {u.Apellido})")"
+                Label="Filtrar por Usuario" Variant="Variant.Outlined" Clearable="true" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudAutocomplete T="TenantDto" @bind-Value="_tenantSelected" @bind-Value:after="@LoadData"
+                SearchFunc="@SearchTenants" ToStringFunc="@(t => t is null ? "" : $"{t.Nombre} ({t.Codigo})")"
+                Label="Filtrar por Tenant" Variant="Variant.Outlined" Clearable="true" />
+        </MudItem>
+    </MudGrid>
+
+    <MudTable T="SesionDto" Items="@_items" Hover="true" Breakpoint="Breakpoint.Sm"
+        SelectedItem="_selectedItem" SelectedItemChanged="@OnSelectedItemChanged" RowStyle="cursor: pointer;">
+        <ColGroup>
+            <col style="width:120px;" /><col style="width:100px;" /><col /><col /><col style="width:120px;" /><col style="width:160px;" /><col style="width:120px;" /><col style="width:90px;" /><col style="width:90px;" /><col style="width:140px;" /><col style="width:120px;" />
+        </ColGroup>
+        <HeaderContent>
+            <MudTh>Id</MudTh><MudTh>Usuario</MudTh><MudTh>Dispositivo</MudTh><MudTh>IP / País</MudTh><MudTh>Proveedor</MudTh><MudTh>Creada</MudTh><MudTh>Expira</MudTh><MudTh>Navegador</MudTh><MudTh>SO</MudTh><MudTh>App</MudTh><MudTh>Acciones</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Id">@context.Id.ToString()[..8]</MudTd>
+            <MudTd DataLabel="Usuario">@context.UsuarioNombre</MudTd>
+            <MudTd DataLabel="Dispositivo">@(context.DispModelo ?? "-")</MudTd>
+            <MudTd DataLabel="IP / País">@context.IPDireccion<br /><MudText Typo="Typo.caption">@context.Pais</MudText></MudTd>
+            <MudTd DataLabel="Proveedor">@(context.ProveedorAuth ?? "Local")</MudTd>
+            <MudTd DataLabel="Creada">@context.FecInicio.ToLocalTime().ToString("g")</MudTd>
+            <MudTd DataLabel="Expira">@context.FecExpira.ToLocalTime().ToString("g")</MudTd>
+            <MudTd DataLabel="Navegador">@context.Navegador</MudTd>
+            <MudTd DataLabel="SO">@context.SO</MudTd>
+            <MudTd DataLabel="App">@(context.AppNombre ?? "-")</MudTd>
+            <MudTd DataLabel="Acciones">
+                <MudIconButton Icon="@Icons.Material.Filled.Logout" Size="Size.Small" Color="Color.Warning"
+                               OnClick="@(() => Revocar(context.Id))" />
+            </MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new int[]{10,25,50}" />
+        </PagerContent>
+        <NoRecordsContent>
+            <MudText Align="Align.Center" Class="py-6">
+                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Class="mr-2" />
+                No hay registros
+            </MudText>
+        </NoRecordsContent>
+    </MudTable>
+
+    @if (_selectedItem is not null)
+    {
+        <IamInspector Titulo="Detalle de Sesión" Subtitulo="@_selectedItem.UsuarioNombre" Visible="_showInspector" OnClose="@(() => { _selectedItem = null; _showInspector = false; })">
+            <MudTabs @bind-ActivePanelIndex="_inspectorTab" KeepPanelsAlive="true" Class="detail-tabs">
+                <MudTabPanel Text="Info" Icon="@Icons.Material.Filled.Info">
+                    <div class="pa-3">
+                        <div class="d-flex align-center mb-2" style="gap:8px;">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="min-width:90px;">Usuario:</MudText>
+                            <MudText Typo="Typo.body2">@_selectedItem.UsuarioNombre</MudText>
+                        </div>
+                        <div class="d-flex align-center mb-2" style="gap:8px;">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="min-width:90px;">App:</MudText>
+                            <MudText Typo="Typo.body2">@(_selectedItem.AppNombre ?? "—")</MudText>
+                        </div>
+                        <div class="d-flex align-center mb-2" style="gap:8px;">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="min-width:90px;">IP:</MudText>
+                            <MudIcon Icon="@Icons.Material.Filled.Lan" Size="Size.Small" Class="mr-1" />
+                            <MudText Typo="Typo.body2">@_selectedItem.IPDireccion</MudText>
+                        </div>
+                        <div class="d-flex align-center mb-2" style="gap:8px;">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="min-width:90px;">Dispositivo:</MudText>
+                            <MudText Typo="Typo.body2">@(_selectedItem.DispModelo ?? "—")</MudText>
+                        </div>
+                        <MudDivider Class="my-2" />
+                        <div class="d-flex align-center mb-2" style="gap:8px;">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="min-width:90px;">Creada:</MudText>
+                            <MudText Typo="Typo.body2">@_selectedItem.FecInicio.ToLocalTime().ToString("g")</MudText>
+                        </div>
+                        <div class="d-flex align-center mb-2" style="gap:8px;">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="min-width:90px;">Expira:</MudText>
+                            <MudText Typo="Typo.body2">@_selectedItem.FecExpira.ToLocalTime().ToString("g")</MudText>
+                        </div>
+                        <div class="d-flex align-center mb-2" style="gap:8px;">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="min-width:90px;">Ult. Actividad:</MudText>
+                            <MudText Typo="Typo.body2">@_selectedItem.UltActividad.ToLocalTime().ToString("g")</MudText>
+                        </div>
+                    </div>
+                </MudTabPanel>
+            </MudTabs>
+        </IamInspector>
+    }
+
+    <MudOverlay Visible="@_loading" />
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" Class="mt-4" />
+    }
+</MudContainer>
+}
+
+@code {
+    private List<SesionDto> _items = [];
+    private bool _loading;
+    private int _idUsuario;
+    private int _idTenant;
+    private List<UsuarioDto> _usuarios = [];
+    private List<TenantDto> _tenants = [];
+    private UsuarioDto? _usuarioSelected;
+    private TenantDto? _tenantSelected;
+    private SesionDto? _selectedItem;
+    private bool _showInspector;
+    private int _inspectorTab;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.TienePermiso("SESIONES_VER")) return;
+        var tUsuarios = Api.GetAsync<List<UsuarioDto>>("api/usuarios");
+        var tTenants = Api.GetAsync<List<TenantDto>>("api/tenants");
+        await Task.WhenAll(tUsuarios, tTenants);
+        _usuarios = tUsuarios.Result ?? [];
+        _tenants = tTenants.Result ?? [];
+
+        _idUsuario = Auth.IdUsuario ?? 0;
+        _idTenant = Auth.IdTenant ?? 0;
+        _usuarioSelected = _usuarios.FirstOrDefault(u => u.Id == _idUsuario);
+        _tenantSelected = _tenants.FirstOrDefault(t => t.Id == _idTenant);
+        await LoadData();
+    }
+
+    private Task<IEnumerable<UsuarioDto>> SearchUsuarios(string value, CancellationToken _)
+    {
+        if (string.IsNullOrEmpty(value))
+            return Task.FromResult(_usuarios.Take(20));
+        return Task.FromResult(_usuarios.Where(u =>
+            u.NomUsuario.Contains(value, StringComparison.OrdinalIgnoreCase) ||
+            u.Nombre.Contains(value, StringComparison.OrdinalIgnoreCase) ||
+            u.Email.Contains(value, StringComparison.OrdinalIgnoreCase)).Take(20));
+    }
+
+    private Task<IEnumerable<TenantDto>> SearchTenants(string value, CancellationToken _)
+    {
+        if (string.IsNullOrEmpty(value))
+            return Task.FromResult(_tenants.Take(20));
+        return Task.FromResult(_tenants.Where(t =>
+            t.Nombre.Contains(value, StringComparison.OrdinalIgnoreCase) ||
+            t.Codigo.Contains(value, StringComparison.OrdinalIgnoreCase)).Take(20));
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        try
+        {
+            _idUsuario = _usuarioSelected?.Id ?? 0;
+            _idTenant = _tenantSelected?.Id ?? 0;
+            // ETAPA 5: cargar todas las sesiones activas del tenant (administración)
+            var data = await Api.GetAsync<List<SesionDto>>("api/sesiones/activas-tenant");
+            _items = data ?? [];
+            // Filtrar en cliente por usuario/tenant seleccionado (opcional)
+            if (_idUsuario > 0)
+                _items = _items.Where(s => s.IdUsuario == _idUsuario).ToList();
+            if (_idTenant > 0)
+                _items = _items.Where(s => s.IdTenant == _idTenant).ToList();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar: {ex.Message}", Severity.Error);
+        }
+        finally { _loading = false; }
+    }
+
+    private void OnSelectedItemChanged(SesionDto? item)
+    {
+        _selectedItem = item;
+        _showInspector = item is not null;
+        _inspectorTab = 0;
+    }
+
+    private async Task Revocar(Guid idSesion)
+    {
+        var ok = await Api.PostVoidAsync($"api/sesiones/{idSesion}/revocar");
+        if (ok)
+        {
+            Snackbar.Add("Sesión revocada", Severity.Success);
+            await LoadData();
+        }
+        else
+            Snackbar.Add(Api.LastError ?? "Error al revocar sesión", Severity.Error);
+    }
+
+    // ETAPA 5: cerrar todas las sesiones del tenant (auditoría implícita vía SP)
+    private async Task RevocarTodas()
+    {
+        var ok = await Api.PostVoidAsync("api/sesiones/revocar-todas-tenant");
+        if (ok)
+        {
+            Snackbar.Add("Todas las sesiones del tenant han sido cerradas", Severity.Success);
+            await LoadData();
+        }
+        else
+            Snackbar.Add(Api.LastError ?? "Error al cerrar las sesiones", Severity.Error);
+    }
+}

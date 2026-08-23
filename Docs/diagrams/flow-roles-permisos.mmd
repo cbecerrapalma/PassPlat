@@ -1,0 +1,48 @@
+flowchart TD
+    subgraph CREAR_ROL["1. Crear Rol"]
+        A[Admin abre /admin/roles-permisos] --> B[Click Nuevo Rol]
+        B --> C[Dialog: Codigo + Nombre + Descripcion]
+        C --> D[POST /api/roles]
+        D --> E[Rol creado]
+    end
+
+    subgraph ASIGNAR_PERMISOS["2. Asignar Permisos"]
+        E --> F[Seleccionar rol en tabla]
+        F --> G[Tab Permisos: lista agrupada por modulo]
+        G --> H{Toggle permiso}
+        H -->|Asignar| I[POST /api/permisos/rol]
+        H -->|Desasignar| J[DELETE /api/permisos/rol/R/P]
+        I --> K[Permiso asignado]
+        J --> L[Permiso desasignado]
+    end
+
+    subgraph ASIGNAR_POLITICA["3. Asignar Politica"]
+        E --> M[Tab Politica]
+        M --> N[Click Asignar Politica]
+        N --> O[Dialog: seleccionar politica]
+        O --> P[POST /api/rolespoliticaspwd]
+        P --> Q[Politica asignada]
+    end
+
+    subgraph ASIGNAR_USUARIOS["4. Asignar Usuarios - NUEVO"]
+        E --> R[Tab Asignacion de Usuarios]
+        R --> S[Dropdown: seleccionar rol]
+        S --> T[Lista de usuarios asignados]
+        T --> U[Click Asignar Usuario]
+        U --> V[Dialog: buscar usuario + seleccionar App]
+        V --> W[POST /api/accesos/asignar]
+        W --> X[Usuario asignado al rol]
+    end
+
+    subgraph EDITAR_PERMISO["5. Editar Permiso - NUEVO"]
+        G --> Y[Click editar permiso]
+        Y --> Z[Dialog: editar Codigo + Nombre + Modulo]
+        Z --> AA[PUT /api/permisos/:id]
+        AA --> AB[Permiso actualizado]
+    end
+
+    style CREAR_ROL fill:#e3f2fd,stroke:#1565c0
+    style ASIGNAR_PERMISOS fill:#e8f5e9,stroke:#2e7d32
+    style ASIGNAR_POLITICA fill:#fff3e0,stroke:#e65100
+    style ASIGNAR_USUARIOS fill:#fce4ec,stroke:#c62828
+    style EDITAR_PERMISO fill:#f3e5f5,stroke:#6a1b9a

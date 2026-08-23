@@ -1,0 +1,48 @@
+@inject IDialogService DialogService
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Language" Class="mr-3" /> @(EsEdicion ? "Editar Dominio" : "Agregar Dominio")
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="_dominio" Label="Dominio" Variant="Variant.Outlined" Placeholder="ejemplo.com" Class="mb-3"
+            Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Language" />
+        <MudText Typo="Typo.caption" Color="Color.Secondary">
+            Ingrese el dominio sin protocolo (ej: ejemplo.com, mail.ejemplo.com)
+        </MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancelar">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Confirmar" Disabled="@string.IsNullOrWhiteSpace(_dominio)">
+            @(EsEdicion ? "Guardar" : "Agregar")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public string? Dominio { get; set; }
+    [Parameter] public string? Title { get; set; }
+
+    private string _dominio = string.Empty;
+    private bool EsEdicion => !string.IsNullOrWhiteSpace(Dominio);
+
+    protected override void OnInitialized()
+    {
+        _dominio = Dominio ?? string.Empty;
+    }
+
+    private void Cancelar() => MudDialog.Cancel();
+
+    private void Confirmar()
+    {
+        if (!string.IsNullOrWhiteSpace(_dominio))
+        {
+            MudDialog.Close(DialogResult.Ok(_dominio));
+        }
+    }
+}

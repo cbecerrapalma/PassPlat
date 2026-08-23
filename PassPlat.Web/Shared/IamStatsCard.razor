@@ -1,0 +1,69 @@
+@namespace PassPlat.Web.Shared
+
+<div Class="@($"col-xs-{Xs} col-sm-{Sm} col-md-{Md}{(Lg.HasValue ? $" col-lg-{Lg}" : "")}")">
+    <MudPaper Class="pa-4 d-flex flex-column" Elevation="0" Outlined="true" Style="height:100%;">
+        <div class="d-flex align-center mb-2">
+            @if (!string.IsNullOrEmpty(Icono))
+            {
+                <MudAvatar Color="@_avatarColor" Variant="Variant.Filled" Size="Size.Small" Class="mr-2">
+                    <MudIcon Icon="@Icono" Size="Size.Small" />
+                </MudAvatar>
+            }
+            <MudText Typo="Typo.body2" Class="mud-text-secondary flex-grow-1">@Label</MudText>
+            @if (Trend.HasValue)
+            {
+                <MudIcon Icon="@(Trend.Value >= 0 ? Icons.Material.Filled.TrendingUp : Icons.Material.Filled.TrendingDown)"
+                         Size="Size.Small" Class="@(Trend.Value >= 0 ? "mud-success-text" : "mud-error-text")" />
+            }
+        </div>
+        <div class="d-flex align-baseline">
+            @if (Loading)
+            {
+                <MudSkeleton Width="50%" Height="28px" />
+            }
+            else
+            {
+                <MudText Typo="Typo.h4" Class="font-weight-bold mr-2">@Valor</MudText>
+                if (!string.IsNullOrEmpty(Unidad))
+                {
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">@Unidad</MudText>
+                }
+            }
+        </div>
+        @if (!string.IsNullOrEmpty(Subtexto))
+        {
+            <MudText Typo="Typo.caption" Class="mud-text-secondary mt-1">@Subtexto</MudText>
+        }
+        @if (Extra is not null)
+        {
+            <div class="mt-2">@Extra</div>
+        }
+    </MudPaper>
+</div>
+
+@code {
+    [Parameter] public string Label { get; set; } = "";
+    [Parameter] public string Valor { get; set; } = "";
+    [Parameter] public string? Unidad { get; set; }
+    [Parameter] public string? Subtexto { get; set; }
+    [Parameter] public string? Icono { get; set; }
+    [Parameter] public string CardColor { get; set; } = "primary";
+    [Parameter] public double? Trend { get; set; }
+    [Parameter] public bool Loading { get; set; }
+    [Parameter] public int Xs { get; set; } = 12;
+    [Parameter] public int Sm { get; set; } = 6;
+    [Parameter] public int Md { get; set; } = 3;
+    [Parameter] public int? Lg { get; set; }
+    [Parameter] public RenderFragment? Extra { get; set; }
+
+    private Color _avatarColor => CardColor switch
+    {
+        "primary" => Color.Primary,
+        "success" => Color.Success,
+        "secondary" => Color.Secondary,
+        "warning" => Color.Warning,
+        "info" => Color.Info,
+        "error" => Color.Error,
+        _ => Color.Primary
+    };
+}

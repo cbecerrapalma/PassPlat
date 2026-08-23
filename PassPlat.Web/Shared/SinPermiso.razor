@@ -1,0 +1,25 @@
+@inject NavigationManager Nav
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
+    <MudPaper Class="pa-8 d-flex flex-column align-center" Elevation="0" Outlined="true">
+        <MudAvatar Size="Size.Large" Color="Color.Error" Variant="Variant.Filled" Class="mb-4">
+            <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Large" />
+        </MudAvatar>
+        <MudText Typo="Typo.h5" Class="font-weight-bold mb-2">Acceso Denegado</MudText>
+        <MudText Typo="Typo.body2" Class="text-secondary text-center mb-4">
+            No tienes los permisos necesarios para acceder a esta página.
+            @if (!string.IsNullOrEmpty(PermisoRequerido))
+            {
+                <text>Se requiere el permiso <strong>@PermisoRequerido</strong>.</text>
+            }
+        </MudText>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+            OnClick="@(() => Nav.NavigateTo("/"))">
+            Volver al Panel Principal
+        </MudButton>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    [Parameter] public string? PermisoRequerido { get; set; }
+}

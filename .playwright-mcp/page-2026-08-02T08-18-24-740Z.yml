@@ -1,0 +1,138 @@
+- generic [ref=f5e93]:
+  - banner [ref=f5e94]:
+    - toolbar [ref=f5e95]:
+      - button [ref=f5e96] [cursor=pointer]
+      - generic [ref=f5e101]: AccessPlat
+      - generic [ref=f5e105]:
+        - heading "Dashboard" [level=6] [ref=f5e106]
+        - generic [ref=f5e107]: Resumen del sistema
+      - generic [ref=f5e108]:
+        - generic [ref=f5e109]: Buenos días
+        - generic [ref=f5e111]: 04:18:24
+      - separator [ref=f5e112]
+      - generic [ref=f5e113]:
+        - button [ref=f5e115] [cursor=pointer]
+        - button [ref=f5e121] [cursor=pointer]
+        - button [ref=f5e127] [cursor=pointer]
+        - status [ref=f5e139]: "5"
+        - separator [ref=f5e140]
+        - generic [ref=f5e142] [cursor=pointer]:
+          - img [ref=f5e144]:
+            - generic [ref=f5e145]: TE
+          - paragraph [ref=f5e147]: test_multitenant
+          - button [ref=f5e149]
+  - complementary [ref=f5e159]:
+    - generic [ref=f5e160]:
+      - generic [ref=f5e161]:
+        - img [ref=f5e162]:
+          - paragraph [ref=f5e163]: TE
+        - generic [ref=f5e164]:
+          - paragraph [ref=f5e165]: test_multitenant
+          - text: Administrador
+      - separator [ref=f5e166]
+      - navigation [ref=f5e167]:
+        - link "Panel Principal" [ref=f5e169] [cursor=pointer]:
+          - /url: /
+        - generic [ref=f5e174]: CATÁLOGOS
+        - navigation "Gestión" [ref=f5e175]:
+          - button "Toggle Gestión" [expanded]:
+            - generic: Gestión
+          - navigation [ref=f5e182]:
+            - link "Roles y Permisos" [ref=f5e184] [cursor=pointer]:
+              - /url: /admin/roles
+        - generic [ref=f5e193]: SEGURIDAD
+        - navigation "Control" [ref=f5e194]:
+          - button "Toggle Control" [expanded]:
+            - generic: Control
+          - navigation [ref=f5e201]:
+            - link "Usuarios" [ref=f5e203] [cursor=pointer]:
+              - /url: /usuarios
+            - link "Accesos" [ref=f5e209] [cursor=pointer]:
+              - /url: /accesos
+        - generic [ref=f5e216]: IAM
+        - navigation "Permisos" [ref=f5e217]:
+          - button "Toggle Permisos":
+            - generic: Permisos
+        - generic [ref=f5e221]: MONITOREO
+        - navigation "Registros" [ref=f5e222]:
+          - button "Toggle Registros":
+            - generic: Registros
+        - generic [ref=f5e226]: COMUNICACIONES
+        - navigation "Email" [ref=f5e227]:
+          - button "Toggle Email" [expanded]:
+            - generic: Email
+          - navigation [ref=f5e234]
+        - generic [ref=f5e235]: FEDERACIÓN
+        - navigation "Identidad" [ref=f5e236]:
+          - button "Toggle Identidad" [expanded]:
+            - generic: Identidad
+          - navigation [ref=f5e243]:
+            - link "Proveedores" [ref=f5e245] [cursor=pointer]:
+              - /url: /federacion/providen
+            - link "Config Proveedores" [ref=f5e251] [cursor=pointer]:
+              - /url: /federacion/confproviden
+            - link "Identidades Externas" [ref=f5e258] [cursor=pointer]:
+              - /url: /federacion/iden-ext
+      - generic [ref=f5e263]:
+        - separator [ref=f5e264]
+        - generic [ref=f5e265]: AccessPlat v1.0.0
+  - generic [ref=f5e266]:
+    - generic [ref=f5e268]:
+      - generic [ref=f5e271]:
+        - heading "Bienvenido, test_multitenant" [level=3] [ref=f5e272]
+        - paragraph [ref=f5e273]: domingo 02 de agosto de 2026
+      - generic [ref=f5e274]:
+        - generic [ref=f5e283]:
+          - heading "0" [level=4] [ref=f5e284]
+          - text: Usuarios registrados
+        - generic [ref=f5e293]:
+          - heading "0" [level=4] [ref=f5e294]
+          - text: Sesiones activas
+        - generic [ref=f5e303]:
+          - heading "0" [level=4] [ref=f5e304]
+          - text: Aplicaciones
+        - generic [ref=f5e313]:
+          - heading "0" [level=4] [ref=f5e314]
+          - text: Inquilinos activos
+      - generic [ref=f5e315]:
+        - generic [ref=f5e317]:
+          - heading "Actividad Reciente" [level=6] [ref=f5e320]
+          - paragraph [ref=f5e325]: No hay actividad reciente
+        - generic [ref=f5e327]:
+          - heading "Estado de Seguridad" [level=6] [ref=f5e330]
+          - generic [ref=f5e331]:
+            - generic [ref=f5e337]:
+              - paragraph [ref=f5e338]: 0 usuarios
+              - text: Con intentos de acceso excedidos
+            - generic [ref=f5e347]:
+              - paragraph [ref=f5e348]: 0 usuarios
+              - generic [ref=f5e349]: Con contraseña expirada
+            - generic [ref=f5e350]: Sistema saludable — sin incidencias
+            - link [ref=f5e356] [cursor=pointer]:
+              - /url: /admin/roles-permisos
+      - generic [ref=f5e365]:
+        - heading "Dispositivos" [level=6] [ref=f5e371]
+        - generic [ref=f5e373]:
+          - generic [ref=f5e374]:
+            - heading "0" [level=4] [ref=f5e375]
+            - text: Dispositivos registrados
+          - generic [ref=f5e376]:
+            - heading "0" [level=4] [ref=f5e377]
+            - text: Confiables
+          - generic [ref=f5e378]:
+            - heading "0" [level=4] [ref=f5e379]
+            - text: No confiables
+          - link [ref=f5e381] [cursor=pointer]:
+            - /url: /dispositivos
+      - generic [ref=f5e389]:
+        - heading "Federación de Identidades" [level=6] [ref=f5e395]
+        - paragraph [ref=f5e400]: Cargando estadísticas de federación...
+    - generic [ref=f5e401]:
+      - generic [ref=f5e402]:
+        - generic [ref=f5e403]: © 2026 Plataforma de Acceso
+        - generic [ref=f5e404]: Producción
+      - generic [ref=f5e410]:
+        - button [ref=f5e412] [cursor=pointer]
+        - button [ref=f5e425] [cursor=pointer]
+        - separator [ref=f5e430]
+        - generic [ref=f5e431]: v1.0.0

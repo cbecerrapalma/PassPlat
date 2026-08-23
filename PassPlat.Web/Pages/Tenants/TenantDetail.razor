@@ -1,0 +1,305 @@
+@page "/tenant/{id:int}"
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@inject NavigationManager Navigation
+@using PassPlat.Web.Models
+
+<MudContainer>
+    <MudBreadcrumbs Class="mb-3">
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/tenants"))">Administración</MudBreadcrumbItem>
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/tenants"))">Tenants</MudBreadcrumbItem>
+        <MudBreadcrumbItem>@(_tenant?.Nombre ?? "Detalle")</MudBreadcrumbItem>
+    </MudBreadcrumbs>
+    <MudText Typo="Typo.h4" Class="mb-4">
+        <MudTooltip Text="Volver a Tenants">
+            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="@(() => Navigation.NavigateTo("/tenants"))" Class="mr-2" />
+        </MudTooltip>
+        Tenant: @_tenant?.Nombre
+        @if (_tenant?.Codigo == "SISTEMA")
+        {
+            <MudChip T="string" Size="Size.Small" Color="Color.Primary" Class="ml-2">SISTEMA</MudChip>
+        }
+    </MudText>
+
+    @if (_loading)
+    {
+        <MudSkeleton Width="100%" Height="400px" />
+    }
+    else if (_tenant is null)
+    {
+        <MudAlert Severity="Severity.Error">Tenant no encontrado</MudAlert>
+    }
+    else
+    {
+        <MudTabs>
+            <MudTab Text="General" Icon="@Icons.Material.Filled.Info">
+                <MudContainer Class="mt-4">
+                    <MudGrid>
+                        <MudItem xs12 md6>
+                            <MudTextField @bind-Value="_tenant.Codigo" Label="Código" Variant="Variant.Outlined" Disabled="true" Class="mb-3" />
+                        </MudItem>
+                        <MudItem xs12 md6>
+                            <MudTextField @bind-Value="_tenant.Nombre" Label="Nombre" Variant="Variant.Outlined" Class="mb-3" />
+                        </MudItem>
+                    </MudGrid>
+                    <MudGrid>
+                        <MudItem xs12 md6>
+                            <MudSwitch @bind-Value="_tenant.Activo" Label="Activo" Color="Color.Primary" Class="mb-3" />
+                        </MudItem>
+                        <MudItem xs12 md6>
+                            <MudText Class="mb-1">Creado: @_tenant.FecCrea.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</MudText>
+                        </MudItem>
+                    </MudGrid>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@GuardarTenant" Disabled="@_saving" Class="mt-4">
+                        Guardar Cambios
+                    </MudButton>
+                </MudContainer>
+            </MudTab>
+
+            <MudTab Text="Dominios" Icon="@Icons.Material.Filled.Language">
+                <MudContainer Class="mt-4">
+                    <div class="d-flex justify-end mb-4">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AbrirDialogDominio">
+                            Agregar Dominio
+                        </MudButton>
+                    </div>
+                    <MudTable T="DominioTenantDto" Items="@_dominios" Hover="true" Breakpoint="Breakpoint.Sm">
+                        <ColGroup>
+                            <col style="width: 80px;" />
+                            <col />
+                            <col style="width: 100px;" />
+                        </ColGroup>
+                        <HeaderContent>
+                            <MudTh>Id</MudTh>
+                            <MudTh>Dominio</MudTh>
+                            <MudTh>Acciones</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Id">@context.Id</MudTd>
+                            <MudTd DataLabel="Dominio">@context.Dominio</MudTd>
+                            <MudTd>
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary"
+                                    OnClick="@(() => EditarDominio(context))" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                    OnClick="@(() => EliminarDominio(context))" />
+                            </MudTd>
+                        </RowTemplate>
+                        <NoRecordsContent>
+                            <MudText Align="Align.Center" Class="py-8">
+                                <MudIcon Icon="@Icons.Material.Filled.Language" Class="mb-2" />
+                                <br />No hay dominios registrados
+                            </MudText>
+                        </NoRecordsContent>
+                    </MudTable>
+                </MudContainer>
+            </MudTab>
+
+            <MudTab Text="Config" Icon="@Icons.Material.Filled.Settings">
+                <MudContainer Class="mt-4">
+                    @if (_config is null)
+                    {
+                        <MudAlert Severity="Severity.Warning">No hay configuración para este tenant</MudAlert>
+                    }
+                    else
+                    {
+                        <MudGrid>
+                            <MudItem xs12 md4>
+                                <MudTextField @bind-Value="_config.TimeoutSesionMin" Label="Timeout Sesión (min)" Variant="Variant.Outlined" Disabled="true" Class="mb-3" />
+                            </MudItem>
+                            <MudItem xs12 md4>
+                                <MudTextField @bind-Value="_config.MaxSesionesConc" Label="Max Sesiones Concurrentes" Variant="Variant.Outlined" Disabled="true" Class="mb-3" />
+                            </MudItem>
+                            <MudItem xs12 md4>
+                                <MudTextField @bind-Value="_config.DiasRetAuditoria" Label="Días Retención Auditoría" Variant="Variant.Outlined" Disabled="true" Class="mb-3" />
+                            </MudItem>
+                        </MudGrid>
+                        <MudGrid>
+                            <MudItem xs12 md4>
+                                <MudSwitch @bind-Value="_config.ReqMFA" Label="MFA Obligatorio" Color="Color.Primary" Disabled="true" Class="mb-3" />
+                            </MudItem>
+                            <MudItem xs12 md4>
+                                <MudTextField @bind-Value="_config.PepperVersionActual" Label="Pepper Version" Variant="Variant.Outlined" Disabled="true" Class="mb-3" />
+                            </MudItem>
+                        </MudGrid>
+                    }
+                </MudContainer>
+            </MudTab>
+        </MudTabs>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private TenantDto? _tenant;
+    private List<DominioTenantDto> _dominios = [];
+    private ConfigTenantDto? _config;
+    private bool _loading = true;
+    private bool _saving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarDatos();
+    }
+
+    private async Task CargarDatos()
+    {
+        _loading = true;
+        try
+        {
+            var tenantTask = Api.GetAsync<TenantDto>($"api/tenants/{Id}");
+            var dominiosTask = Api.GetAsync<List<DominioTenantDto>>($"api/DominiosTenant/tenant/{Id}");
+            var configTask = Api.GetAsync<ConfigTenantDto>($"api/configtenants/tenant/{Id}");
+
+            await Task.WhenAll(tenantTask, dominiosTask, configTask);
+
+            if (tenantTask.Result is not null)
+                _tenant = tenantTask.Result;
+            _dominios = dominiosTask.Result ?? [];
+            _config = configTask.Result;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar datos: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task GuardarTenant()
+    {
+        if (_tenant is null) return;
+        _saving = true;
+        try
+        {
+            var ok = await Api.PutAsync<TenantDto>($"api/tenants/{_tenant.Id}",
+                new { nombre = _tenant.Nombre, activo = _tenant.Activo });
+            if (ok is not null)
+                Snackbar.Add("Tenant actualizado", Severity.Success);
+            else
+                Snackbar.Add(Api.LastError ?? "Error al actualizar", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task AbrirDialogDominio()
+    {
+        if (_tenant is null) return;
+        var dialog = await Dialog.ShowAsync<DominioTenantDialog>("Agregar Dominio", _wideDialogOptions);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            var dominio = result.Data?.ToString();
+            if (!string.IsNullOrWhiteSpace(dominio))
+            {
+                await CrearDominioAsync(dominio.Trim().ToLowerInvariant());
+            }
+        }
+    }
+
+    private async Task CrearDominioAsync(string dominio)
+    {
+        try
+        {
+            var ok = await Api.PostAsync<DominioTenantDto>("api/DominiosTenant", new { idTenant = Id, dominio });
+            if (ok is not null)
+            {
+                Snackbar.Add("Dominio agregado", Severity.Success);
+                await CargarDatos();
+            }
+            else
+                Snackbar.Add(Api.LastError ?? "Error al agregar dominio", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task EditarDominio(DominioTenantDto dominio)
+    {
+        var parameters = new DialogParameters
+        {
+            ["Title"] = "Editar Dominio",
+            ["Dominio"] = dominio.Dominio
+        };
+        var dialog = await Dialog.ShowAsync<DominioTenantDialog>("Editar Dominio", parameters, _wideDialogOptions);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            var nuevoDominio = result.Data?.ToString();
+            if (!string.IsNullOrWhiteSpace(nuevoDominio))
+            {
+                await ActualizarDominioAsync(dominio.Id, nuevoDominio.Trim().ToLowerInvariant());
+            }
+        }
+    }
+
+    private async Task ActualizarDominioAsync(int id, string dominio)
+    {
+        try
+        {
+            var ok = await Api.PutAsync<DominioTenantDto>($"api/DominiosTenant/{id}", new { dominio });
+            if (ok is not null)
+            {
+                Snackbar.Add("Dominio actualizado", Severity.Success);
+                await CargarDatos();
+            }
+            else
+                Snackbar.Add(Api.LastError ?? "Error al actualizar dominio", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task EliminarDominio(DominioTenantDto dominio)
+    {
+        var parameters = new DialogParameters
+        {
+            ["Title"] = "Eliminar Dominio",
+            ["Message"] = $"¿Está seguro de eliminar el dominio \"{dominio.Dominio}\"?",
+            ["ConfirmText"] = "Eliminar",
+            ["ConfirmColor"] = Color.Error
+        };
+        var dialog = await Dialog.ShowAsync<ConfirmDialog>("Confirmar", parameters);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            await EliminarDominioConfirmadoAsync(dominio.Id);
+        }
+    }
+
+    private async Task EliminarDominioConfirmadoAsync(int id)
+    {
+        try
+        {
+            var ok = await Api.DeleteAsync($"api/DominiosTenant/{id}");
+            if (ok)
+            {
+                Snackbar.Add("Dominio eliminado", Severity.Success);
+                await CargarDatos();
+            }
+            else
+                Snackbar.Add(Api.LastError ?? "Error al eliminar dominio", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private static readonly DialogOptions _wideDialogOptions = new() { FullWidth = true };
+}

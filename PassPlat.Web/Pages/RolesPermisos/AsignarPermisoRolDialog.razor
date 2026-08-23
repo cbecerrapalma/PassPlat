@@ -1,0 +1,216 @@
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog Options="_dialogOptions">
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudAvatar Size="Size.Small" Color="Color.Secondary" Variant="Variant.Filled">
+                <MudIcon Icon="@Icons.Material.Filled.Security" Size="Size.Small" />
+            </MudAvatar>
+            <MudText Typo="Typo.h6">Asignar Permisos al Rol</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.caption" Class="text-secondary mb-2 d-block">
+            Gestione los permisos del rol <MudChip T="string" Size="Size.Small" Color="Color.Primary" Class="ml-1">@RolNombre</MudChip>
+            <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined" Class="ml-1">
+                @_seleccionados.Count seleccionados
+            </MudChip>
+        </MudText>
+
+        <MudTextField @bind-Value="_busqueda" Label="Buscar permiso..." Variant="Variant.Outlined" Class="mb-3"
+            Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+            Immediate="true" Clearable="true" />
+
+        <MudCheckBox T="bool" Label="Seleccionar todos" Value="@TodosSeleccionados" ValueChanged="@ToggleTodos"
+            Color="Color.Primary" Indeterminate="@AlgunosSeleccionados" Class="mb-2" />
+
+        <MudDivider Class="mb-3" />
+
+        @if (_cargando)
+        {
+            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="100%" Height="300px" />
+        }
+        else if (_grupos.Count == 0)
+        {
+            <MudPaper Class="pa-8 d-flex flex-column align-center" Elevation="0">
+                <MudAvatar Size="Size.Large" Color="Color.Secondary" Variant="Variant.Outlined" Class="mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.Security" Size="Size.Large" />
+                </MudAvatar>
+                <MudText Typo="Typo.subtitle1" Class="font-weight-bold mb-1">Sin permisos disponibles</MudText>
+                <MudText Typo="Typo.body2" Class="text-secondary">Cree permisos usando el botón "Nuevo Permiso"</MudText>
+            </MudPaper>
+        }
+        else
+        {
+            @foreach (var grupo in _gruposFiltrados)
+            {
+                var seleccionadosGrupo = grupo.Permisos.Count(p => _seleccionados.Contains(p.Id));
+                <MudPaper @key="grupo.Modulo" Class="mb-3" Elevation="0" Outlined="true">
+                    <div class="pa-3 d-flex align-center" style="border-bottom:1px solid var(--mud-palette-lines-default);">
+                        <MudIcon Icon="@Icons.Material.Filled.Folder" Color="Color.Primary" Size="Size.Small" Class="mr-2" />
+                        <MudText Typo="Typo.subtitle2" Class="font-weight-bold flex-grow-1">@grupo.Modulo</MudText>
+                        <MudCheckBox T="bool"
+                            Value="@(seleccionadosGrupo == grupo.Permisos.Count)"
+                            ValueChanged="@((bool v) => ToggleGrupo(grupo, v))"
+                            Color="Color.Primary"
+                            Label="@($"{seleccionadosGrupo}/{grupo.Permisos.Count}")"
+                            Dense="true" />
+                    </div>
+                    <div class="pa-2">
+                        @foreach (var permiso in grupo.Permisos)
+                        {
+                            <div @key="permiso.Id" class="pa-2 d-flex align-center" style="cursor:pointer; @(permiso != grupo.Permisos.Last() ? "border-bottom:1px solid var(--mud-palette-lines-default);" : "")">
+                        <MudCheckBox T="bool"
+                            Value="@(_seleccionados.Contains(permiso.Id))"
+                            ValueChanged="@((bool v) => TogglePermiso(permiso.Id, v))"
+                            Color="Color.Primary"
+                            Dense="true" />
+                                <MudIcon Icon="@Icons.Material.Filled.VpnKey" Size="Size.Small"
+                                    Color="@(_seleccionados.Contains(permiso.Id) ? Color.Primary : Color.Default)"
+                                    Class="mr-2" />
+                                <div class="flex-grow-1">
+                                    <MudText Typo="Typo.body2" Class="font-weight-bold">@permiso.Nombre</MudText>
+                                    <MudText Typo="Typo.caption" Class="text-secondary">@permiso.Codigo · @(permiso.ModuloNombre ?? permiso.ModuloCodigo ?? "") · Orden: @permiso.Orden</MudText>
+                                </div>
+                                <MudChip T="string" Size="Size.Small"
+                                    Color="@(_seleccionados.Contains(permiso.Id) ? Color.Success : Color.Default)"
+                                    Variant="Variant.Outlined">
+                                    @(_seleccionados.Contains(permiso.Id) ? "Asignado" : "No asignado")
+                                </MudChip>
+                            </div>
+                        }
+                    </div>
+                </MudPaper>
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@Guardar" Disabled="@(_guardando || !_cambio)">
+            @(_guardando ? "Guardando..." : "Guardar Cambios")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private DialogOptions _dialogOptions = new() { FullWidth = true, CloseButton = true, MaxWidth = MaxWidth.Large };
+
+    [Parameter] public int IdRol { get; set; }
+    [Parameter] public string RolNombre { get; set; } = "";
+    [Parameter] public HashSet<int> PermisosActuales { get; set; } = [];
+
+    private List<PermisoDto> _todosPermisos = [];
+    private HashSet<int> _seleccionados = [];
+    private string _busqueda = "";
+    private bool _cargando;
+    private bool _guardando;
+    private bool _cambio => !_seleccionados.SetEquals(PermisosActuales);
+
+    private bool TodosSeleccionados => _seleccionados.Count == _todosPermisos.Count && _todosPermisos.Count > 0;
+    private bool AlgunosSeleccionados => _seleccionados.Count > 0 && !TodosSeleccionados;
+
+    private class PermisoGrupo
+    {
+        public string Modulo { get; set; } = string.Empty;
+        public List<PermisoDto> Permisos { get; set; } = [];
+    }
+
+    private List<PermisoGrupo> _grupos => _todosPermisos
+        .GroupBy(p => p.ModuloNombre ?? p.ModuloCodigo ?? "")
+        .OrderBy(g => g.Key)
+        .Select(g => new PermisoGrupo { Modulo = g.Key, Permisos = g.OrderBy(p => p.Orden).ToList() })
+        .ToList();
+
+    private List<PermisoGrupo> _gruposFiltrados =>
+        string.IsNullOrWhiteSpace(_busqueda)
+            ? _grupos
+            : _grupos.Select(g => new PermisoGrupo
+            {
+                Modulo = g.Modulo,
+                Permisos = g.Permisos.Where(p =>
+                    p.Nombre.Contains(_busqueda, StringComparison.OrdinalIgnoreCase) ||
+                    p.Codigo.Contains(_busqueda, StringComparison.OrdinalIgnoreCase) ||
+                    (p.Descripcion?.Contains(_busqueda, StringComparison.OrdinalIgnoreCase) ?? false))
+                    .ToList()
+            }).Where(g => g.Permisos.Count > 0).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _cargando = true;
+        try
+        {
+            _todosPermisos = await Api.GetAsync<List<PermisoDto>>("api/permisos/activos") ?? [];
+            _seleccionados = new HashSet<int>(PermisosActuales);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar permisos: {ex.Message}", Severity.Error);
+        }
+        finally { _cargando = false; }
+    }
+
+    private void TogglePermiso(int idPermiso, bool valor)
+    {
+        if (valor) _seleccionados.Add(idPermiso);
+        else _seleccionados.Remove(idPermiso);
+    }
+
+    private void ToggleGrupo(PermisoGrupo grupo, bool valor)
+    {
+        foreach (var p in grupo.Permisos)
+        {
+            if (valor) _seleccionados.Add(p.Id);
+            else _seleccionados.Remove(p.Id);
+        }
+    }
+
+    private void ToggleTodos(bool valor)
+    {
+        if (valor)
+            foreach (var p in _todosPermisos) _seleccionados.Add(p.Id);
+        else
+            _seleccionados.Clear();
+    }
+
+    private async Task Guardar()
+    {
+        _guardando = true;
+        try
+        {
+            var aAsignar = _seleccionados.Except(PermisosActuales).ToList();
+            var aDesasignar = PermisosActuales.Except(_seleccionados).ToList();
+
+            foreach (var idPermiso in aAsignar)
+            {
+                var dto = new AsignarPermisoDto { IdRol = IdRol, IdPermiso = idPermiso };
+                var result = await Api.PostAsync<RolPermisoDto>("api/permisos/rol", dto);
+                if (result is null)
+                {
+                    Snackbar.Add(Api.LastError ?? $"Error al asignar permiso {idPermiso}", Severity.Error);
+                    return;
+                }
+            }
+
+            foreach (var idPermiso in aDesasignar)
+            {
+                var ok = await Api.DeleteAsync($"api/permisos/rol/{IdRol}/{idPermiso}");
+                if (!ok)
+                {
+                    Snackbar.Add(Api.LastError ?? $"Error al desasignar permiso {idPermiso}", Severity.Error);
+                    return;
+                }
+            }
+
+            Snackbar.Add($"Permisos actualizados: +{aAsignar.Count} / -{aDesasignar.Count}", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+        }
+        finally { _guardando = false; }
+    }
+}

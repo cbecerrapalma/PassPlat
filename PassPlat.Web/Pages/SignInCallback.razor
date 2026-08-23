@@ -1,0 +1,94 @@
+@page "/signin-callback"
+@layout LoginLayout
+@inject AuthService Auth
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<div class="login-wrapper">
+    <MudPaper Elevation="0" Class="login-card px-8 py-10" Style="width: 100%; max-width: 420px; border-radius: 16px;">
+        <div class="d-flex flex-column align-center mb-6">
+            <div class="login-logo mb-3">
+                <div class="login-logo-ring" />
+                <div class="login-logo-inner">
+                    <span class="login-logo-icon">&#x1F512;</span>
+                </div>
+            </div>
+            <MudText Typo="Typo.h5" Align="Align.Center" Class="font-weight-bold text-white">AccessPlat</MudText>
+            <MudText Typo="Typo.body2" Align="Align.Center" Class="text-gray">@_mensaje</MudText>
+        </div>
+        <div class="d-flex justify-center mb-4">
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Medium" />
+        </div>
+        @if (_showError)
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4" Variant="Variant.Filled">@_mensaje</MudAlert>
+            <MudButton Variant="Variant.Text" Color="Color.Primary" FullWidth="true" OnClick="@VolverLogin" Size="Size.Large">
+                Volver al inicio de sesión
+            </MudButton>
+        }
+    </MudPaper>
+</div>
+
+@code {
+    private bool _showError;
+    private string _mensaje = "Procesando inicio de sesión...";
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Auth.IsAuthenticated)
+        {
+            Nav.NavigateTo("/");
+            return;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        try
+        {
+            var fragment = await JS.InvokeAsync<FragmentData>("window.AuthInterop.parseFragment");
+            await JS.InvokeVoidAsync("window.AuthInterop.clearFragment");
+
+            if (fragment == null || string.IsNullOrEmpty(fragment.accessToken))
+            {
+                _mensaje = "No se recibieron credenciales del proveedor.";
+                _showError = true;
+                StateHasChanged();
+                return;
+            }
+
+            await Auth.SetSessionFromFragmentAsync(
+                fragment.accessToken,
+                fragment.refreshToken,
+                int.TryParse(fragment.idUsuario, out var uid) ? uid : 0,
+                int.TryParse(fragment.idTenant, out var tid) ? tid : 0,
+                fragment.nomUsuario,
+                fragment.reqCambioPwd == "true");
+
+            Nav.NavigateTo(Auth.ReqCambioPwd ? "/cambiar-password" : "/");
+        }
+        catch (Exception ex)
+        {
+            _mensaje = $"Error al procesar la autenticación: {ex.Message}";
+            _showError = true;
+            StateHasChanged();
+        }
+    }
+
+    private void VolverLogin()
+    {
+        Nav.NavigateTo("/login");
+    }
+
+    private class FragmentData
+    {
+        public string? accessToken { get; set; }
+        public string? refreshToken { get; set; }
+        public string? idUsuario { get; set; }
+        public string? idTenant { get; set; }
+        public string? nomUsuario { get; set; }
+        public string? reqCambioPwd { get; set; }
+    }
+}

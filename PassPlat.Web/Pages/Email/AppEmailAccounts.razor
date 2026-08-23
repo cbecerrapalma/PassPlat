@@ -1,0 +1,133 @@
+@page "/email/app-accounts"
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@inject NavigationManager Navigation
+@inject AuthService Auth
+@using PassPlat.Web.Models
+@using PassPlat.Web.Shared
+
+<MudContainer>
+    <MudBreadcrumbs Class="mb-3">
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
+        <MudBreadcrumbItem>Comunicaciones</MudBreadcrumbItem>
+        <MudBreadcrumbItem>Email</MudBreadcrumbItem>
+        <MudBreadcrumbItem>Cuentas por Aplicación</MudBreadcrumbItem>
+    </MudBreadcrumbs>
+
+    <MudPaper Class="pa-4 mb-4 d-flex flex-wrap align-center gap-4" Elevation="0" Outlined="true">
+        <MudText Typo="Typo.h5" Class="flex-grow-1 mb-0">Cuentas por Aplicación</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium" Class="mr-2" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Size="Size.Medium"
+            OnClick="@OpenAssignDialog">
+            Asignar Cuenta
+        </MudButton>
+    </MudPaper>
+
+    <MudGrid Class="mb-4">
+        <MudItem xs="12" sm="6" md="4">
+            <MudTextField Value="@_searchString" ValueChanged="@(EventCallback.Factory.Create<string>(this, (v) => { _searchString = v; }))"
+                Label="Buscar..." Variant="Variant.Outlined" Immediate="true" Clearable="true" FullWidth="true" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4">
+            <MudSelect T="string" Value="@_filterApp" ValueChanged="@(EventCallback.Factory.Create<string>(this, (v) => _filterApp = v))"
+                Label="Aplicación" Variant="Variant.Outlined" Clearable="true" FullWidth="true">
+                <MudSelectItem Value="@("PassPlat")">PassPlat</MudSelectItem>
+                <MudSelectItem Value="@("Portal Web")">Portal Web</MudSelectItem>
+                <MudSelectItem Value="@("API Backend")">API Backend</MudSelectItem>
+                <MudSelectItem Value="@("Mobile App")">Mobile App</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4">
+            <MudSelect T="string" Value="@_filterEstado" ValueChanged="@(EventCallback.Factory.Create<string>(this, (v) => _filterEstado = v))"
+                Label="Estado" Variant="Variant.Outlined" Clearable="true" FullWidth="true">
+                <MudSelectItem Value="@("activo")">Activo</MudSelectItem>
+                <MudSelectItem Value="@("inactivo")">Inactivo</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+    </MudGrid>
+
+    <MudTable T="AppEmailRow" Items="@_items" Hover="true" Breakpoint="Breakpoint.Sm">
+        <ColGroup>
+            <col />
+            <col />
+            <col style="width: 100px;" />
+            <col style="width: 100px;" />
+            <col style="width: 100px;" />
+            <col style="width: 80px;" />
+        </ColGroup>
+        <HeaderContent>
+            <MudTh>Aplicación</MudTh>
+            <MudTh>Cuenta de Correo</MudTh>
+            <MudTh>Proveedor</MudTh>
+            <MudTh>Predeterminada</MudTh>
+            <MudTh>Estado</MudTh>
+            <MudTh></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Aplicación"><MudText Typo="Typo.body2" Class="font-weight-medium">@context.AppNombre</MudText></MudTd>
+            <MudTd DataLabel="Cuenta"><MudText Typo="Typo.body2">@context.EmailAccountNombre</MudText></MudTd>
+            <MudTd DataLabel="Proveedor"><MudChip T="string" Size="Size.Small" Color="Color.Info">@context.ProviderNombre</MudChip></MudTd>
+            <MudTd DataLabel="Predeterminada">
+                <MudIcon Icon="@(context.EsPredeterminada ? Icons.Material.Filled.Star : Icons.Material.Outlined.StarBorder)"
+                    Color="@(context.EsPredeterminada ? Color.Warning : Color.Default)" Size="Size.Small" />
+            </MudTd>
+            <MudTd DataLabel="Estado">
+                <MudChip T="string" Size="Size.Small" Color="@(context.Activo ? Color.Success : Color.Default)">
+                    @(context.Activo ? "Activo" : "Inactivo")
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="">
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" />
+            </MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new int[]{10, 25, 50}" />
+        </PagerContent>
+        <NoRecordsContent>
+            <MudText Align="Align.Center" Class="py-6">
+                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Class="mr-2" />
+                No hay asignaciones aplicación-cuenta
+            </MudText>
+        </NoRecordsContent>
+    </MudTable>
+</MudContainer>
+
+@code {
+    private List<AppEmailRow> _items = [];
+    private string _searchString = "";
+    private string? _filterApp;
+    private string? _filterEstado;
+
+    protected override void OnInitialized()
+    {
+        _items = GetMockData();
+    }
+
+    private async Task OpenAssignDialog()
+    {
+        var dialog = await Dialog.ShowAsync<AssignAppDialog>("Asignar Cuenta a Aplicación", new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true });
+        await dialog.Result;
+    }
+
+    private static List<AppEmailRow> GetMockData()
+    {
+        return
+        [
+            new() { AppNombre = "PassPlat", EmailAccountNombre = "SMTP Global", ProviderNombre = "SMTP", EsPredeterminada = true, Activo = true },
+            new() { AppNombre = "Portal Web", EmailAccountNombre = "SendGrid Transaccional", ProviderNombre = "SendGrid", EsPredeterminada = true, Activo = true },
+            new() { AppNombre = "Portal Web", EmailAccountNombre = "Mailgun Marketing", ProviderNombre = "Mailgun", EsPredeterminada = false, Activo = true },
+            new() { AppNombre = "API Backend", EmailAccountNombre = "Amazon SES Prod", ProviderNombre = "Amazon SES", EsPredeterminada = true, Activo = true },
+            new() { AppNombre = "Mobile App", EmailAccountNombre = "SendGrid Transaccional", ProviderNombre = "SendGrid", EsPredeterminada = true, Activo = true }
+        ];
+    }
+
+    private class AppEmailRow
+    {
+        public string AppNombre { get; set; } = "";
+        public string EmailAccountNombre { get; set; } = "";
+        public string ProviderNombre { get; set; } = "";
+        public bool EsPredeterminada { get; set; }
+        public bool Activo { get; set; }
+    }
+}

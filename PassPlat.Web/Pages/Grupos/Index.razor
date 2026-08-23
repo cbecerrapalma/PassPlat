@@ -1,0 +1,424 @@
+@page "/admin/grupos"
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@inject AuthService Auth
+@inject NavigationManager Navigation
+@using PassPlat.Web.Models
+@using PassPlat.Web.Shared
+
+@if (!Auth.TienePermiso("GRUPOS_VER"))
+{
+    <SinPermiso PermisoRequerido="GRUPOS_VER" />
+}
+else
+{
+<div class="iam-page">
+<MudContainer MaxWidth="MaxWidth.ExtraLarge">
+    <MudBreadcrumbs Class="mb-3">
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/usuarios"))">Seguridad</MudBreadcrumbItem>
+        <MudBreadcrumbItem>Grupos</MudBreadcrumbItem>
+    </MudBreadcrumbs>
+
+    <div class="page-header">
+        <div class="page-title-row">
+            <div>
+                <h1 class="page-title">Grupos</h1>
+                <p class="page-subtitle">Administra los grupos de acceso y membresias por aplicacion y tenant.</p>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <MudButton Variant="Variant.Outlined" OnClick="@RefrescarTodo" Disabled="@(_cargando || _refrescando)" StartIcon="@Icons.Material.Filled.Refresh">Refrescar</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@AbrirCrear" StartIcon="@Icons.Material.Filled.Add">Nuevo Grupo</MudButton>
+            </div>
+        </div>
+    </div>
+
+    <div class="content-body">
+        <section class="table-panel" aria-label="Listado de grupos">
+            <CrudToolbar Title="Grupos" ShowCreate="true" CreateButtonText="Nuevo Grupo"
+                OnCreate="@AbrirCrear" OnRefresh="@RefrescarTodo"
+                SearchString="@_busqueda" SearchStringChanged="@OnSearchChanged">
+            </CrudToolbar>
+
+            @if (_cargando)
+            {
+                <div style="padding:24px;display:flex;flex-direction:column;gap:12px;">
+                    @for (var i = 0; i < 5; i++)
+                    {
+                        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg-input);border-radius:6px;">
+                            <MudSkeleton SkeletonType="SkeletonType.Circle" Width="36px" Height="36px" />
+                            <div style="flex:1;">
+                                <MudSkeleton SkeletonType="SkeletonType.Text" Width="120px" Height="16px" />
+                                <MudSkeleton SkeletonType="SkeletonType.Text" Width="180px" Height="12px" Style="margin-top:4px;" />
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else if (_itemsFiltrados.Count == 0)
+            {
+                <div class="empty-state">
+                    <div class="empty-state-icon">
+                        @if (_items.Count == 0)
+                        {
+                            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="24" height="24"><path d="M8 2 13 5v4c0 3-2.2 5.2-5 6-2.8-.8-5-3-5-6V5l5-3Z"/></svg>
+                        }
+                        else
+                        {
+                            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="24" height="24"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg>
+                        }
+                    </div>
+                    <div class="empty-state-title">@(_items.Count == 0 ? "Sin grupos configurados" : "Sin resultados")</div>
+                    <div class="empty-state-body">@(_items.Count == 0 ? "Cree el primer grupo para comenzar a gestionar membresias" : $"No se encontraron grupos para \"{_busqueda}\"")</div>
+                    @if (_items.Count == 0)
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@AbrirCrear">Crear Primer Grupo</MudButton>
+                    }
+                </div>
+            }
+            else
+            {
+                <MudTable T="GrupoDto" Items="@_itemsFiltrados" Hover="true" Breakpoint="Breakpoint.Sm"
+                    SelectedItem="_grupoSeleccionado" SelectedItemChanged="@OnGrupoSeleccionado" RowStyle="cursor: pointer;" Dense="true">
+                    <ColGroup>
+                        <col style="width: 40px;" /><col /><col style="width: 60px;" /><col style="width: 60px;" />
+                        <col style="width: 80px;" /><col style="width: 65px;" />
+                    </ColGroup>
+                    <HeaderContent>
+                        <MudTh></MudTh><MudTh>Grupo</MudTh><MudTh>Miembros</MudTh><MudTh>Roles</MudTh>
+                        <MudTh>Tenant</MudTh><MudTh>Estado</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="">
+                            <MudAvatar Size="Size.Small" Color="Color.Primary">
+                                <MudText Typo="Typo.caption">@context.Nombre[..Math.Min(2, context.Nombre.Length)]</MudText>
+                            </MudAvatar>
+                        </MudTd>
+                        <MudTd DataLabel="Grupo">
+                            <div class="col-name">@context.Nombre</div>
+                            <div style="font-size:11px;color:var(--text-muted);">@context.Descripcion</div>
+                        </MudTd>
+                        <MudTd DataLabel="Miembros" Style="font-weight:600;font-size:13px;">
+                            @_usuariosPorGrupo.GetValueOrDefault(context.Id, 0)
+                        </MudTd>
+                        <MudTd DataLabel="Roles" Style="font-weight:600;font-size:13px;">
+                            @_rolesCountPorGrupo.GetValueOrDefault(context.Id, 0)
+                        </MudTd>
+                        <MudTd DataLabel="Tenant">
+                            @if (context.TenantNombre is not null)
+                            {
+                                <span class="assign-chip tenant">@context.TenantNombre</span>
+                            }
+                            else
+                            {
+                                <span class="badge badge-default" style="font-size:10px;">--</span>
+                            }
+                        </MudTd>
+                        <MudTd DataLabel="Estado">
+                            <span class="badge @(context.Activo ? "badge-active" : "badge-inactive")">
+                                <span class="badge-dot"></span>@(context.Activo ? "Activo" : "Inactivo")
+                            </span>
+                        </MudTd>
+                    </RowTemplate>
+                    <PagerContent>
+                        <MudTablePager PageSizeOptions="new int[]{10, 25, 50}" />
+                    </PagerContent>
+                </MudTable>
+            }
+        </section>
+
+        @if (_grupoSeleccionado is not null)
+        {
+            <aside class="inspector" style="width:380px;flex-shrink:0;position:sticky;top:16px;">
+                <MudPaper Elevation="0" Outlined="true" Class="d-flex flex-col" Style="height:100%;">
+                    <div class="inspector-header pa-3" style="border-bottom:1px solid var(--mud-palette-lines-inputs);">
+                        <div class="d-flex align-center gap-2 mb-2">
+                            <MudText Typo="Typo.h6" Class="flex-grow-1 mb-0">@_grupoSeleccionado.Nombre</MudText>
+                            <MudChip T="string" Size="Size.Small" Color="@(_grupoSeleccionado.Activo ? Color.Success : Color.Error)">
+                                @(_grupoSeleccionado.Activo ? "Activo" : "Inactivo")
+                            </MudChip>
+                        </div>
+                        <MudTabs @bind-ActivePanelIndex="_tabIndex" KeepPanelsAlive="true" Class="detail-tabs" TabPanelStyle="padding-top:12px;">
+                            <MudTabPanel Text="Info" Icon="@Icons.Material.Filled.Info">
+                                <div class="insp-section">
+                                    <MudText Typo="Typo.subtitle2" Class="mb-2 mud-text-secondary">Detalles del Grupo</MudText>
+                                    <div class="d-flex flex-column gap-1" style="font-size:13px;">
+                                        <div class="d-flex"><span class="mud-text-secondary" style="width:100px;">Grupo</span><span>@_grupoSeleccionado.Nombre</span></div>
+                                        <div class="d-flex"><span class="mud-text-secondary" style="width:100px;">Descripcion</span><span>@_grupoSeleccionado.Descripcion</span></div>
+                                        <div class="d-flex"><span class="mud-text-secondary" style="width:100px;">Codigo</span><span style="font-family:monospace;">@_grupoSeleccionado.Codigo</span></div>
+                                        <div class="d-flex"><span class="mud-text-secondary" style="width:100px;">Tenant</span><span>@(_grupoSeleccionado.TenantNombre ?? "— (Global)")</span></div>
+                                        <div class="d-flex"><span class="mud-text-secondary" style="width:100px;">Estado</span><MudChip T="string" Size="Size.Small" Color="@(_grupoSeleccionado.Activo ? Color.Success : Color.Error)">@(_grupoSeleccionado.Activo ? "Activo" : "Inactivo")</MudChip></div>
+                                        <div class="d-flex"><span class="mud-text-secondary" style="width:100px;">Creado</span><span class="mud-text-secondary">@_grupoSeleccionado.FecCrea.ToString("dd MMM yyyy")</span></div>
+                                    </div>
+                                    <MudDivider Class="my-2" />
+                                    <div class="d-flex gap-4">
+                                        <div><MudText Typo="Typo.caption" Class="mud-text-secondary">Miembros</MudText><MudText Typo="Typo.h6">@_miembrosDelGrupo.Count</MudText></div>
+                                        <div><MudText Typo="Typo.caption" Class="mud-text-secondary">Roles Efectivos</MudText><MudText Typo="Typo.h6">@_rolesCountPorGrupo.GetValueOrDefault(_grupoSeleccionado.Id, 0)</MudText></div>
+                                    </div>
+                                </div>
+                            </MudTabPanel>
+
+                            <MudTabPanel Text="@($"Miembros ({_miembrosDelGrupo.Count})")" Icon="@Icons.Material.Filled.People">
+                                @if (_cargandoMiembros)
+                                {
+                                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="100%" Height="200px" />
+                                }
+                                else if (_miembrosDelGrupo.Count == 0)
+                                {
+                                    <MudText Typo="Typo.body2" Class="mud-text-secondary pa-4">Sin miembros asignados</MudText>
+                                }
+                                else
+                                {
+                                    <div style="max-height:350px;overflow-y:auto;">
+                                        @foreach (var m in _miembrosDelGrupo.Take(15))
+                                        {
+                                            <div class="d-flex align-center pa-1" style="gap:6px;">
+                                                <MudAvatar Size="Size.Small" Color="Color.Info">
+                                                    <MudText Typo="Typo.caption">@(m.UsuarioNombre?[..Math.Min(2, m.UsuarioNombre?.Length ?? 0)])</MudText>
+                                                </MudAvatar>
+                                                <div class="flex-grow-1">
+                                                    <MudText Typo="Typo.body2">@m.UsuarioNombre</MudText>
+                                                </div>
+                                            </div>
+                                        }
+                                        @if (_miembrosDelGrupo.Count > 15)
+                                        {
+                                            <MudText Typo="Typo.caption" Class="mud-text-secondary mt-1">... y @(_miembrosDelGrupo.Count - 15) mas</MudText>
+                                        }
+                                    </div>
+                                }
+                                <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" FullWidth="true" Class="mt-2"
+                                    OnClick="@AbrirAgregarMiembro" StartIcon="@Icons.Material.Filled.PersonAdd">
+                                    Agregar Miembro
+                                </MudButton>
+                            </MudTabPanel>
+
+                            <MudTabPanel Text="Roles Efec." Icon="@Icons.Material.Filled.Security">
+                                <MudText Typo="Typo.subtitle2" Class="mb-2">Roles Efectivos (via miembros)</MudText>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary mb-2">Roles acumulados de todos los miembros del grupo.</MudText>
+                                <MudText Typo="Typo.body2" Class="mud-text-secondary pa-4">Los grupos no tienen roles directos. Los roles se heredan de sus miembros.</MudText>
+                            </MudTabPanel>
+
+                            <MudTabPanel Text="Apps" Icon="@Icons.Material.Filled.Apps">
+                                <MudText Typo="Typo.subtitle2" Class="mb-2">Aplicaciones</MudText>
+                                <MudText Typo="Typo.body2" Class="mud-text-secondary">@(_grupoSeleccionado.TenantNombre ?? "— (Global)")</MudText>
+                                <MudDivider Class="my-2" />
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">Aplicaciones disponibles segun configuracion de tenant.</MudText>
+                            </MudTabPanel>
+
+                            <MudTabPanel Text="Permisos Efec." Icon="@Icons.Material.Filled.VerifiedUser">
+                                <MudText Typo="Typo.subtitle2" Class="mb-2">Permisos Efectivos</MudText>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary mb-2">Permisos acumulados de todos los roles del grupo.</MudText>
+                                <MudText Typo="Typo.body2" Class="mud-text-secondary pa-4">Consulte los permisos desde la vista de Roles.</MudText>
+                            </MudTabPanel>
+                        </MudTabs>
+                    </div>
+
+                    <div class="inspector-footer pa-3 d-flex gap-2" style="border-top:1px solid var(--mud-palette-lines-inputs);margin-top:auto;">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true" Size="Size.Small"
+                            OnClick="@(() => AbrirEditar(_grupoSeleccionado))" StartIcon="@Icons.Material.Filled.Edit">
+                            Editar
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Error" FullWidth="true" Size="Size.Small"
+                            OnClick="@(() => ConfirmarEliminar(_grupoSeleccionado))" Disabled="@_eliminandoGrupo" StartIcon="@Icons.Material.Filled.Block">
+                            @(_grupoSeleccionado.Activo ? "Desactivar" : "Activar")
+                        </MudButton>
+                    </div>
+                </MudPaper>
+            </aside>
+        }
+    </div>
+
+    <MudOverlay Visible="@(_cargando || _refrescando || _eliminandoGrupo)"
+        Class="d-flex align-center justify-center">
+        <MudProgressCircular Indeterminate="true" Size="Size.Large" />
+    </MudOverlay>
+</MudContainer>
+</div>
+}
+
+@code {
+    private List<GrupoDto> _items = [];
+    private string _busqueda = "";
+    private string _filtroEstado = "todos";
+    private GrupoDto? _grupoSeleccionado;
+    private int _tabIndex;
+    private bool _cargando;
+    private bool _refrescando;
+    private bool _eliminandoGrupo;
+    private readonly DialogOptions _dialogOptions = new() { FullWidth = true, CloseButton = true, MaxWidth = MaxWidth.Small };
+
+    private Dictionary<int, int> _usuariosPorGrupo = [];
+    private Dictionary<int, int> _rolesCountPorGrupo = [];
+    private List<GrupoUsuarioDto> _miembrosDelGrupo = [];
+    private bool _cargandoMiembros;
+
+    private int _usuariosAgrupados => _usuariosPorGrupo.Values.Sum();
+
+    private List<GrupoDto> _itemsFiltrados
+    {
+        get
+        {
+            var query = _items.AsEnumerable();
+            if (!string.IsNullOrWhiteSpace(_busqueda))
+                query = query.Where(g =>
+                    g.Nombre.Contains(_busqueda, StringComparison.OrdinalIgnoreCase) ||
+                    g.Codigo.Contains(_busqueda, StringComparison.OrdinalIgnoreCase) ||
+                    (g.Descripcion?.Contains(_busqueda, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (g.TenantNombre?.Contains(_busqueda, StringComparison.OrdinalIgnoreCase) ?? false));
+            if (_filtroEstado == "activos") query = query.Where(g => g.Activo);
+            else if (_filtroEstado == "inactivos") query = query.Where(g => !g.Activo);
+            return query.ToList();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.TienePermiso("GRUPOS_VER")) return;
+        await CargarDatosIniciales();
+    }
+
+    private async Task CargarDatosIniciales()
+    {
+        _cargando = true;
+        try
+        {
+            await CargarGrupos();
+            await CargarEstadisticas();
+        }
+        finally { _cargando = false; }
+    }
+
+    private async Task CargarGrupos()
+    {
+        try { _items = await Api.GetAsync<List<GrupoDto>>("api/grupos") ?? []; }
+        catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error al cargar grupos: {ex.Message}", Severity.Error); }
+    }
+
+    private async Task CargarEstadisticas()
+    {
+        try
+        {
+            var stats = await Api.GetAsync<Dictionary<string, GrupoStatsDto>>("api/grupos/stats");
+            if (stats is not null)
+            {
+                foreach (var kvp in stats)
+                {
+                    if (int.TryParse(kvp.Key, out var grupoId))
+                    {
+                        _usuariosPorGrupo[grupoId] = kvp.Value.Usuarios;
+                        _rolesCountPorGrupo[grupoId] = kvp.Value.Usuarios;
+                    }
+                }
+            }
+        }
+        catch { }
+    }
+
+    private class GrupoStatsDto
+    {
+        public int Miembros { get; set; }
+        public int Usuarios { get; set; }
+    }
+
+    private async Task OnGrupoSeleccionado(GrupoDto? grupo)
+    {
+        _grupoSeleccionado = grupo;
+        if (grupo is not null)
+            await CargarMiembrosDelGrupo();
+        else
+            _miembrosDelGrupo = [];
+    }
+
+    private async Task CargarMiembrosDelGrupo()
+    {
+        if (_grupoSeleccionado is null) return;
+        _cargandoMiembros = true;
+        try { _miembrosDelGrupo = await Api.GetAsync<List<GrupoUsuarioDto>>($"api/GruposUsuarios/grupo/{_grupoSeleccionado.Id}") ?? []; }
+        catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error al cargar miembros: {ex.Message}", Severity.Error); }
+        finally { _cargandoMiembros = false; }
+    }
+
+    private Task OnSearchChanged(string value)
+    {
+        _busqueda = value;
+        return Task.CompletedTask;
+    }
+
+    private void ToggleFiltroEstado()
+    {
+        _filtroEstado = _filtroEstado == "todos" ? "activos" : _filtroEstado == "activos" ? "inactivos" : "todos";
+    }
+
+    private async Task RefrescarTodo()
+    {
+        _refrescando = true;
+        try
+        {
+            await CargarDatosIniciales();
+            if (_grupoSeleccionado is not null)
+                await CargarMiembrosDelGrupo();
+            Snackbar.Add("Datos actualizados", Severity.Info);
+        }
+        finally { _refrescando = false; }
+    }
+
+    private async Task AbrirCrear()
+    {
+        var dialog = await Dialog.ShowAsync<GrupoDialog>("Nuevo Grupo", _dialogOptions);
+        var result = await dialog.Result;
+        if (!result.Canceled) { await ReCargarTodo(); Snackbar.Add("Grupo creado", Severity.Success); }
+    }
+
+    private async Task AbrirEditar(GrupoDto item)
+    {
+        var parameters = new DialogParameters { ["IsEdit"] = true, ["Grupo"] = item };
+        var dialog = await Dialog.ShowAsync<GrupoDialog>("Editar Grupo", parameters, _dialogOptions);
+        var result = await dialog.Result;
+        if (!result.Canceled) { await ReCargarTodo(); Snackbar.Add("Grupo actualizado", Severity.Success); }
+    }
+
+    private async Task ConfirmarEliminar(GrupoDto item)
+    {
+        var msg = item.Activo
+            ? $"Desactivar grupo '{item.Nombre}'? Se desactivaran sus miembros y relaciones asociados."
+            : $"Activar grupo '{item.Nombre}'?";
+        var parameters = new DialogParameters { ["Title"] = "Confirmar", ["Message"] = msg, ["ConfirmText"] = "Si", ["CancelText"] = "Cancelar", ["ConfirmColor"] = Color.Error };
+        var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parameters);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            _eliminandoGrupo = true;
+            try
+            {
+                var ok = await Api.DeleteAsync($"api/grupos/{item.Id}");
+                if (ok)
+                {
+                    Snackbar.Add(item.Activo ? "Grupo desactivado" : "Grupo activado", Severity.Success);
+                    if (_grupoSeleccionado?.Id == item.Id) { _grupoSeleccionado = null; _miembrosDelGrupo = []; }
+                    await ReCargarTodo();
+                }
+                else Snackbar.Add(Api.LastError ?? "Error al actualizar grupo", Severity.Error);
+            }
+            catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error); }
+            finally { _eliminandoGrupo = false; }
+        }
+    }
+
+    private async Task AbrirAgregarMiembro()
+    {
+        if (_grupoSeleccionado is null) return;
+        var parameters = new DialogParameters { ["Grupo"] = _grupoSeleccionado };
+        var dialog = await Dialog.ShowAsync<AgregarMiembroGrupoDialog>("Agregar Miembro", parameters, _dialogOptions);
+        var result = await dialog.Result;
+        if (!result.Canceled) { await CargarMiembrosDelGrupo(); await CargarEstadisticas(); }
+    }
+
+    private async Task ReCargarTodo()
+    {
+        _cargando = true;
+        try { await CargarDatosIniciales(); }
+        finally { _cargando = false; }
+    }
+}

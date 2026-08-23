@@ -1,0 +1,100 @@
+@inject AuthService Auth
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<MudMenu Direction="Direction.Bottom" OffsetX="true" Class="tenant-switcher-menu" OnMouseEnter="@LoadTenants">
+    <ActivatorContent>
+        <MudChip T="string" Size="Size.Small"
+                 Color="@(Auth.EsPlatform ? Color.Info : Color.Primary)"
+                 Variant="Variant.Outlined"
+                 Class="appbar-tenant-chip d-none d-sm-flex mx-1 tenant-switcher-chip">
+            <MudIcon Icon="@Icons.Material.Filled.SwapHoriz" Size="Size.Small" Class="mr-1" />
+            @GetTenantLabel()
+        </MudChip>
+    </ActivatorContent>
+    <ChildContent>
+        <MudList T="string" Dense="true" Clickable="true" Class="tenant-switcher-list">
+            @if (_loading)
+            {
+                <MudListItem T="string" Disabled="true">
+                    <MudProgressCircular Indeterminate="true" Size="Size.Small" Class="mr-2" />
+                    Cargando...
+                </MudListItem>
+            }
+            else if (_tenants.Count == 0)
+            {
+                <MudListItem T="string" Disabled="true">
+                    <MudText Typo="Typo.caption" Class="text-secondary">Sin tenants disponibles</MudText>
+                </MudListItem>
+            }
+            else
+            {
+                @foreach (var tenant in _tenants)
+                {
+                    var isCurrent = Auth.EsTenant && Auth.IdTenant == tenant.Id;
+                    <MudListItem T="string" Disabled="@isCurrent" OnClick="@(() => SwitchTo(tenant.Id))">
+                        <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" Class="mr-2" Color="@(isCurrent ? Color.Primary : Color.Default)" />
+                        <MudText Typo="Typo.body2">@tenant.Nombre</MudText>
+                        @if (isCurrent)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled" Class="ml-2">Actual</MudChip>
+                        }
+                    </MudListItem>
+                }
+            }
+        </MudList>
+    </ChildContent>
+</MudMenu>
+
+@code {
+    private List<TenantItem> _tenants = [];
+    private bool _loading;
+
+    private string GetTenantLabel()
+    {
+        if (Auth.EsPlatform) return "Plataforma";
+        if (!string.IsNullOrEmpty(Auth.NombreTenant)) return Auth.NombreTenant;
+        return "Tenant";
+    }
+
+    private async Task LoadTenants()
+    {
+        if (_tenants.Count > 0) return;
+        _loading = true;
+        try
+        {
+            _tenants = await Auth.GetMisTenantsAsync();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task SwitchTo(int idTenant)
+    {
+        if (Auth.EsTenant && Auth.IdTenant == idTenant) return;
+        _loading = true;
+        try
+        {
+            var result = await Auth.SwitchTenantAsync(idTenant);
+            if (result.Success)
+            {
+                Snackbar.Add("Tenant cambiado exitosamente", Severity.Success);
+                Nav.NavigateTo(Nav.Uri, forceLoad: true);
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? "Error al cambiar de tenant", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

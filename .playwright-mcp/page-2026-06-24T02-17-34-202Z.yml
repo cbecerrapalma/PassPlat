@@ -1,0 +1,29 @@
+- generic [ref=e17]:
+  - generic [ref=e18]:
+    - generic [ref=e22]: 🔒
+    - heading "AccessPlat" [level=5] [ref=e23]
+    - paragraph [ref=e24]: Inicia sesión para continuar
+  - paragraph [ref=e25]: Selecciona un tenant para continuar
+  - generic [ref=e28]:
+    - generic [ref=e29] [cursor=pointer]:
+      - combobox "Tenant" [active] [ref=e30]: Plataforma
+      - img [ref=e32]
+      - group "Tenant"
+    - generic: Tenant
+  - button "Continuar" [ref=e61] [cursor=pointer]:
+    - generic [ref=e62]: Continuar
+  - generic [ref=e35]:
+    - generic [ref=e37]:
+      - img [ref=e39]
+      - generic:
+        - paragraph
+    - generic [ref=e43]:
+      - generic [ref=e44]:
+        - textbox "Código de verificación" [ref=e45]
+        - group "Código de verificación"
+      - generic: Código de verificación
+  - button "Verificar código" [ref=e46] [cursor=pointer]:
+    - generic [ref=e48]: Verificar código
+  - button "Volver al inicio de sesión" [ref=e49] [cursor=pointer]:
+    - generic [ref=e50]: Volver al inicio de sesión
+  - generic [ref=e51]: Plataforma de Acceso — v1.0

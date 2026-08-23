@@ -1,0 +1,91 @@
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+@using PassPlat.Web.Models
+
+<MudDialog Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(IsEdit ? "Editar" : "Nuevo") Tenant</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="_codigo" Label="Código" Variant="Variant.Outlined" Class="mb-3" Disabled="@IsEdit" Required="true"
+                      Error="@(_submitted && string.IsNullOrWhiteSpace(_codigo))" ErrorText="El código es requerido" />
+        <MudTextField @bind-Value="_nombre" Label="Nombre" Variant="Variant.Outlined" Class="mb-3" Required="true"
+                      Error="@(_submitted && string.IsNullOrWhiteSpace(_nombre))" ErrorText="El nombre es requerido" />
+        <MudSwitch @bind-Value="_activo" Label="Activo" Color="Color.Primary" Class="mb-3" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@Save" Disabled="@(!CanSave() || _saving)">
+            @(IsEdit ? "Guardar" : "Crear")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+
+    [Parameter] public bool IsEdit { get; set; }
+    [Parameter] public TenantDto? Tenant { get; set; }
+
+    private string _codigo = "";
+    private string _nombre = "";
+    private bool _activo = true;
+    private bool _saving;
+    private bool _submitted;
+
+    protected override void OnInitialized()
+    {
+        if (IsEdit && Tenant is not null)
+        {
+            _codigo = Tenant.Codigo;
+            _nombre = Tenant.Nombre;
+            _activo = Tenant.Activo;
+        }
+    }
+
+    private bool CanSave() => !string.IsNullOrWhiteSpace(_codigo) && !string.IsNullOrWhiteSpace(_nombre);
+
+    private async Task Save()
+    {
+        _submitted = true;
+        if (!CanSave()) return;
+        _saving = true;
+        try
+        {
+            if (IsEdit)
+            {
+                var ok = await Api.PutAsync<TenantDto>($"api/tenants/{Tenant!.Id}",
+                    new { id = Tenant.Id, codigo = _codigo, nombre = _nombre, activo = _activo });
+                if (ok is not null)
+                {
+                    Snackbar.Add("Tenant actualizado", Severity.Success);
+                    MudDialog.Close(DialogResult.Ok(true));
+                }
+                else
+                    Snackbar.Add(Api.LastError ?? "Error al actualizar", Severity.Error);
+            }
+            else
+            {
+                var result = await Api.PostAsync<TenantDto>("api/tenants",
+                    new { codigo = _codigo, nombre = _nombre });
+                if (result is not null)
+                {
+                    Snackbar.Add("Tenant creado", Severity.Success);
+                    MudDialog.Close(DialogResult.Ok(true));
+                }
+                else
+                    Snackbar.Add(Api.LastError ?? "Error al crear", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

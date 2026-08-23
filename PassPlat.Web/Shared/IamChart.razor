@@ -1,0 +1,194 @@
+@namespace PassPlat.Web.Shared
+@using Microsoft.AspNetCore.Components.Web
+@using System.Globalization
+
+@* Gráfico SVG reutilizable: soporta Line, Bar, Pie, Donut, Area *@
+
+@if (_puntos.Count == 0 && Tipo != "Pie" && Tipo != "Donut")
+{
+    <div class="pa-4 text-center">
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Sin datos</MudText>
+    </div>
+}
+else
+{
+    <svg @ref="_svgRef" viewBox="@($"0 0 {Ancho} {Alto}")" width="100%" height="@Alto" role="img" aria-label="@Titulo">
+        @switch (Tipo)
+        {
+            case "Line":
+            case "Area":
+                @RenderLineArea();
+                break;
+            case "Bar":
+                @RenderBars();
+                break;
+            case "Pie":
+            case "Donut":
+                @RenderPie();
+                break;
+        }
+    </svg>
+}
+
+@if (MostrarLeyenda && _segmentos.Count > 0)
+{
+    <div class="d-flex flex-wrap gap-2 pa-2">
+        @foreach (var s in _segmentos)
+        {
+            <div class="d-flex align-center gap-1">
+                <span style="@($"width:12px;height:12px;background:{s.Color};display:inline-block;border-radius:2px;")"></span>
+                <MudText Typo="Typo.caption">@s.Etiqueta (@s.Valor)</MudText>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public string Titulo { get; set; } = "";
+    [Parameter] public string Tipo { get; set; } = "Line"; // Line, Area, Bar, Pie, Donut
+    [Parameter] public int Ancho { get; set; } = 600;
+    [Parameter] public int Alto { get; set; } = 220;
+    [Parameter] public List<ChartPoint> Puntos { get; set; } = [];
+    [Parameter] public List<ChartSegment> Segmentos { get; set; } = [];
+    [Parameter] public bool MostrarLeyenda { get; set; } = true;
+    [Parameter] public string[] Paleta { get; set; } = { "#1976d2", "#388e3c", "#fbc02d", "#d32f2f", "#7b1fa2", "#00796b", "#ff7043", "#5d4037", "#455a64", "#c2185b" };
+    [Parameter] public EventCallback<ChartPoint> OnPointClick { get; set; }
+
+    private ElementReference _svgRef;
+    private List<ChartPoint> _puntos => Puntos ?? [];
+    private List<ChartSegment> _segmentos => Segmentos ?? [];
+
+    private string[] _colores(int i) => Paleta.Length > 0 ? Paleta : new[] { "#1976d2" };
+
+    private RenderFragment RenderLineArea() => __builder =>
+    {
+        if (_puntos.Count < 2) return;
+        var max = _puntos.Max(p => p.Y);
+        var min = _puntos.Min(p => p.Y);
+        var range = max - min == 0 ? 1 : max - min;
+        var pad = 30;
+        var w = Ancho - pad * 2;
+        var h = Alto - pad * 2;
+        var stepX = w / (_puntos.Count - 1);
+        var pts = _puntos.Select((p, i) =>
+        {
+            var x = pad + i * stepX;
+            var y = pad + h - ((p.Y - min) / range * h);
+            return (x, y);
+        }).ToList();
+        var path = string.Join(" L ", pts.Select((p, i) => $"{(i == 0 ? "M" : "")}{p.x:F1},{p.y:F1}"));
+        var area = $"M {pts[0].x:F1},{pad + h:F1} " + string.Join(" L ", pts.Select(p => $"{p.x:F1},{p.y:F1}")) + $" L {pts[^1].x:F1},{pad + h:F1} Z";
+
+        __builder.OpenElement(0, "g");
+        if (Tipo == "Area")
+        {
+            __builder.OpenElement(1, "path");
+            __builder.AddAttribute(2, "d", area);
+            __builder.AddAttribute(3, "fill", "rgba(25,118,210,0.15)");
+            __builder.CloseElement();
+        }
+        __builder.OpenElement(4, "path");
+        __builder.AddAttribute(5, "d", path);
+        __builder.AddAttribute(6, "fill", "none");
+        __builder.AddAttribute(7, "stroke", _colores(0)[0]);
+        __builder.AddAttribute(8, "stroke-width", "2");
+        __builder.CloseElement();
+        for (var i = 0; i < pts.Count; i++)
+        {
+            var p = pts[i];
+            var s = i * 100;
+            __builder.OpenElement(s + 10, "circle");
+            __builder.AddAttribute(s + 20, "cx", p.x.ToString("F1", CultureInfo.InvariantCulture));
+            __builder.AddAttribute(s + 30, "cy", p.y.ToString("F1", CultureInfo.InvariantCulture));
+            __builder.AddAttribute(s + 40, "r", "3");
+            __builder.AddAttribute(s + 50, "fill", _colores(0)[0]);
+            __builder.AddAttribute(s + 60, "style", "cursor:pointer");
+            __builder.AddAttribute(s + 70, "onclick", EventCallback.Factory.Create<MouseEventArgs>(this, () => OnPointClick.InvokeAsync(_puntos[i])));
+            __builder.CloseElement();
+        }
+        __builder.CloseElement();
+    };
+
+    private RenderFragment RenderBars() => __builder =>
+    {
+        if (_puntos.Count == 0) return;
+        var max = _puntos.Max(p => p.Y);
+        var pad = 30;
+        var w = Ancho - pad * 2;
+        var h = Alto - pad * 2;
+        var bw = w / _puntos.Count;
+        for (var i = 0; i < _puntos.Count; i++)
+        {
+            var s = i * 100;
+            var p = _puntos[i];
+            var bh = max == 0 ? 0 : (p.Y / max) * h;
+            var x = pad + i * bw + bw * 0.15;
+            var y = pad + h - bh;
+            __builder.OpenElement(s + 0, "rect");
+            __builder.AddAttribute(s + 1, "x", x.ToString("F1", CultureInfo.InvariantCulture));
+            __builder.AddAttribute(s + 2, "y", y.ToString("F1", CultureInfo.InvariantCulture));
+            __builder.AddAttribute(s + 3, "width", (bw * 0.7).ToString("F1", CultureInfo.InvariantCulture));
+            __builder.AddAttribute(s + 4, "height", bh.ToString("F1", CultureInfo.InvariantCulture));
+            __builder.AddAttribute(s + 5, "fill", _colores(i)[i % _colores(i).Length]);
+            __builder.AddAttribute(s + 6, "rx", "3");
+            __builder.AddAttribute(s + 7, "style", "cursor:pointer");
+            __builder.AddAttribute(s + 8, "onclick", EventCallback.Factory.Create<MouseEventArgs>(this, () => OnPointClick.InvokeAsync(p)));
+            __builder.CloseElement();
+        }
+    };
+
+    private RenderFragment RenderPie() => __builder =>
+    {
+        if (_segmentos.Count == 0) return;
+        var total = _segmentos.Sum(s => s.Valor);
+        if (total == 0) return;
+        var cx = Ancho / 2;
+        var cy = Alto / 2;
+        var radio = Math.Min(Ancho, Alto) / 2 - 10;
+        var inner = Tipo == "Donut" ? radio * 0.55 : 0;
+        var ang = 0.0;
+        for (var idx = 0; idx < _segmentos.Count; idx++)
+        {
+            var s = idx * 100;
+            var seg = _segmentos[idx];
+            var frac = seg.Valor / total;
+            var ang2 = ang + frac * 2 * Math.PI;
+            var large = frac > 0.5 ? 1 : 0;
+            var x1 = cx + radio * Math.Cos(ang);
+            var y1 = cy + radio * Math.Sin(ang);
+            var x2 = cx + radio * Math.Cos(ang2);
+            var y2 = cy + radio * Math.Sin(ang2);
+            __builder.OpenElement(s + 0, "path");
+            __builder.AddAttribute(s + 1, "d", $"M {cx:F1},{cy:F1} L {x1:F1},{y1:F1} A {radio:F1},{radio:F1} 0 {large} 1 {x2:F1},{y2:F1} Z");
+            __builder.AddAttribute(s + 2, "fill", seg.Color);
+            __builder.AddAttribute(s + 3, "stroke", "#fff");
+            __builder.AddAttribute(s + 4, "stroke-width", "1");
+            __builder.CloseElement();
+            ang = ang2;
+        }
+        if (inner > 0)
+        {
+            __builder.OpenElement(9000, "circle");
+            __builder.AddAttribute(9001, "cx", cx.ToString("F1", CultureInfo.InvariantCulture));
+            __builder.AddAttribute(9002, "cy", cy.ToString("F1", CultureInfo.InvariantCulture));
+            __builder.AddAttribute(9003, "r", inner.ToString("F1", CultureInfo.InvariantCulture));
+            __builder.AddAttribute(9004, "fill", "#fff");
+            __builder.CloseElement();
+        }
+    };
+
+    public class ChartPoint
+    {
+        public string Etiqueta { get; set; } = "";
+        public double X { get; set; }
+        public double Y { get; set; }
+        public string? Detalle { get; set; }
+    }
+
+    public class ChartSegment
+    {
+        public string Etiqueta { get; set; } = "";
+        public double Valor { get; set; }
+        public string Color { get; set; } = "#1976d2";
+    }
+}

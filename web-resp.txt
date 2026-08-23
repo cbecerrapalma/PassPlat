@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AccessPlat — Plataforma de Acceso</title>
+    <base href="/" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
+    <link href="css/app.css" rel="stylesheet" />
+    <link href="css/iam-pages.css" rel="stylesheet" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link href="_framework/dotnet.y2rp17w3ft.js" rel="preload" as="script" fetchpriority="high" crossorigin="anonymous" integrity="sha256-ps3Zw96xuhCYQoYUVKZoHBS/UpMemouInXR7T+AKKV0=" />
+    <script type="importmap">{
+  "imports": {
+    "./_content/Microsoft.DotNet.HotReload.WebAssembly.Browser/Microsoft.DotNet.HotReload.WebAssembly.Browser.lib.module.js": "./_content/Microsoft.DotNet.HotReload.WebAssembly.Browser/Microsoft.DotNet.HotReload.WebAssembly.Browser.99zm1jdh75.lib.module.js",
+    "./_content/MudBlazor/MudBlazor.min.js": "./_content/MudBlazor/MudBlazor.min.a4sy8psjxz.js",
+    "./_framework/blazor.webassembly.js": "./_framework/blazor.webassembly.958z1vx7fr.js",
+    "./_framework/dotnet.native.js": "./_framework/dotnet.native.mx9wzm9o5h.js",
+    "./_framework/dotnet.runtime.js": "./_framework/dotnet.runtime.2zl32tp6ah.js",
+    "./_framework/dotnet.js": "./_framework/dotnet.y2rp17w3ft.js",
+    "./js/auth.js": "./js/auth.gqt8xeupf6.js"
+  },
+  "scopes": {},
+  "integrity": {
+    "./_content/Microsoft.DotNet.HotReload.WebAssembly.Browser/Microsoft.DotNet.HotReload.WebAssembly.Browser.99zm1jdh75.lib.module.js": "sha256-A8e6zZwhOqf7lDQqbbCYcAUv4wGE9aQxOo4WyYxR//0=",
+    "./_content/Microsoft.DotNet.HotReload.WebAssembly.Browser/Microsoft.DotNet.HotReload.WebAssembly.Browser.lib.module.js": "sha256-A8e6zZwhOqf7lDQqbbCYcAUv4wGE9aQxOo4WyYxR//0=",
+    "./_content/MudBlazor/MudBlazor.min.a4sy8psjxz.js": "sha256-2k5xxYaWJf4aWxNiIAKVW/k6RTLPuJZWtJW7IzYPu0g=",
+    "./_content/MudBlazor/MudBlazor.min.js": "sha256-2k5xxYaWJf4aWxNiIAKVW/k6RTLPuJZWtJW7IzYPu0g=",
+    "./_framework/blazor.webassembly.958z1vx7fr.js": "sha256-A59Tr9HqEhHMu8kU7kruLI9ayw5MRS6Lvc6z7jCbghk=",
+    "./_framework/blazor.webassembly.js": "sha256-A59Tr9HqEhHMu8kU7kruLI9ayw5MRS6Lvc6z7jCbghk=",
+    "./_framework/dotnet.js": "sha256-ps3Zw96xuhCYQoYUVKZoHBS/UpMemouInXR7T+AKKV0=",
+    "./_framework/dotnet.native.js": "sha256-tlrn00yvndmJzhFdKpELUlytdgWFyGFdTWjI10bgILU=",
+    "./_framework/dotnet.native.mx9wzm9o5h.js": "sha256-tlrn00yvndmJzhFdKpELUlytdgWFyGFdTWjI10bgILU=",
+    "./_framework/dotnet.runtime.2zl32tp6ah.js": "sha256-/ndm/PF1BeBT5mXzYAES79wNK5sIZIQKAGcUqPL9ZP8=",
+    "./_framework/dotnet.runtime.js": "sha256-/ndm/PF1BeBT5mXzYAES79wNK5sIZIQKAGcUqPL9ZP8=",
+    "./_framework/dotnet.y2rp17w3ft.js": "sha256-ps3Zw96xuhCYQoYUVKZoHBS/UpMemouInXR7T+AKKV0=",
+    "./js/auth.gqt8xeupf6.js": "sha256-eN6nTYSAx+zVHN5RrFJ8DZFSGqejkWzWClRu1d+a7Mo=",
+    "./js/auth.js": "sha256-eN6nTYSAx+zVHN5RrFJ8DZFSGqejkWzWClRu1d+a7Mo="
+  }
+}</script>
+</head>
+
+<body>
+    <div id="app">
+        <div class="loading-wrapper">
+            <div class="loading-content">
+                <div class="loading-spinner">
+                    <svg class="loading-progress" viewBox="0 0 100 100">
+                        <circle r="40" cx="50" cy="50" />
+                        <circle r="40" cx="50" cy="50" />
+                    </svg>
+                    <div class="loading-lock-icon">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="5" y="11" width="14" height="10" rx="2" />
+                            <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                        </svg>
+                    </div>
+                </div>
+                <div class="loading-title">AccessPlat</div>
+                <div class="loading-subtitle">Cargando aplicación…</div>
+                <div class="loading-progress-text"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="blazor-error-ui">
+        An unhandled error has occurred.
+        <a href="." class="reload">Reload</a>
+        <span class="dismiss">🗙</span>
+    </div>
+    <script src="js/auth.js"></script>
+    <script src="_framework/blazor.webassembly.958z1vx7fr.js"></script>
+    <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+</body>
+
+</html>

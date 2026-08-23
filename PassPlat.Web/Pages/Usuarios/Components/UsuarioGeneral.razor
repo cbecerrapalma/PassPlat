@@ -1,0 +1,143 @@
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+
+@if (_loading)
+{
+    <MudSkeleton Width="100%" Height="300px" />
+}
+else if (_usuario is null)
+{
+    <MudAlert Severity="Severity.Error" Class="mt-4">No se pudo cargar la información del usuario</MudAlert>
+}
+else
+{
+    <MudContainer Class="mt-4">
+        <MudText Typo="Typo.subtitle2" Class="mb-4" Style="color:var(--mud-palette-text-secondary);">
+            Información básica del usuario. Los campos marcados con * son editables.
+        </MudText>
+        <MudPaper Elevation="0" Class="pa-4 mb-4" Style="border-radius:10px;background:var(--mud-palette-table-hover);">
+            <MudText Typo="Typo.subtitle2" Class="mb-3" Style="font-weight:500;">Datos de la cuenta</MudText>
+            <MudGrid>
+                <MudItem xs12 md3>
+                    <MudTextField @bind-Value="_usuario.NomUsuario" Label="Usuario" Variant="Variant.Outlined" Disabled="true" Class="mb-2" />
+                </MudItem>
+                <MudItem xs12 md3>
+                    <MudTextField @bind-Value="_editarEmail" Label="Email (opcional)" Variant="Variant.Outlined" Class="mb-2" />
+                </MudItem>
+                <MudItem xs12 md3>
+                    <MudTextField @bind-Value="_editarNombre" Label="Nombre *" Variant="Variant.Outlined" Class="mb-2" />
+                </MudItem>
+                <MudItem xs12 md3>
+                    <MudTextField @bind-Value="_editarApellido" Label="Apellido *" Variant="Variant.Outlined" Class="mb-2" />
+                </MudItem>
+            </MudGrid>
+            <MudGrid>
+                <MudItem xs12 md4>
+                    <MudSwitch @bind-Value="_usuario.EmailVerificado" Label="Email verificado" Color="Color.Primary" />
+                </MudItem>
+                <MudItem xs12 md4>
+                    <MudText Class="pt-3">Requiere cambio de contraseña: @(_usuario.ReqCambioPwd ? "Sí" : "No")</MudText>
+                </MudItem>
+                <MudItem xs12 md4>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@GuardarUsuario" Disabled="@_saving" Class="mt-2">
+                        Guardar Cambios
+                    </MudButton>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+        <MudPaper Elevation="0" Class="pa-4" Style="border-radius:10px;background:var(--mud-palette-table-hover);">
+            <MudText Typo="Typo.subtitle2" Class="mb-3" Style="font-weight:500;">Fechas del registro</MudText>
+            <MudGrid>
+                <MudItem xs6 sm3>
+                    <MudText Class="mb-1" Typo="Typo.caption">Creado</MudText>
+                    <MudText Typo="Typo.body2">@(_usuario.FecCrea?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "-")</MudText>
+                </MudItem>
+                <MudItem xs6 sm3>
+                    <MudText Class="mb-1" Typo="Typo.caption">Últ. modificación</MudText>
+                    <MudText Typo="Typo.body2">@(_usuario.FecMod?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "-")</MudText>
+                </MudItem>
+                <MudItem xs6 sm3>
+                    <MudText Class="mb-1" Typo="Typo.caption">Últ. cambio contraseña</MudText>
+                    <MudText Typo="Typo.body2">@(_usuario.FecUltCambioPwd?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "-")</MudText>
+                </MudItem>
+                <MudItem xs6 sm3>
+                    <MudText Class="mb-1" Typo="Typo.caption">Últ. intento fallido</MudText>
+                    <MudText Typo="Typo.body2">@(_usuario.FecUltIntentoFallido?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "-")</MudText>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+    </MudContainer>
+}
+
+@code {
+    [Parameter] public int UserId { get; set; }
+    [Parameter] public bool IsActive { get; set; }
+
+    private UsuarioDto? _usuario;
+    private string _editarNombre = "";
+    private string _editarApellido = "";
+    private string _editarEmail = "";
+    private bool _loading = true;
+    private bool _saving;
+    private bool _loaded;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsActive && !_loaded)
+        {
+            _loaded = true;
+            await LoadData();
+        }
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        try
+        {
+            _usuario = await Api.GetAsync<UsuarioDto>($"api/usuarios/{UserId}");
+            if (_usuario is not null)
+            {
+                _editarNombre = _usuario.Nombre;
+                _editarApellido = _usuario.Apellido;
+                _editarEmail = _usuario.Email;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task GuardarUsuario()
+    {
+        if (_usuario is null) return;
+        _saving = true;
+        try
+        {
+            var ok = await Api.PutVoidAsync("api/usuarios",
+                new { id = _usuario.Id, nombre = _editarNombre, apellido = _editarApellido, email = string.IsNullOrWhiteSpace(_editarEmail) ? null : _editarEmail });
+            if (ok)
+            {
+                _usuario.Nombre = _editarNombre;
+                _usuario.Apellido = _editarApellido;
+                _usuario.Email = string.IsNullOrWhiteSpace(_editarEmail) ? null : _editarEmail;
+                Snackbar.Add("Usuario actualizado", Severity.Success);
+            }
+            else
+                Snackbar.Add(Api.LastError ?? "Error al actualizar", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

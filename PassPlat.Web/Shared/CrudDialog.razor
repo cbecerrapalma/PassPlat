@@ -1,0 +1,75 @@
+@namespace PassPlat.Web.Shared
+
+<MudDialog Options="Options">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@Title</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (Loading)
+        {
+            <div class="pa-4">
+                <MudSkeleton Width="100%" Height="56px" Class="mb-4" />
+                <MudSkeleton Width="100%" Height="56px" Class="mb-4" />
+                <MudSkeleton Width="65%" Height="56px" />
+            </div>
+        }
+        else
+        {
+            <CascadingValue Value="MudDialog" Name="MudDialog">
+                @ChildContent
+            </CascadingValue>
+        }
+    </DialogContent>
+    <DialogActions>
+        @if (!HideActions)
+        {
+            <MudButton Disabled="@_saving" OnClick="@(() => MudDialog.Cancel())">Cancelar</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@HandleSave"
+                       Disabled="@(SaveDisabled || _saving)">
+                @if (_saving)
+                {
+                    <MudProgressCircular Size="Size.Small" Class="mr-1" Indeterminate="true" />
+                }
+                @(IsEdit ? "Guardar" : "Crear")
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private bool _saving;
+
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public bool IsEdit { get; set; }
+    [Parameter] public bool Loading { get; set; }
+    [Parameter] public bool SaveDisabled { get; set; }
+    [Parameter] public bool HideActions { get; set; }
+    [Parameter] public EventCallback OnSave { get; set; }
+    [Parameter] public MaxWidth MaxWidth { get; set; } = MaxWidth.Small;
+    [Parameter] public bool FullWidth { get; set; } = true;
+    [Parameter] public bool CloseButton { get; set; } = true;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private DialogOptions Options => new()
+    {
+        MaxWidth = MaxWidth,
+        FullWidth = FullWidth,
+        CloseButton = CloseButton
+    };
+
+    private async Task HandleSave()
+    {
+        if (SaveDisabled || _saving) return;
+        _saving = true;
+        try
+        {
+            await OnSave.InvokeAsync();
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

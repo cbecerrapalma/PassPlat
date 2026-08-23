@@ -1,0 +1,132 @@
+
+-- =============================================================================
+-- PERMISOS EFECTIVOS DE USUARIO
+-- =============================================================================
+CREATE   PROCEDURE dbo.SP_Permisos_Usuario_Efectivos
+    @I
+dUsuario int,
+    @IdTenant int,
+    @IdApp int = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Bypass para usuarios de sistema: retornar TODOS los permisos activos
+    IF EXISTS (SELECT 1 FROM dbo.Usuarios WHERE Id = @IdUsuario AND EsSistema = 1)
+    BEGIN
+ 
+       SELECT
+            p.Id AS IdPermiso,
+            p.Codigo,
+            p.Nombre,
+            p.Descripcion,
+            p.Modulo,
+            p.Orden
+        FROM dbo.Permisos p
+        WHERE p.Activo = 1
+        ORDER BY p.Modulo, p.Orden, p.Codi
+go;
+        RETURN;
+    END
+
+    ;WITH RolesBase AS (
+        SELECT DISTINCT a.IdRol
+        FROM dbo.Accesos a
+        JOIN dbo.Roles r ON r.Id = a.IdRol
+        WHERE a.IdUsuario = @IdUsuario
+          AND a.IdTenant = @IdTenant
+          AND a.Activo 
+= 1
+          AND (@IdApp IS NULL OR a.IdApp = @IdApp)
+          AND r.Activo = 1
+          AND (r.IdTenant = @IdTenant OR r.IdTenant IS NULL)
+    ),
+    RolesEfectivos AS (
+        SELECT
+            rb.IdRol,
+            CAST(CONCAT(',', rb.IdRol, ',') 
+AS varchar(4000)) AS Ruta,
+            0 AS Nivel
+        FROM RolesBase rb
+
+        UNION ALL
+
+        SELECT
+            rh.IdRolPadre,
+            CAST(CONCAT(re.Ruta, rh.IdRolPadre, ',') AS varchar(4000)) AS Ruta,
+            re.Nivel + 1 AS Nivel
+   
+     FROM RolesEfectivos re
+        JOIN dbo.RolesHerencia rh
+            ON rh.IdRolHijo = re.IdRol
+           AND rh.IdTenant = @IdTenant
+           AND rh.Activo = 1
+        JOIN dbo.Roles rPadre
+            ON rPadre.Id = rh.IdRolPadre
+           AND 
+rPadre.Activo = 1
+           AND (rPadre.IdTenant = @IdTenant OR rPadre.IdTenant IS NULL)
+        WHERE re.Nivel < 32
+          AND CHARINDEX(CONCAT(',', rh.IdRolPadre, ','), re.Ruta) = 0
+    ),
+    PermisosRol AS (
+        SELECT DISTINCT rp.IdPermiso
+  
+      FROM RolesEfectivos re
+        JOIN dbo.RolesPermisos rp
+            ON rp.IdRol = re.IdRol
+           AND rp.Activo = 1
+    ),
+    PermisosUsuarioConcedidos AS (
+        SELECT DISTINCT up.IdPermiso
+        FROM dbo.UsuariosPermisos up
+        WHER
+E up.IdUsuario = @IdUsuario
+          AND up.IdTenant = @IdTenant
+          AND up.Activo = 1
+          AND up.IdTipoAsig = 1
+          AND (@IdApp IS NULL OR up.IdApp IS NULL OR up.IdApp = @IdApp)
+          AND (up.FecInicio IS NULL OR up.FecInicio <= SY
+SUTCDATETIME())
+          AND (up.FecFin IS NULL OR up.FecFin > SYSUTCDATETIME())
+    ),
+    PermisosUsuarioDenegados AS (
+        SELECT DISTINCT up.IdPermiso
+        FROM dbo.UsuariosPermisos up
+        WHERE up.IdUsuario = @IdUsuario
+          AND up.I
+dTenant = @IdTenant
+          AND up.Activo = 1
+          AND up.IdTipoAsig = 2
+          AND (@IdApp IS NULL OR up.IdApp IS NULL OR up.IdApp = @IdApp)
+          AND (up.FecInicio IS NULL OR up.FecInicio <= SYSUTCDATETIME())
+          AND (up.FecFin IS NU
+LL OR up.FecFin > SYSUTCDATETIME())
+    ),
+    PermisosBase AS (
+        SELECT IdPermiso FROM PermisosRol
+        UNION
+        SELECT IdPermiso FROM PermisosUsuarioConcedidos
+    )
+    SELECT
+        p.Id AS IdPermiso,
+        p.Codigo,
+        p.Nombre
+,
+        p.Descripcion,
+        p.Modulo,
+        p.Orden
+    FROM PermisosBase pb
+    JOIN dbo.Permisos p
+        ON p.Id = pb.IdPermiso
+       AND p.Activo = 1
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM PermisosUsuarioDenegados pud
+        WH
+ERE pud.IdPermiso = pb.IdPermiso
+    )
+    ORDER BY p.Modulo, p.Orden, p.Codigo
+    OPTION (MAXRECURSION 32);
+END;
+

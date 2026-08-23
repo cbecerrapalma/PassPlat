@@ -1,0 +1,170 @@
+@page "/config-tenants"
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@inject NavigationManager Navigation
+@inject AuthService Auth
+@using PassPlat.Web.Models
+@using PassPlat.Web.Shared
+
+@if (!Auth.TienePermiso("CONFIG_APP_VER"))
+{
+    <SinPermiso PermisoRequerido="CONFIG_APP_VER" />
+}
+else
+{
+<MudContainer>
+    <MudBreadcrumbs Class="mb-3">
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
+        <MudBreadcrumbItem>Catálogos</MudBreadcrumbItem>
+        <MudBreadcrumbItem>Configuración de Tenants</MudBreadcrumbItem>
+    </MudBreadcrumbs>
+    <MudPaper Class="pa-4 mb-4 d-flex flex-wrap align-center gap-4" Elevation="0" Outlined="true">
+        <MudText Typo="Typo.h5" Class="flex-grow-1 mb-0">Configuración de Tenants</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium"
+            OnClick="@LoadData" Class="mr-2" />
+    </MudPaper>
+
+    <MudGrid Class="mb-4">
+        <MudItem xs12 md4>
+            <MudAutocomplete T="TenantDto" @bind-Value="_tenantSelected"
+                SearchFunc="@SearchTenants" ToStringFunc="@(t => t is null ? "" : $"{t.Nombre} ({t.Codigo})")"
+                Label="Tenant" Variant="Variant.Outlined" />
+        </MudItem>
+        <MudItem xs12 md2>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@LoadData" FullWidth="true" Class="mt-4">
+                Buscar
+            </MudButton>
+        </MudItem>
+        <MudItem xs12 md2>
+            <MudButton Variant="Variant.Outlined" Color="Color.Info" OnClick="@ObtenerCount" FullWidth="true" Class="mt-4">
+                Contar
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+
+    @if (_totalCount > 0)
+    {
+        <MudAlert Severity="Severity.Info" Class="mb-4">
+            Total configuraciones registradas: @_totalCount
+        </MudAlert>
+    }
+
+    <MudTable T="ConfigTenantDto" Items="@_items" Hover="true" Breakpoint="Breakpoint.Sm" Class="mt-2">
+        <ColGroup>
+            <col style="width: 80px;" />
+            <col />
+            <col style="width: 120px;" />
+            <col style="width: 100px;" />
+            <col style="width: 100px;" />
+            <col style="width: 80px;" />
+            <col style="width: 120px;" />
+        </ColGroup>
+        <HeaderContent>
+            <MudTh>Id</MudTh>
+            <MudTh>Tenant</MudTh>
+            <MudTh>Timeout (min)</MudTh>
+            <MudTh>Max Sesiones</MudTh>
+            <MudTh>Req MFA</MudTh>
+            <MudTh>Pepper</MudTh>
+            <MudTh>Acciones</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Id">@context.Id</MudTd>
+            <MudTd DataLabel="Tenant">@context.TenantNombre</MudTd>
+            <MudTd DataLabel="Timeout (min)">@context.TimeoutSesionMin</MudTd>
+            <MudTd DataLabel="Max Sesiones">@context.MaxSesionesConc</MudTd>
+            <MudTd DataLabel="Req MFA">
+                <MudChip T="string" Size="Size.Small" Color="@(context.ReqMFA ? Color.Success : Color.Error)">
+                    @(context.ReqMFA ? "Sí" : "No")
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Pepper">@context.PepperVersionActual</MudTd>
+            <MudTd DataLabel="Acciones">
+                <MudTooltip Text="Actualizar Pepper">
+                    <MudIconButton Icon="@Icons.Material.Filled.Shield" Size="Size.Small" Color="Color.Warning"
+                        OnClick="@(() => ActualizarPepper(context))" />
+                </MudTooltip>
+            </MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new int[]{10, 25, 50}" />
+        </PagerContent>
+        <NoRecordsContent>
+            <MudText Align="Align.Center" Class="py-6">
+                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Class="mr-2" />
+                No hay registros
+            </MudText>
+        </NoRecordsContent>
+    </MudTable>
+
+    <MudOverlay Visible="@_loading" />
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" Class="mt-4" />
+    }
+</MudContainer>
+}
+
+@code {
+    private List<ConfigTenantDto> _items = [];
+    private bool _loading;
+    private int _idTenantBuscar = 1;
+    private int _totalCount;
+    private TenantDto? _tenantSelected;
+    private List<TenantDto> _tenants = [];
+
+    private async Task<IEnumerable<TenantDto>> SearchTenants(string? text, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return _tenants.Take(10);
+        return _tenants.Where(t =>
+            t.Nombre.Contains(text, StringComparison.OrdinalIgnoreCase) ||
+            t.Codigo.Contains(text, StringComparison.OrdinalIgnoreCase)).Take(10);
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        try
+        {
+            _tenants = await Api.GetAsync<List<TenantDto>>("api/tenants") ?? [];
+            _idTenantBuscar = _tenantSelected?.Id ?? _idTenantBuscar;
+            var data = await Api.GetAsync<List<ConfigTenantDto>>($"api/ConfigTenants/tenant/{_idTenantBuscar}");
+            _items = data ?? [];
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task ObtenerCount()
+    {
+        try
+        {
+            var count = await Api.GetAsync<int>("api/ConfigTenants/count");
+            _totalCount = count;
+            Snackbar.Add($"Total configuraciones: {_totalCount}", Severity.Info);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task ActualizarPepper(ConfigTenantDto item)
+    {
+        var parameters = new DialogParameters
+        {
+            ["ConfigTenant"] = item
+        };
+        var dialog = await Dialog.ShowAsync<PepperVersionDialog>("Actualizar Pepper Version", parameters);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+            await LoadData();
+    }
+}

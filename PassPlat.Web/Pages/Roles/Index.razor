@@ -1,0 +1,691 @@
+@page "/admin/roles"
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@inject AuthService Auth
+@inject NavigationManager Navigation
+@using PassPlat.Web.Models
+@using PassPlat.Web.Shared
+
+@if (!Auth.TienePermiso("ROLES_DETAIL_VER"))
+{
+    <SinPermiso PermisoRequerido="ROLES_DETAIL_VER" />
+}
+else
+{
+<div class="iam-page">
+    <MudBreadcrumbs Class="mb-3">
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/usuarios"))">Seguridad</MudBreadcrumbItem>
+        <MudBreadcrumbItem>Roles</MudBreadcrumbItem>
+    </MudBreadcrumbs>
+
+    <div class="page-header">
+        <div class="page-title-row">
+            <div>
+                <h1 class="page-title">Roles</h1>
+                <p class="page-subtitle">Administra los roles de acceso, herencia de permisos y asignacion de usuarios por aplicacion y tenant.</p>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <MudButton Variant="Variant.Outlined" OnClick="@RefrescarTodo" Disabled="@(_cargando || _refrescando)" StartIcon="@Icons.Material.Filled.Refresh">Refrescar</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@AbrirCrearRol" StartIcon="@Icons.Material.Filled.Add">Nuevo Rol</MudButton>
+            </div>
+        </div>
+    </div>
+
+    <div class="kpi-row mb-4">
+        <IamKpiCard Valor="@_roles.Count.ToString()" Label="Roles Totales" Subtexto="En todas las apps y tenants" Icon="@Icons.Material.Filled.Security" ColorClass="primary" Xs="12" Sm="6" Md="3" Lg="2" />
+        <IamKpiCard Valor="@_roles.Count(r => r.Activo).ToString()" Label="Activos" Subtexto="@(_roles.Count > 0 ? $"{_roles.Count(r => r.Activo) * 100 / _roles.Count}% del total" : "0% del total")" Icon="@Icons.Material.Filled.CheckCircle" ColorClass="success" Xs="12" Sm="6" Md="3" Lg="2" />
+        <IamKpiCard Valor="@_roles.Count(r => r.TenantNombre is null).ToString()" Label="Globales" Subtexto="Sin tenant específico" Icon="@Icons.Material.Filled.Language" ColorClass="secondary" Xs="12" Sm="6" Md="3" Lg="2" />
+        <IamKpiCard Valor="@_roles.Count(r => r.TenantNombre is not null).ToString()" Label="Por Tenant" Subtexto="Vinculados a un tenant" Icon="@Icons.Material.Filled.Business" ColorClass="info" Xs="12" Sm="6" Md="3" Lg="2" />
+        <IamKpiCard Valor="@_usuariosAsignados.ToString()" Label="Usuarios Asignados" Subtexto="Distribuidos en todos los roles" Icon="@Icons.Material.Filled.People" ColorClass="warning" Xs="12" Sm="6" Md="3" Lg="2" />
+    </div>
+
+    <div class="content-body">
+        <section class="table-panel" aria-label="Listado de roles">
+            <div class="d-flex flex-wrap align-center gap-3 mb-3">
+                <MudTextField @bind-Value="_busquedaRol" Label="Buscar roles..." Variant="Variant.Outlined"
+                    Immediate="true" Clearable="true"
+                    Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                    Style="min-width:200px;max-width:300px;" />
+                <MudSelect T="string" @bind-Value="_filtroEstado" Label="Estado" Variant="Variant.Outlined"
+                    Style="min-width:120px;">
+                    <MudSelectItem T="string" Value="@("todos")">Todos</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("activos")">Activos</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("inactivos")">Inactivos</MudSelectItem>
+                </MudSelect>
+                <MudSelect T="string" @bind-Value="_filtroTenant" Label="Tenant" Variant="Variant.Outlined"
+                    Style="min-width:130px;">
+                    <MudSelectItem T="string" Value="@("todos")">Todos</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("global")">Globales</MudSelectItem>
+                    @foreach (var tn in _tenantsDisponibles)
+                    {
+                        <MudSelectItem @key="tn" T="string" Value="@tn">@tn</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                    @_rolesFiltrados.Count de @_roles.Count roles
+                </MudText>
+            </div>
+
+            @if (_cargando)
+            {
+                <div style="padding:24px;display:flex;flex-direction:column;gap:12px;">
+                    @for (var i = 0; i < 5; i++)
+                    {
+                        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg-input);border-radius:6px;">
+                            <MudSkeleton SkeletonType="SkeletonType.Circle" Width="36px" Height="36px" />
+                            <div style="flex:1;">
+                                <MudSkeleton SkeletonType="SkeletonType.Text" Width="120px" Height="16px" />
+                                <MudSkeleton SkeletonType="SkeletonType.Text" Width="180px" Height="12px" Style="margin-top:4px;" />
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else if (_rolesFiltrados.Count == 0)
+            {
+                <div class="empty-state">
+                    <div class="empty-state-icon">
+                        @if (_roles.Count == 0)
+                        {
+                            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="24" height="24"><path d="M8 2 13 5v4c0 3-2.2 5.2-5 6-2.8-.8-5-3-5-6V5l5-3Z"/></svg>
+                        }
+                        else
+                        {
+                            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="24" height="24"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg>
+                        }
+                    </div>
+                    <div class="empty-state-title">@(_roles.Count == 0 ? "Sin roles configurados" : "Sin resultados")</div>
+                    <div class="empty-state-body">@(_roles.Count == 0 ? "Cree el primer rol para comenzar a gestionar permisos" : $"No se encontraron roles para &quot;{_busquedaRol}&quot;")</div>
+                    @if (_roles.Count == 0)
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@AbrirCrearRol">Crear Primer Rol</MudButton>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="table-wrap">
+                    <MudTable T="RolDto" Items="@_rolesFiltrados" Hover="true" Breakpoint="Breakpoint.Sm"
+                        SelectedItem="_rolSeleccionado" SelectedItemChanged="@OnRolSeleccionado" RowStyle="cursor: pointer;" Dense="true" Class="iam-table">
+                        <ColGroup>
+                            <col style="width: 36px;" /><col /><col style="width: 60px;" /><col style="width: 65px;" />
+                            <col style="width: 80px;" /><col style="width: 55px;" /><col style="width: 65px;" />
+                        </ColGroup>
+                        <HeaderContent>
+                            <MudTh></MudTh><MudTh>Rol</MudTh><MudTh>Usuarios</MudTh><MudTh>Permisos</MudTh>
+                            <MudTh>Tenant</MudTh><MudTh>Herencia</MudTh><MudTh>Estado</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="">
+                                <MudAvatar Size="Size.Small" Color="Color.Primary">
+                                    <MudText Typo="Typo.caption">@context.Nombre[..Math.Min(2, context.Nombre.Length)]</MudText>
+                                </MudAvatar>
+                            </MudTd>
+                            <MudTd DataLabel="Rol">
+                                <div class="col-name">@context.Nombre</div>
+                                <div class="col-desc">@context.Descripcion</div>
+                            </MudTd>
+                            <MudTd DataLabel="Usuarios" Style="font-weight:600;font-size:13px;">
+                                @_usuariosPorRol.GetValueOrDefault(context.Id, 0)
+                            </MudTd>
+                            <MudTd DataLabel="Permisos" Style="font-weight:600;font-size:13px;">
+                                @_permisosCountPorRol.GetValueOrDefault(context.Id, 0)
+                            </MudTd>
+                            <MudTd DataLabel="Tenant">
+                                @if (context.TenantNombre is not null)
+                                {
+                                    <span class="assign-chip tenant">@context.TenantNombre</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-noassign" style="font-size:10px;">—</span>
+                                }
+                            </MudTd>
+                            <MudTd DataLabel="Herencia">
+                                @{ var hCount = _herenciaPorRol.GetValueOrDefault(context.Id, 0); }
+                                @if (hCount > 0)
+                                {
+                                    <span class="badge badge-default">@hCount</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-noassign" style="font-size:10px;">—</span>
+                                }
+                            </MudTd>
+                            <MudTd DataLabel="Estado">
+                                <span class="badge @(context.Activo ? "badge-active" : "badge-inactive")">
+                                    <span class="badge-dot"></span>@(context.Activo ? "Activo" : "Inactivo")
+                                </span>
+                            </MudTd>
+                        </RowTemplate>
+                        <PagerContent>
+                            <MudTablePager PageSizeOptions="new int[]{10, 25, 50}" />
+                        </PagerContent>
+                    </MudTable>
+                </div>
+            }
+        </section>
+
+        @if (_rolSeleccionado is not null)
+        {
+            <aside class="inspector" aria-label="Inspector de rol">
+                <div class="inspector-header">
+                    <div class="inspector-title-row">
+                        <div class="inspector-title">@_rolSeleccionado.Nombre</div>
+                        <span class="badge @(_rolSeleccionado.Activo ? "badge-active" : "badge-inactive")">
+                            <span class="badge-dot"></span>@(_rolSeleccionado.Activo ? "Activo" : "Inactivo")
+                        </span>
+                    </div>
+                    <div class="inspector-tabs" role="tablist">
+                        <MudButton Variant="Variant.Text" Color="@(_tabIndex == 0 ? Color.Primary : Color.Default)" @onclick="@(() => _tabIndex = 0)" Size="Size.Small">Info</MudButton>
+                        <MudButton Variant="Variant.Text" Color="@(_tabIndex == 1 ? Color.Primary : Color.Default)" @onclick="@(() => _tabIndex = 1)" Size="Size.Small">Permisos</MudButton>
+                        <MudButton Variant="Variant.Text" Color="@(_tabIndex == 2 ? Color.Primary : Color.Default)" @onclick="@(() => _tabIndex = 2)" Size="Size.Small">Herencia</MudButton>
+                        <MudButton Variant="Variant.Text" Color="@(_tabIndex == 3 ? Color.Primary : Color.Default)" @onclick="@(() => _tabIndex = 3)" Size="Size.Small">Usuarios</MudButton>
+                        <MudButton Variant="Variant.Text" Color="@(_tabIndex == 4 ? Color.Primary : Color.Default)" @onclick="@(() => _tabIndex = 4)" Size="Size.Small">Apps</MudButton>
+                    </div>
+                </div>
+                <div class="inspector-body">
+                    @if (_tabIndex == 0)
+                    {
+                        <div class="insp-section">
+                            <div class="insp-section-title">Detalles del Rol</div>
+                            <div class="field-row"><div class="field-label">Rol</div><div class="field-value">@_rolSeleccionado.Nombre</div></div>
+                            <div class="field-row"><div class="field-label">Descripcion</div><div class="field-value">@_rolSeleccionado.Descripcion</div></div>
+                            <div class="field-row"><div class="field-label">Codigo</div><div class="field-value mono">@_rolSeleccionado.Codigo</div></div>
+                            <div class="field-row"><div class="field-label">Tenant</div><div class="field-value" style="color:var(--text-muted);">@(_rolSeleccionado.TenantNombre ?? "-- (Global)")</div></div>
+                            <div class="field-row"><div class="field-label">Estado</div><div class="field-value"><span class="badge @(_rolSeleccionado.Activo ? "badge-active" : "badge-inactive")"><span class="badge-dot"></span>@(_rolSeleccionado.Activo ? "Activo" : "Inactivo")</span></div></div>
+                            <div class="field-row"><div class="field-label">Creado</div><div class="field-value" style="color:var(--text-muted);">@_rolSeleccionado.FecCrea.ToString("dd MMM yyyy")</div></div>
+                            <div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                <div><div class="field-label">Usuarios</div><div class="field-value" style="font-weight:600;">@_usuariosDelRol.Count</div></div>
+                                <div><div class="field-label">Permisos</div><div class="field-value" style="font-weight:600;">@_permisosAgrupados.Sum(g => g.Permisos.Count(p => p.Asignado))</div></div>
+                            </div>
+                        </div>
+                    }
+                    else if (_tabIndex == 1)
+                    {
+                        <div class="insp-section">
+                            <div class="insp-section-title">Permisos</div>
+                            @if (_cargandoPermisos)
+                            {
+                                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="100%" Height="160px" />
+                            }
+                            else if (_permisosAgrupados.Count == 0)
+                            {
+                                <p style="font-size:12px;color:var(--text-muted);">Sin permisos configurados</p>
+                            }
+                            else
+                            {
+                                <div style="max-height:360px;overflow-y:auto;">
+                                    @foreach (var grupo in _permisosAgrupados)
+                                    {
+                                        var asignados = grupo.Permisos.Count(p => p.Asignado);
+                                        var totalG = grupo.Permisos.Count;
+                                        <div @key="grupo.Modulo" style="margin-bottom:8px;">
+                                            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+                                                <span style="font-size:11px;font-weight:600;color:var(--text-primary);">@grupo.Modulo</span>
+                                                <span class="badge badge-default" style="font-size:9px;padding:1px 5px;">@asignados/@totalG</span>
+                                            </div>
+                                            @foreach (var permiso in grupo.Permisos.Take(10))
+                                            {
+                                                <div @key="permiso.Id" class="field-value-row" style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+                                                    <MudSwitch @bind-Value="permiso.Asignado"
+                                                        @bind-Value:after="@(() => TogglePermiso(permiso, permiso.Asignado))"
+                                                        Color="Color.Primary" Disabled="@_guardandoPermiso" Dense="true" />
+                                                    <span style="font-size:11px;color:var(--text-secondary);">@permiso.Nombre</span>
+                                                </div>
+                                            }
+                                            @if (grupo.Permisos.Count > 10)
+                                            {
+                                                <span style="font-size:10px;color:var(--text-muted);margin-left:32px;">... y @(grupo.Permisos.Count - 10) mas</span>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                                <MudButton Variant="Variant.Text" Color="Color.Primary" FullWidth="true" OnClick="@AbrirAsignarPermisosARol" StartIcon="@Icons.Material.Filled.Security" Class="mt-2">Gestionar Permisos</MudButton>
+                            }
+                        </div>
+                    }
+                    else if (_tabIndex == 2)
+                    {
+                        <div class="insp-section">
+                            <div class="insp-section-title">Roles Padre (hereda de)</div>
+                            @if (_cargandoHerencia)
+                            {
+                                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="100%" Height="80px" />
+                            }
+                            else
+                            {
+                                @if (_herenciasPadre.Count == 0)
+                                {
+                                    <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Sin roles padre</p>
+                                }
+                                else
+                                {
+                                    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px;">
+                                        @foreach (var item in _herenciasPadre)
+                                        {
+                                            <span @key="item.Id" class="assign-chip">@item.RolNombre</span>
+                                        }
+                                    </div>
+                                }
+                                <div class="insp-section-title" style="margin-top:4px;">Roles Hijo (heredan de este)</div>
+                                @if (_herenciasHijo.Count == 0)
+                                {
+                                    <p style="font-size:12px;color:var(--text-muted);">Sin roles hijo</p>
+                                }
+                                else
+                                {
+                                    <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                                        @foreach (var item in _herenciasHijo)
+                                        {
+                                            <span @key="item.Id" class="assign-chip perm">@item.RolNombre</span>
+                                        }
+                                    </div>
+                                }
+                                <MudButton Variant="Variant.Text" Color="Color.Primary" FullWidth="true" OnClick="@(() => AbrirAgregarHerencia("Padre"))" StartIcon="@Icons.Material.Filled.AccountTree" Class="mt-2">Gestionar Herencia</MudButton>
+                            }
+                        </div>
+                    }
+                    else if (_tabIndex == 3)
+                    {
+                        <div class="insp-section">
+                            <div class="insp-section-title">Miembros del Rol</div>
+                            @if (_cargandoUsuariosRol)
+                            {
+                                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="100%" Height="120px" />
+                            }
+                            else if (_usuariosDelRol.Count == 0)
+                            {
+                                <p style="font-size:12px;color:var(--text-muted);">Sin usuarios asignados</p>
+                            }
+                            else
+                            {
+                                <table class="mini-table">
+                                    <thead><tr><th>Usuario</th><th>Nombre</th></tr></thead>
+                                    <tbody>
+                                        @foreach (var usr in _usuariosDelRol.Take(10))
+                                        {
+                                            <tr @key="usr.Id">
+                                                <td style="font-weight:500;color:var(--text-primary);">@usr.UsuarioNombre</td>
+                                                <td style="font-family:'JetBrains Mono',monospace;font-size:10px;">@(usr.UsuarioNombre ?? "")</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                                @if (_usuariosDelRol.Count > 10)
+                                {
+                                    <p style="font-size:10px;color:var(--text-muted);margin-top:6px;">... y @(_usuariosDelRol.Count - 10) mas</p>
+                                }
+                            }
+                            <MudButton Variant="Variant.Text" Color="Color.Primary" FullWidth="true" OnClick="@AbrirAsignarUsuarioARol" StartIcon="@Icons.Material.Filled.PersonAdd" Class="mt-2">Agregar Miembro</MudButton>
+                        </div>
+                    }
+                    else if (_tabIndex == 4)
+                    {
+                        <div class="insp-section">
+                            <div class="insp-section-title">Aplicaciones</div>
+                            <table class="mini-table">
+                                <thead><tr><th>Aplicacion</th><th>Nota</th></tr></thead>
+                                <tbody>
+                                    <tr>
+                                        <td style="font-weight:500;color:var(--text-primary);">@(_rolSeleccionado.TenantNombre ?? "-- (Global)")</td>
+                                        <td style="font-size:10px;color:var(--text-muted);">Asignado</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+                <div class="inspector-footer">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true" OnClick="@(() => AbrirEditarRol(_rolSeleccionado))" StartIcon="@Icons.Material.Filled.Edit">Editar</MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Error" FullWidth="true" OnClick="@(() => ConfirmarEliminarRol(_rolSeleccionado))" Disabled="@_eliminandoRol" StartIcon="@Icons.Material.Filled.Block">@(_rolSeleccionado.Activo ? "Desactivar" : "Activar")</MudButton>
+                </div>
+            </aside>
+        }
+    </div>
+
+    @if (_cargando || _refrescando || _guardandoPermiso || _eliminandoRol || _guardandoPolitica)
+    {
+        <div class="modal-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+            <MudProgressCircular Indeterminate="true" Size="Size.Large" Color="Color.Primary" />
+        </div>
+    }
+</div>
+}
+
+@code {
+    private List<RolDto> _roles = [];
+    private string _busquedaRol = "";
+    private string _filtroEstado = "todos";
+    private string _filtroTenant = "todos";
+    private RolDto? _rolSeleccionado;
+    private int _tabIndex;
+    private readonly DialogOptions _wideDialogOptions = new() { FullWidth = true, CloseButton = true, MaxWidth = MaxWidth.Large };
+
+    private List<PermisoDto> _todosPermisos = [];
+    private List<PermisoGrupo> _permisosAgrupados = [];
+    private HashSet<int> _permisosActuales = [];
+    private bool _cargando;
+    private bool _cargandoPermisos;
+    private bool _guardandoPermiso;
+    private bool _eliminandoRol;
+    private bool _guardandoPolitica;
+    private bool _refrescando;
+
+    private RolPoliticaPwdDto? _politicaAsignada;
+    private PoliticaPwdDto? _politicaDetalle;
+    private List<PoliticaPwdDto> _todasPoliticas = [];
+
+    private Dictionary<int, int> _usuariosPorRol = [];
+    private Dictionary<int, int> _permisosCountPorRol = [];
+    private Dictionary<int, int> _herenciaPorRol = [];
+
+    private List<AccesoDto> _usuariosDelRol = [];
+    private bool _cargandoUsuariosRol;
+
+    private List<RolesHerenciaView> _herenciasPadre = [];
+    private List<RolesHerenciaView> _herenciasHijo = [];
+    private bool _cargandoHerencia;
+
+    private int _usuariosAsignados => _usuariosPorRol.Values.Sum();
+
+    private List<string> _tenantsDisponibles => _roles
+        .Where(r => r.TenantNombre is not null)
+        .Select(r => r.TenantNombre!)
+        .Distinct()
+        .OrderBy(n => n)
+        .ToList();
+
+    private List<RolDto> _rolesFiltrados
+    {
+        get
+        {
+            var query = _roles.AsEnumerable();
+            if (!string.IsNullOrWhiteSpace(_busquedaRol))
+                query = query.Where(r =>
+                    r.Nombre.Contains(_busquedaRol, StringComparison.OrdinalIgnoreCase) ||
+                    r.Codigo.Contains(_busquedaRol, StringComparison.OrdinalIgnoreCase) ||
+                    (r.Descripcion?.Contains(_busquedaRol, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (r.TenantNombre?.Contains(_busquedaRol, StringComparison.OrdinalIgnoreCase) ?? false));
+            if (_filtroEstado == "activos") query = query.Where(r => r.Activo);
+            else if (_filtroEstado == "inactivos") query = query.Where(r => !r.Activo);
+            if (_filtroTenant == "global") query = query.Where(r => r.TenantNombre is null);
+            else if (_filtroTenant != "todos" && !string.IsNullOrEmpty(_filtroTenant))
+                query = query.Where(r => r.TenantNombre == _filtroTenant);
+            return query.ToList();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.TienePermiso("ROLES_DETAIL_VER")) return;
+        await CargarDatosIniciales();
+    }
+
+    private async Task CargarDatosIniciales()
+    {
+        _cargando = true;
+        try
+        {
+            await Task.WhenAll(CargarRoles(), CargarTodosPermisos());
+            await CargarEstadisticasRol();
+        }
+        finally { _cargando = false; }
+    }
+
+    private async Task CargarEstadisticasRol()
+    {
+        var rolIds = _roles.Select(r => r.Id).ToList();
+
+        var accesosTasks = rolIds
+            .Select(async id => { try { var a = await Api.GetAsync<List<AccesoDto>>($"api/accesos/rol/{id}") ?? []; return (id, count: a.Count(x => x.Activo)); } catch { return (id, count: 0); } })
+            .ToList();
+        var permisosTasks = rolIds
+            .Select(async id => { try { var p = await Api.GetAsync<List<RolPermisoDto>>($"api/permisos/rol/{id}") ?? []; return (id, count: p.Count); } catch { return (id, count: 0); } })
+            .ToList();
+        var herenciaTasks = rolIds
+            .Select(async id => { try { var pa = await Api.GetAsync<List<RolesHerenciaDto>>($"api/RolesHerencia/padres/{id}") ?? []; var hi = await Api.GetAsync<List<RolesHerenciaDto>>($"api/RolesHerencia/hijos/{id}") ?? []; return (id, count: pa.Count + hi.Count); } catch { return (id, count: 0); } })
+            .ToList();
+
+        await Task.WhenAll(accesosTasks.Concat(permisosTasks).Concat(herenciaTasks));
+
+        foreach (var t in accesosTasks) { var r = await t; _usuariosPorRol[r.id] = r.count; }
+        foreach (var t in permisosTasks) { var r = await t; _permisosCountPorRol[r.id] = r.count; }
+        foreach (var t in herenciaTasks) { var r = await t; _herenciaPorRol[r.id] = r.count; }
+    }
+
+    private async Task CargarRoles()
+    {
+        try
+        {
+            var idTenant = Auth.IdTenant ?? 0;
+            _roles = idTenant > 0
+                ? await Api.GetAsync<List<RolDto>>($"api/roles/para-tenant/{idTenant}") ?? []
+                : await Api.GetAsync<List<RolDto>>("api/roles") ?? [];
+        }
+        catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error al cargar roles: {ex.Message}", Severity.Error); }
+    }
+
+    private async Task CargarTodosPermisos()
+    {
+        try { _todosPermisos = await Api.GetAsync<List<PermisoDto>>("api/permisos/activos") ?? []; }
+        catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error al cargar permisos: {ex.Message}", Severity.Error); }
+    }
+
+    private async Task OnRolSeleccionado(RolDto? rol)
+    {
+        _rolSeleccionado = rol;
+        if (rol is not null)
+            await Task.WhenAll(CargarPermisosDelRol(), CargarUsuariosDelRol(), CargarHerenciaDelRol());
+        else
+        {
+            _permisosAgrupados = [];
+            _usuariosDelRol = [];
+            _herenciasPadre = [];
+            _herenciasHijo = [];
+        }
+    }
+
+    private async Task CargarPermisosDelRol()
+    {
+        if (_rolSeleccionado is null) return;
+        _cargandoPermisos = true;
+        try
+        {
+            var permisosDelRol = await Api.GetAsync<List<RolPermisoDto>>($"api/permisos/rol/{_rolSeleccionado.Id}") ?? [];
+            _permisosActuales = [.. permisosDelRol.Select(rp => rp.IdPermiso)];
+            _permisosAgrupados = _todosPermisos
+                .GroupBy(p => p.ModuloNombre ?? p.ModuloCodigo ?? "")
+                .OrderBy(g => g.Key)
+                .Select(g => new PermisoGrupo
+                {
+                    Modulo = g.Key,
+                    Permisos = g.OrderBy(p => p.Orden).Select(p => new PermisoCheckItem
+                    {
+                        Id = p.Id, Codigo = p.Codigo, Nombre = p.Nombre,
+                        Descripcion = p.Descripcion, Asignado = _permisosActuales.Contains(p.Id)
+                    }).ToList()
+                }).ToList();
+        }
+        catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error al cargar permisos: {ex.Message}", Severity.Error); }
+        finally { _cargandoPermisos = false; }
+    }
+
+    private async Task CargarUsuariosDelRol()
+    {
+        if (_rolSeleccionado is null) return;
+        _cargandoUsuariosRol = true;
+        try { _usuariosDelRol = await Api.GetAsync<List<AccesoDto>>($"api/accesos/rol/{_rolSeleccionado.Id}") ?? []; }
+        catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error al cargar usuarios: {ex.Message}", Severity.Error); }
+        finally { _cargandoUsuariosRol = false; }
+    }
+
+    private async Task CargarHerenciaDelRol()
+    {
+        if (_rolSeleccionado is null) return;
+        _cargandoHerencia = true;
+        try
+        {
+            var padres = await Api.GetAsync<List<RolesHerenciaDto>>($"api/RolesHerencia/padres/{_rolSeleccionado.Id}") ?? [];
+            _herenciasPadre = padres.Select(rh => new RolesHerenciaView { Id = rh.Id, IdRol = rh.IdRolPadre, RolNombre = rh.RolPadreNombre ?? "?", Tipo = "Padre", RolCodigo = "" }).ToList();
+            var hijos = await Api.GetAsync<List<RolesHerenciaDto>>($"api/RolesHerencia/hijos/{_rolSeleccionado.Id}") ?? [];
+            _herenciasHijo = hijos.Select(rh => new RolesHerenciaView { Id = rh.Id, IdRol = rh.IdRolHijo, RolNombre = rh.RolHijoNombre ?? "?", Tipo = "Hijo", RolCodigo = "" }).ToList();
+        }
+        catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error al cargar herencia: {ex.Message}", Severity.Error); }
+        finally { _cargandoHerencia = false; }
+    }
+
+    private async Task AbrirAgregarHerencia(string tipo)
+    {
+        if (_rolSeleccionado is null) return;
+        var parameters = new DialogParameters
+        {
+            ["IdTenant"] = Auth.IdTenant, ["IdRolActual"] = _rolSeleccionado.Id,
+            ["RolActualNombre"] = _rolSeleccionado.Nombre,
+            ["RolesDisponibles"] = _roles.Where(r => r.Activo && r.Id != _rolSeleccionado.Id).ToList(), ["Tipo"] = tipo
+        };
+        var dialog = await Dialog.ShowAsync<RolesHerenciaDialog>(
+            tipo == "Padre" ? "Agregar Rol Padre" : "Agregar Rol Hijo", parameters, _wideDialogOptions);
+        var result = await dialog.Result;
+        if (!result.Canceled) { await CargarHerenciaDelRol(); Snackbar.Add("Relacion de herencia creada", Severity.Success); }
+    }
+
+    private async Task RefrescarTodo()
+    {
+        _refrescando = true;
+        try
+        {
+            await CargarDatosIniciales();
+            if (_rolSeleccionado is not null)
+                await Task.WhenAll(CargarPermisosDelRol(), CargarUsuariosDelRol(), CargarHerenciaDelRol());
+            Snackbar.Add("Datos actualizados", Severity.Info);
+        }
+        finally { _refrescando = false; }
+    }
+
+    private async Task AbrirCrearRol()
+    {
+        var parameters = new DialogParameters { ["IsEdit"] = false };
+        var dialog = await Dialog.ShowAsync<RolDialog>("Nuevo Rol", parameters, _wideDialogOptions);
+        var result = await dialog.Result;
+        if (!result.Canceled) { await ReCargarTodo(); Snackbar.Add("Rol creado", Severity.Success); }
+    }
+
+    private async Task AbrirEditarRol(RolDto rol)
+    {
+        var parameters = new DialogParameters { ["IsEdit"] = true, ["Rol"] = rol };
+        var dialog = await Dialog.ShowAsync<RolDialog>("Editar Rol", parameters, _wideDialogOptions);
+        var result = await dialog.Result;
+        if (!result.Canceled) { await ReCargarTodo(); Snackbar.Add("Rol actualizado", Severity.Success); }
+    }
+
+    private async Task ConfirmarEliminarRol(RolDto rol)
+    {
+        var msg = rol.Activo
+            ? $"Desactivar rol '{rol.Nombre}'? Se desactivaran sus permisos y politicas asociados."
+            : $"Activar rol '{rol.Nombre}'?";
+        var parameters = new DialogParameters { ["Title"] = "Confirmar", ["Message"] = msg, ["ConfirmText"] = "Si", ["CancelText"] = "Cancelar", ["ConfirmColor"] = Color.Error };
+        var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parameters);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            _eliminandoRol = true;
+            try
+            {
+                var ok = await Api.DeleteAsync($"api/roles/{rol.Id}");
+                if (ok)
+                {
+                    Snackbar.Add(rol.Activo ? "Rol desactivado" : "Rol activado", Severity.Success);
+                    if (_rolSeleccionado?.Id == rol.Id) { _rolSeleccionado = null; _permisosAgrupados = []; _usuariosDelRol = []; }
+                    await ReCargarTodo();
+                }
+                else Snackbar.Add(Api.LastError ?? "Error al actualizar rol", Severity.Error);
+            }
+            catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error); }
+            finally { _eliminandoRol = false; }
+        }
+    }
+
+    private async Task ReCargarTodo()
+    {
+        _cargando = true;
+        try
+        {
+            await CargarDatosIniciales();
+        }
+        finally { _cargando = false; }
+    }
+
+    private async Task AbrirAsignarPermisosARol()
+    {
+        if (_rolSeleccionado is null) return;
+        var parameters = new DialogParameters { ["IdRol"] = _rolSeleccionado.Id, ["RolNombre"] = _rolSeleccionado.Nombre, ["PermisosActuales"] = new HashSet<int>(_permisosActuales) };
+        var dialog = await Dialog.ShowAsync<AsignarPermisoRolDialog>("Asignar Permisos", parameters, _wideDialogOptions);
+        var result = await dialog.Result;
+        if (!result.Canceled) await CargarPermisosDelRol();
+    }
+
+    private async Task TogglePermiso(PermisoCheckItem permiso, bool asignado)
+    {
+        if (_rolSeleccionado is null) return;
+        permiso.Asignado = asignado;
+        if (asignado) _permisosActuales.Add(permiso.Id); else _permisosActuales.Remove(permiso.Id);
+        _guardandoPermiso = true;
+        try
+        {
+            if (asignado)
+            {
+                var dto = new AsignarPermisoDto { IdRol = _rolSeleccionado.Id, IdPermiso = permiso.Id };
+                var result = await Api.PostAsync<RolPermisoDto>("api/permisos/rol", dto);
+                if (result is null) { permiso.Asignado = false; _permisosActuales.Remove(permiso.Id); Snackbar.Add(Api.LastError ?? "Error al asignar", Severity.Error); }
+            }
+            else
+            {
+                var ok = await Api.DeleteAsync($"api/permisos/rol/{_rolSeleccionado.Id}/{permiso.Id}");
+                if (!ok) { permiso.Asignado = true; _permisosActuales.Add(permiso.Id); Snackbar.Add(Api.LastError ?? "Error al desasignar", Severity.Error); }
+            }
+        }
+        catch (Exception ex)
+        {
+            permiso.Asignado = !asignado;
+            if (asignado) _permisosActuales.Remove(permiso.Id); else _permisosActuales.Add(permiso.Id);
+            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+        }
+        finally { _guardandoPermiso = false; await InvokeAsync(StateHasChanged); }
+    }
+
+    private async Task AbrirAsignarUsuarioARol()
+    {
+        if (_rolSeleccionado is null) return;
+        var parameters = new DialogParameters { ["RolPreSeleccionado"] = _rolSeleccionado };
+        var dialog = await Dialog.ShowAsync<AsignarUsuarioRolDialog>("Asignar Usuario a Rol", parameters, _wideDialogOptions);
+        var result = await dialog.Result;
+        if (!result.Canceled) { await CargarUsuariosDelRol(); await CargarEstadisticasRol(); }
+    }
+
+    public class PermisoGrupo
+    {
+        public string Modulo { get; set; } = string.Empty;
+        public List<PermisoCheckItem> Permisos { get; set; } = [];
+    }
+
+    public class PermisoCheckItem
+    {
+        public int Id { get; set; }
+        public string Codigo { get; set; } = string.Empty;
+        public string Nombre { get; set; } = string.Empty;
+        public string? Descripcion { get; set; }
+        public bool Asignado { get; set; }
+    }
+
+    public class RolesHerenciaView
+    {
+        public int Id { get; set; }
+        public int IdRol { get; set; }
+        public string RolNombre { get; set; } = string.Empty;
+        public string RolCodigo { get; set; } = string.Empty;
+        public string Tipo { get; set; } = string.Empty;
+    }
+}

@@ -1,0 +1,690 @@
+@page "/admin/dashboard-enterprise"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Web
+@attribute [Authorize(Policy = "USUARIOS_VER")]
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject AuthService Auth
+@inject IJSRuntime JSRuntime
+
+<MudContainer MaxWidth="MaxWidth.False" Class="pa-0">
+    @* ── Header + Filtros Globales ── *@
+    <MudPaper Class="pa-4 mb-4" Elevation="0" Outlined="true">
+        <div class="d-flex flex-wrap align-center gap-4 mb-3">
+            <div class="flex-grow-1">
+                <MudText Typo="Typo.h5" Class="font-weight-bold">Centro de Operaciones IAM</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Dashboard Ejecutivo y Operacional Enterprise</MudText>
+            </div>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Refresh"
+                        OnClick="RecargarTodoAsync" Disabled="@_loading">
+                @if (_loading) { <MudProgressCircular Size="Size.Small" Indeterminate="true" /> }
+                else { <span>Actualizar</span> }
+            </MudButton>
+            <MudTextField @bind-Value="_filtro.TenantNombre" Label="Tenant" Variant="Variant.Outlined" Dense="true" Immediate="true"
+                            OnAdornmentClick="@(() => _filtro.TenantNombre = "")" AdornmentIcon="@Icons.Material.Filled.Search" Adornment="Adornment.Start" />
+            <MudTextField @bind-Value="_filtro.AppNombre" Label="Aplicación" Variant="Variant.Outlined" Dense="true" Immediate="true"
+                            OnAdornmentClick="@(() => _filtro.AppNombre = "")" AdornmentIcon="@Icons.Material.Filled.Search" Adornment="Adornment.Start" />
+            <MudDatePicker @bind-Date="_filtro.FechaDesde" Label="Desde" Variant="Variant.Outlined" Dense="true" />
+            <MudDatePicker @bind-Date="_filtro.FechaHasta" Label="Hasta" Variant="Variant.Outlined" Dense="true" />
+            <MudSelect T="string" @bind-Value="_autoRefresh" Label="Auto-refresh" Variant="Variant.Outlined" Dense="true" Style="min-width:130px">
+                <MudSelectItem T="string" Value="@("off")">Manual</MudSelectItem>
+                <MudSelectItem T="string" Value="@("30")">30 seg</MudSelectItem>
+                <MudSelectItem T="string" Value="@("60")">60 seg</MudSelectItem>
+                <MudSelectItem T="string" Value="@("300")">5 min</MudSelectItem>
+            </MudSelect>
+            <MudButton Variant="Variant.Outlined" Color="Color.Default" StartIcon="@Icons.Material.Filled.Download"
+                        OnClick="@(() => ExportarCsvAsync())">
+                Export CSV
+            </MudButton>
+        </div>
+    </MudPaper>
+
+    @* ── Estado General (Módulos) ── *@
+    @if (_estadoGeneral is not null)
+    {
+        <MudGrid Class="mb-4">
+            @foreach (var m in _modulosEstado)
+            {
+                <MudItem xs="6" sm="4" md="2">
+                    <MudPaper Class="pa-2 text-center" Elevation="0" Outlined="true"
+                               Style="@($"border-left:4px solid {_moduloColor(m.Estado)};")">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@m.Modulo</MudText>
+                        <MudIcon Icon="@_moduloIcon(m.Estado)" Color="@_moduloMudColor(m.Estado)" Size="Size.Small" />
+                        <MudText Typo="Typo.caption" Class="mt-1">@m.Mensaje</MudText>
+                    </MudPaper>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+
+    @* ── Tabs ── *@
+    <MudPaper Elevation="0" Outlined="true" Class="pa-0">
+        <MudTabs Elevation="0" Rounded="false" ApplyEffectsToContainer="true" PanelClass="pa-4">
+            <MudTabPanel Text="Ejecutivo" Icon="@Icons.Material.Filled.Dashboard">
+                @if (_ejec is not null)
+                {
+                    <MudGrid Class="mb-4">
+                        @foreach (var (label, val, color, icon, url) in new (string, int, string, string, string)[] {
+                            ("Total Usuarios", _ejec.TotalUsuarios, "primary", Icons.Material.Filled.People, "/admin/usuarios"),
+                            ("Activos", _ejec.UsuariosActivos, "success", Icons.Material.Filled.CheckCircle, "/admin/usuarios?estado=1"),
+                            ("Bloqueados", _ejec.UsuariosBloqueados, "error", Icons.Material.Filled.Block, "/admin/usuarios?estado=3"),
+                            ("Eliminados", _ejec.UsuariosEliminados, "secondary", Icons.Material.Filled.Delete, "/admin/usuarios?eliminados=true"),
+                            ("Locales", _ejec.UsuariosLocales, "info", Icons.Material.Filled.Lock, "/admin/usuarios?tipo=local"),
+                            ("Externos", _ejec.UsuariosExternos, "warning", Icons.Material.Filled.VpnKey, "/admin/iam-identidades"),
+                            ("Mixtos", _ejec.UsuariosMixtos, "primary", Icons.Material.Filled.SwapHoriz, "/admin/usuarios?tipo=mixto"),
+                            ("Roles", _ejec.TotalRoles, "info", Icons.Material.Filled.ManageAccounts, "/admin/roles"),
+                            ("Permisos", _ejec.TotalPermisos, "secondary", Icons.Material.Filled.Shield, "/admin/permisos"),
+                            ("Sesiones Activas", _ejec.SesionesActivas, "success", Icons.Material.Filled.LockOpen, "/admin/sesiones"),
+                            ("Tenants", _ejec.TotalTenants, "info", Icons.Material.Filled.Business, "/admin/tenants"),
+                            ("Apps", _ejec.TotalApps, "secondary", Icons.Material.Filled.Apps, "/admin/apps"),
+                            ("Identidades Ext.", _ejec.IdentidadesExternas, "warning", Icons.Material.Filled.Hub, "/admin/iam-identidades"),
+                            ("Disp. Confiables", _ejec.DispositivosConfiables, "success", Icons.Material.Filled.Devices, "/admin/disp-confiables"),
+                            ("Notif. No Leídas", _ejec.NotificacionesNoLeidas, "warning", Icons.Material.Filled.Notifications, "/admin/notificaciones"),
+                            ("Emails Hoy", _ejec.EmailsEnviadosHoy, "success", Icons.Material.Filled.Email, "/admin/email-logs"),
+                            ("Emails Fallidos", _ejec.EmailsFallidos, "error", Icons.Material.Filled.Error, "/admin/email-logs?estado=Error"),
+                        })
+                        {
+                            <MudItem xs="6" sm="4" md="3">
+                                <IamKpiCard Label="@label" Valor="@val.ToString()" Icon="@icon" ColorClass="@color" />
+                            </MudItem>
+                        }
+                    </MudGrid>
+                }
+                else
+                {
+                    <MudPaper Elevation="0" Outlined="true" Class="pa-8 text-center">
+                        <MudText>Cargando datos ejecutivos...</MudText>
+                    </MudPaper>
+                }
+            </MudTabPanel>
+            <MudTabPanel Text="Seguridad" Icon="@Icons.Material.Filled.Security">
+                @if (_seg is not null)
+                {
+                    <MudGrid>
+                        @foreach (var (label, val, color, icon) in new (string, int, string, string)[] {
+                            ("Logins Correctos", _seg.LoginsCorrectos, "success", Icons.Material.Filled.CheckCircle),
+                            ("Logins Fallidos", _seg.LoginsFallidos, "error", Icons.Material.Filled.Error),
+                            ("Bloqueos Activos", _seg.BloqueosActivos, "warning", Icons.Material.Filled.Block),
+                            ("Alertas Seguridad", _seg.AlertasSeguridad, "error", Icons.Material.Filled.Warning),
+                            ("Desbloqueos Hoy", _seg.DesbloqueosHoy, "success", Icons.Material.Filled.LockOpen),
+                            ("MFA Habilitado", _seg.MFAHabilitado, "success", Icons.Material.Filled.VerifiedUser),
+                            ("MFA Pendiente", _seg.MFAPendiente, "warning", Icons.Material.Filled.Pending),
+                            ("Passwords Expiradas", _seg.PasswordsExpiradas, "error", Icons.Material.Filled.KeyOff),
+                            ("Passwords x Vencer", _seg.PasswordsProximasVencer, "warning", Icons.Material.Filled.Key),
+                            ("IPs Sospechosas", _seg.IPsSospechosas, "error", Icons.Material.Filled.Warning),
+                            ("Países Detectados", _seg.PaisesDetectados, "info", Icons.Material.Filled.Public),
+                            ("Nuevos Disp. 24h", _seg.NuevosDispositivos24h, "info", Icons.Material.Filled.Devices),
+                            ("Usuarios sin MFA", _seg.UsuariosSinMFA, "warning", Icons.Material.Filled.Shield),
+                            ("Usuarios sin Email", _seg.UsuariosSinEmail, "secondary", Icons.Material.Filled.Mail),
+                            ("Usuarios Híbridos", _seg.UsuariosHibridos, "primary", Icons.Material.Filled.SwapHoriz),
+                            ("Nuevos Prov. OAuth 24h", _seg.NuevosProveedoresOAuth24h, "warning", Icons.Material.Filled.Add),
+                        })
+                        {
+                            <MudItem xs="6" sm="4" md="3">
+                                <IamKpiCard Label="@label" Valor="@val.ToString()" Icon="@icon" ColorClass="@color" />
+                            </MudItem>
+                        }
+                    </MudGrid>
+                    @if (_seg.IntentosUltimos30Dias.Count > 0)
+                    {
+                        <MudPaper Class="pa-4 mt-4" Elevation="0" Outlined="true">
+                            <MudText Typo="Typo.h6" Class="font-weight-bold mb-3">Intentos de Acceso — Últimos 30 días</MudText>
+                            <IamChart Tipo="Bar" Puntos="@(_seg.IntentosUltimos30Dias.Select(t => new IamChart.ChartPoint { Etiqueta = t.Fecha.ToString("dd/MM"), Y = t.Cantidad }).ToList())" Titulo="Intentos de Acceso" />
+                        </MudPaper>
+                    }
+                }
+                else
+                {
+                    <MudPaper Elevation="0" Outlined="true" Class="pa-8 text-center">
+                        <MudText>Cargando seguridad...</MudText>
+                    </MudPaper>
+                }
+            </MudTabPanel>
+            <MudTabPanel Text="OAuth" Icon="@Icons.Material.Filled.VpnKey">
+                @if (_oauth is not null)
+                {
+                    <MudGrid>
+                        @foreach (var (label, val, color, icon) in new (string, int, string, string)[] {
+                            ("Google", _oauth.UsuariosGoogle, "info", Icons.Material.Filled.VpnKey),
+                            ("GitHub", _oauth.UsuariosGithub, "secondary", Icons.Material.Filled.VpnKey),
+                            ("LinkedIn", _oauth.UsuariosLinkedIn, "info", Icons.Material.Filled.VpnKey),
+                            ("Facebook", _oauth.UsuariosFacebook, "info", Icons.Material.Filled.VpnKey),
+                            ("Instagram", _oauth.UsuariosInstagram, "warning", Icons.Material.Filled.VpnKey),
+                            ("Vinculados", _oauth.UsuariosVinculados, "success", Icons.Material.Filled.Link),
+                            ("Consent. Activos", _oauth.ConsentimientosActivos, "success", Icons.Material.Filled.Check),
+                            ("Consent. Revocados", _oauth.ConsentimientosRevocados, "error", Icons.Material.Filled.LinkOff),
+                            ("Errores OAuth", _oauth.ErroresOAuth, "error", Icons.Material.Filled.Error),
+                            ("Logins Hoy", _oauth.LoginsOAuthHoy, "info", Icons.Material.Filled.Today),
+                            ("Logins Semana", _oauth.LoginsOAuthSemana, "secondary", Icons.Material.Filled.DateRange),
+                            ("Proveedor + Usado", _oauth.ProveedorMasUtilizado.Length, "primary", Icons.Material.Filled.Star),
+                        })
+                        {
+                            <MudItem xs="6" sm="4" md="3">
+                                <IamKpiCard Label="@label" Valor="@val.ToString()" Icon="@icon" ColorClass="@color" />
+                            </MudItem>
+                        }
+                    </MudGrid>
+                    @if (_oauth.ProviderDeshabilitado > 0 || _oauth.ProviderTimeout > 0 || _oauth.ProviderUnavailable > 0)
+                    {
+                        <MudPaper Class="pa-3 mt-3" Elevation="0" Outlined="true">
+                            <MudText Typo="Typo.subtitle2" Class="font-weight-bold mb-2">Incidencias de Proveedores</MudText>
+                            <MudGrid>
+                                @if (_oauth.ProviderDeshabilitado > 0)
+                                {
+                                    <MudItem xs="4">
+                                        <IamKpiCard Label="Deshabilitados" Valor="@_oauth.ProviderDeshabilitado.ToString()" Icon="@Icons.Material.Filled.Block" ColorClass="error" />
+                                    </MudItem>
+                                }
+                                @if (_oauth.ProviderTimeout > 0)
+                                {
+                                    <MudItem xs="4">
+                                        <IamKpiCard Label="Timeout" Valor="@_oauth.ProviderTimeout.ToString()" Icon="@Icons.Material.Filled.Timer" ColorClass="warning" />
+                                    </MudItem>
+                                }
+                                @if (_oauth.ProviderUnavailable > 0)
+                                {
+                                    <MudItem xs="4">
+                                        <IamKpiCard Label="No Disponible" Valor="@_oauth.ProviderUnavailable.ToString()" Icon="@Icons.Material.Filled.Cloud" ColorClass="error" />
+                                    </MudItem>
+                                }
+                            </MudGrid>
+                        </MudPaper>
+                    }
+                }
+                else
+                {
+                    <MudPaper Elevation="0" Outlined="true" Class="pa-8 text-center">
+                        <MudText>Cargando OAuth...</MudText>
+                    </MudPaper>
+                }
+            </MudTabPanel>
+            <MudTabPanel Text="Email" Icon="@Icons.Material.Filled.Email">
+                @if (_email is not null)
+                {
+                    <MudGrid>
+                        @foreach (var (label, val, color, icon) in new (string, int, string, string)[] {
+                            ("Enviados", _email.EmailsEnviados, "success", Icons.Material.Filled.Send),
+                            ("Pendientes", _email.EmailsPendientes, "warning", Icons.Material.Filled.Pending),
+                            ("Errores", _email.EmailsError, "error", Icons.Material.Filled.Error),
+                            ("Hoy", _email.EmailsHoy, "info", Icons.Material.Filled.Today),
+                            ("Semana", _email.EmailsSemana, "secondary", Icons.Material.Filled.DateRange),
+                            ("Mes", _email.EmailsMes, "primary", Icons.Material.Filled.CalendarMonth),
+                            ("Templates Usados", _email.TemplatesUtilizados, "info", Icons.Material.Filled.Description),
+                            ("Templates Fallidos", _email.TemplatesFallidos, "error", Icons.Material.Filled.ErrorOutline),
+                            ("Cola", _email.ColaEmail, "warning", Icons.Material.Filled.Queue),
+                        })
+                        {
+                            <MudItem xs="6" sm="4" md="2">
+                                <IamKpiCard Label="@label" Valor="@val.ToString()" Icon="@icon" ColorClass="@color" />
+                            </MudItem>
+                        }
+                    </MudGrid>
+                    @if (_email.TopTemplates.Count > 0)
+                    {
+                        <MudPaper Class="pa-4 mt-4" Elevation="0" Outlined="true">
+                            <MudText Typo="Typo.h6" Class="font-weight-bold mb-3">Top Templates</MudText>
+                            <MudTable Items="@_email.TopTemplates" Dense="true" Hover="true" Elevation="0">
+                                <HeaderContent>
+                                    <MudTh>Template</MudTh><MudTh>Enviados</MudTh><MudTh>Fallidos</MudTh>
+                                </HeaderContent>
+                                <RowTemplate>
+                                    <MudTd>@context.TemplateNombre</MudTd>
+                                    <MudTd>@context.Enviados</MudTd>
+                                    <MudTd>@context.Fallidos</MudTd>
+                                </RowTemplate>
+                            </MudTable>
+                        </MudPaper>
+                    }
+                }
+                else
+                {
+                    <MudPaper Elevation="0" Outlined="true" Class="pa-8 text-center">
+                        <MudText>Cargando email...</MudText>
+                    </MudPaper>
+                }
+            </MudTabPanel>
+            <MudTabPanel Text="Operacional" Icon="@Icons.Material.Filled.Memory">
+                @if (_oper is not null)
+                {
+                    <MudGrid>
+                        @foreach (var (label, val, color, icon) in new (string, double, string, string)[] {
+                            ("Resp. Login (ms)", _oper.TiempoRespuestaLoginMs, "info", Icons.Material.Filled.Speed),
+                            ("CPU %", _oper.CpuPorcentaje, "warning", Icons.Material.Filled.Memory),
+                            ("RAM (MB)", _oper.RamMb, "secondary", Icons.Material.Filled.Storage),
+                            ("Resp. API (ms)", _oper.TiempoRespuestaApiMs, "info", Icons.Material.Filled.Api),
+                            ("Resp. SMTP (ms)", _oper.TiempoSmtpMs, "success", Icons.Material.Filled.Email),
+                            ("Resp. OAuth (ms)", _oper.TiempoOAuthMs, "primary", Icons.Material.Filled.VpnKey),
+                            ("Resp. SQL (ms)", _oper.TiempoSqlMs, "secondary", Icons.Material.Filled.Storage),
+                        })
+                        {
+                            <MudItem xs="6" sm="4" md="3">
+                                <IamKpiCard Label="@label" Valor="@val.ToString("F1")" Icon="@icon" ColorClass="@color" />
+                            </MudItem>
+                        }
+                    </MudGrid>
+                    @if (_oper.HealthChecks.Count > 0)
+                    {
+                        <MudPaper Class="pa-4 mt-4" Elevation="0" Outlined="true">
+                            <MudText Typo="Typo.h6" Class="font-weight-bold mb-3">Health Checks</MudText>
+                            @foreach (var hc in _oper.HealthChecks)
+                            {
+                                <div class="d-flex align-center gap-2 mb-2">
+                                    <MudIcon Icon="@(hc.Saludable ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Error)" Color="@(hc.Saludable ? Color.Success : Color.Error)" />
+                                    <span>@hc.Nombre — @hc.Mensaje</span>
+                                </div>
+                            }
+                        </MudPaper>
+                    }
+                    @if (_bgJobs.Count > 0)
+                    {
+                        <MudPaper Class="pa-4 mt-4" Elevation="0" Outlined="true">
+                            <MudText Typo="Typo.h6" Class="font-weight-bold mb-3">Background Jobs</MudText>
+                            <MudTable Items="@_bgJobs" Dense="true" Hover="true" Elevation="0">
+                                <HeaderContent>
+                                    <MudTh>Servicio</MudTh><MudTh>Estado</MudTh><MudTh>Items</MudTh>
+                                </HeaderContent>
+                                <RowTemplate>
+                                    <MudTd>@context.Nombre</MudTd>
+                                    <MudTd>@context.Estado</MudTd>
+                                    <MudTd>@context.ItemsProcesados</MudTd>
+                                </RowTemplate>
+                            </MudTable>
+                        </MudPaper>
+                    }
+                }
+                else
+                {
+                    <MudPaper Elevation="0" Outlined="true" Class="pa-8 text-center">
+                        <MudText>Cargando operacional...</MudText>
+                    </MudPaper>
+                }
+            </MudTabPanel>
+            <MudTabPanel Text="Auditoría" Icon="@Icons.Material.Filled.History">
+                @if (_aud is not null)
+                {
+                    <MudGrid>
+                        @foreach (var (label, val, color, icon) in new (string, int, string, string)[] {
+                            ("Eventos Hoy", _aud.EventosHoy, "info", Icons.Material.Filled.Today),
+                            ("Eventos Semana", _aud.EventosSemana, "secondary", Icons.Material.Filled.DateRange),
+                            ("Eventos Mes", _aud.EventosMes, "primary", Icons.Material.Filled.CalendarMonth),
+                            ("Usuarios Auditados", _aud.UsuariosAuditados, "success", Icons.Material.Filled.People),
+                            ("Cambios Password", _aud.CambiosPassword, "warning", Icons.Material.Filled.Key),
+                            ("Cambios Roles", _aud.CambiosRoles, "info", Icons.Material.Filled.ManageAccounts),
+                            ("Cambios Permisos", _aud.CambiosPermisos, "secondary", Icons.Material.Filled.Shield),
+                            ("Cambios MFA", _aud.CambiosMFA, "primary", Icons.Material.Filled.VerifiedUser),
+                            ("Cambios Email", _aud.CambiosEmail, "success", Icons.Material.Filled.Mail),
+                            ("Cambios OAuth", _aud.CambiosOAuth, "info", Icons.Material.Filled.VpnKey),
+                            ("Cambios Tenant", _aud.CambiosTenant, "warning", Icons.Material.Filled.Business),
+                            ("Cambios Aplicación", _aud.CambiosAplicacion, "secondary", Icons.Material.Filled.Apps),
+                        })
+                        {
+                            <MudItem xs="6" sm="4" md="2">
+                                <IamKpiCard Label="@label" Valor="@val.ToString()" Icon="@icon" ColorClass="@color" />
+                            </MudItem>
+                        }
+                    </MudGrid>
+                    @if (_aud.AuditoriaUltimos30Dias.Count > 0)
+                    {
+                        <MudPaper Class="pa-4 mt-4" Elevation="0" Outlined="true">
+                            <MudText Typo="Typo.h6" Class="font-weight-bold mb-3">Auditoría — Últimos 30 días</MudText>
+                            <IamChart Tipo="Area" Puntos="@(_aud.AuditoriaUltimos30Dias.Select(t => new IamChart.ChartPoint { Etiqueta = t.Fecha.ToString("dd/MM"), Y = t.Cantidad }).ToList())" Titulo="Eventos de Auditoría" />
+                        </MudPaper>
+                    }
+                }
+                else
+                {
+                    <MudPaper Elevation="0" Outlined="true" Class="pa-8 text-center">
+                        <MudText>Cargando auditoría...</MudText>
+                    </MudPaper>
+                }
+            </MudTabPanel>
+            <MudTabPanel Text="Dispositivos" Icon="@Icons.Material.Filled.Devices">
+                @if (_disp is not null)
+                {
+                    <MudGrid>
+                        @foreach (var (label, val, color, icon) in new (string, int, string, string)[] {
+                            ("Activos", _disp.DispositivosActivos, "success", Icons.Material.Filled.CheckCircle),
+                            ("Bloqueados", _disp.DispositivosBloqueados, "error", Icons.Material.Filled.Block),
+                            ("Eliminados", _disp.DispositivosEliminados, "secondary", Icons.Material.Filled.Delete),
+                            ("Nuevos 24h", _disp.DispositivosNuevos24h, "info", Icons.Material.Filled.NewReleases),
+                            ("Total IPs", _disp.TotalIPs, "warning", Icons.Material.Filled.Public),
+                        })
+                        {
+                            <MudItem xs="6" sm="4" md="2">
+                                <IamKpiCard Label="@label" Valor="@val.ToString()" Icon="@icon" ColorClass="@color" />
+                            </MudItem>
+                        }
+                    </MudGrid>
+                    @if (_disp.PorSO.Count > 0)
+                    {
+                        <MudPaper Class="pa-4 mt-4" Elevation="0" Outlined="true">
+                            <MudText Typo="Typo.h6" Class="font-weight-bold mb-3">Dispositivos por SO</MudText>
+                            <IamChart Tipo="Donut" Segmentos="@(_disp.PorSO.Select((c, i) => new IamChart.ChartSegment { Etiqueta = c.Nombre, Valor = c.Cantidad, Color = _paleta[i % _paleta.Length] }).ToList())" MostrarLeyenda="true" />
+                        </MudPaper>
+                    }
+                    @if (_disp.PorNavegador.Count > 0)
+                    {
+                        <MudPaper Class="pa-4 mt-4" Elevation="0" Outlined="true">
+                            <MudText Typo="Typo.h6" Class="font-weight-bold mb-3">Dispositivos por Navegador</MudText>
+                            <IamChart Tipo="Donut" Segmentos="@(_disp.PorNavegador.Select((c, i) => new IamChart.ChartSegment { Etiqueta = c.Nombre, Valor = c.Cantidad, Color = _paleta[i % _paleta.Length] }).ToList())" MostrarLeyenda="true" />
+                        </MudPaper>
+                    }
+                    @if (_disp.PorPais.Count > 0)
+                    {
+                        <MudPaper Class="pa-4 mt-4" Elevation="0" Outlined="true">
+                            <MudText Typo="Typo.h6" Class="font-weight-bold mb-3">Dispositivos por País</MudText>
+                            <IamChart Tipo="Bar" Puntos="@(_disp.PorPais.Select((c, i) => new IamChart.ChartPoint { Etiqueta = c.Nombre, Y = c.Cantidad }).ToList())" Paleta="@_paleta" />
+                        </MudPaper>
+                    }
+                }
+                else
+                {
+                    <MudPaper Elevation="0" Outlined="true" Class="pa-8 text-center">
+                        <MudText>Cargando dispositivos...</MudText>
+                    </MudPaper>
+                }
+            </MudTabPanel>
+            <MudTabPanel Text="Tendencias" Icon="@Icons.Material.Filled.ShowChart">
+                @if (_tend is not null)
+                {
+                    @foreach (var (nombre, datos, color) in new (string, List<TrendItemDto>, string)[] {
+                        ("Usuarios", _tend.UsuariosUltimos30Dias, "#1976d2"),
+                        ("Logins", _tend.LoginsUltimos30Dias, "#388e3c"),
+                        ("Emails", _tend.EmailsUltimos30Dias, "#fbc02d"),
+                        ("OAuth", _tend.OAuthUltimos30Dias, "#7b1fa2"),
+                        ("Errores", _tend.ErroresUltimos30Dias, "#d32f2f"),
+                        ("MFA", _tend.MFAUltimos30Dias, "#00796b"),
+                        ("Passwords", _tend.PasswordsUltimos30Dias, "#ff7043"),
+                    })
+                    {
+                        @if (datos.Count > 0)
+                        {
+                            <MudPaper Class="pa-4 mb-4" Elevation="0" Outlined="true">
+                                <MudText Typo="Typo.h6" Class="font-weight-bold mb-3" Style="@($"color:{color}")">@nombre — Últimos 30 días</MudText>
+                                <IamChart Tipo="Line" Puntos="@(datos.Select(t => new IamChart.ChartPoint { Etiqueta = t.Fecha.ToString("dd/MM"), Y = t.Cantidad }).ToList())" Paleta="@(new[] { color })" />
+                            </MudPaper>
+                        }
+                    }
+                }
+                else
+                {
+                    <MudPaper Elevation="0" Outlined="true" Class="pa-8 text-center">
+                        <MudText>Cargando tendencias...</MudText>
+                    </MudPaper>
+                }
+            </MudTabPanel>
+            <MudTabPanel Text="Avanzado" Icon="@Icons.Material.Filled.Leaderboard">
+                @if (_avanz is not null)
+                {
+                    @foreach (var (titulo, items) in new (string, List<CountItemDto>)[] {
+                        ("Top 10 Usuarios Activos", _avanz.Top10UsuariosActivos),
+                        ("Top 10 Apps", _avanz.Top10Apps),
+                        ("Top 10 Roles", _avanz.Top10Roles),
+                        ("Top 10 Proveedores OAuth", _avanz.Top10ProveedoresOAuth),
+                        ("Top 10 IPs", _avanz.Top10IPs),
+                        ("Top 10 Países", _avanz.Top10Paises),
+                        ("Top 10 Errores", _avanz.Top10Errores),
+                        ("Top 10 Templates", _avanz.Top10Templates),
+                    })
+                    {
+                        @if (items.Count > 0)
+                        {
+                            <MudPaper Class="pa-4 mb-4" Elevation="0" Outlined="true">
+                                <MudText Typo="Typo.h6" Class="font-weight-bold mb-3">@titulo</MudText>
+                                <IamChart Tipo="Bar" Puntos="@(items.Select(c => new IamChart.ChartPoint { Etiqueta = c.Nombre, Y = c.Cantidad }).ToList())" />
+                            </MudPaper>
+                        }
+                    }
+                }
+                else
+                {
+                    <MudPaper Elevation="0" Outlined="true" Class="pa-8 text-center">
+                        <MudText>Cargando rankings...</MudText>
+                    </MudPaper>
+                }
+            </MudTabPanel>
+        </MudTabs>
+    </MudPaper>
+</MudContainer>
+
+@* ── Inspector Lateral ── *@
+<MudDrawer @bind-Open="_drawerOpen" Anchor="Anchor.Right" Elevation="1">
+    <MudPaper Class="pa-4" Style="width:360px;height:100%;">
+        <div class="d-flex align-center mb-3">
+            <MudText Typo="Typo.h6" Class="flex-grow-1">@_inspectorTitulo</MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" OnClick="@(() => _drawerOpen = false)" />
+        </div>
+        @if (_inspectorLoading)
+        {
+            <MudSkeleton Width="80%" Height="20px" Class="mb-2" />
+            <MudSkeleton Width="60%" Height="20px" Class="mb-4" />
+            <MudSkeleton Width="90%" Height="60px" />
+        }
+        else
+        {
+            @_inspectorContent
+        }
+    </MudPaper>
+</MudDrawer>
+
+@code {
+    private bool _loading;
+    private bool _drawerOpen;
+    private string _autoRefresh = "off";
+    private System.Timers.Timer? _timer;
+
+    private DashboardFiltrosDto _filtro = new();
+
+    private DashboardEstadoGeneralDto? _estadoGeneral;
+    private List<ModuloEstadoDto> _modulosEstado = [];
+
+    private DashboardEjecutivoDto? _ejec;
+    private DashboardSeguridadDto? _seg;
+    private DashboardOAuthDto? _oauth;
+    private DashboardEmailDto? _email;
+    private DashboardOperacionalDto? _oper;
+    private DashboardAuditoriaDto? _aud;
+    private DashboardDispositivosDto? _disp;
+    private DashboardTendenciasDto? _tend;
+    private DashboardEjecutivoAvanzadoDto? _avanz;
+    private List<BackgroundJobDto> _bgJobs = [];
+
+    private string _inspectorTitulo = "";
+    private bool _inspectorLoading;
+    private RenderFragment _inspectorContent = builder => { };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RecargarTodoAsync();
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender) ConfigurarAutoRefresh();
+    }
+
+    private void ConfigurarAutoRefresh()
+    {
+        _timer?.Stop();
+        _timer?.Dispose();
+        if (_autoRefresh != "off" && int.TryParse(_autoRefresh, out var seg) && seg > 0)
+        {
+            _timer = new System.Timers.Timer(seg * 1000);
+            _timer.Elapsed += async (s, e) => await InvokeAsync(RecargarTodoAsync);
+            _timer.AutoReset = true;
+            _timer.Start();
+        }
+    }
+
+    private async Task RecargarTodoAsync()
+    {
+        _loading = true;
+        StateHasChanged();
+        try
+        {
+            var tasks = new Task[]
+            {
+                CargarSeccionAsync("ejecutivo", () => Api.GetAsync<DashboardEjecutivoDto>("api/dashboard-enterprise/ejecutivo"), r => _ejec = r),
+                CargarSeccionAsync("seguridad", () => Api.GetAsync<DashboardSeguridadDto>("api/dashboard-enterprise/seguridad"), r => _seg = r),
+                CargarSeccionAsync("oauth", () => Api.GetAsync<DashboardOAuthDto>("api/dashboard-enterprise/oauth"), r => _oauth = r),
+                CargarSeccionAsync("email", () => Api.GetAsync<DashboardEmailDto>("api/dashboard-enterprise/email"), r => _email = r),
+                CargarSeccionAsync("operacional", () => Api.GetAsync<DashboardOperacionalDto>("api/dashboard-enterprise/operacional"), r => _oper = r),
+                CargarSeccionAsync("auditoria", () => Api.GetAsync<DashboardAuditoriaDto>("api/dashboard-enterprise/auditoria"), r => _aud = r),
+                CargarSeccionAsync("dispositivos", () => Api.GetAsync<DashboardDispositivosDto>("api/dashboard-enterprise/dispositivos"), r => _disp = r),
+                CargarSeccionAsync("tendencias", () => Api.GetAsync<DashboardTendenciasDto>("api/dashboard-enterprise/tendencias"), r => _tend = r),
+                CargarSeccionAsync("ejecutivo-avanzado", () => Api.GetAsync<DashboardEjecutivoAvanzadoDto>("api/dashboard-enterprise/ejecutivo-avanzado"), r => _avanz = r),
+                CargarSeccionAsync("estado-general", () => Api.GetAsync<DashboardEstadoGeneralDto>("api/dashboard-enterprise/estado-general"), r => { _estadoGeneral = r; _modulosEstado = ExtraerModulos(r); }),
+                CargarSeccionAsync("background", () => Api.GetAsync<List<BackgroundJobDto>>("api/dashboard-enterprise/background"), r => _bgJobs = r)
+            };
+            await Task.WhenAll(tasks);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CargarSeccionAsync<T>(string nombre, Func<Task<T?>> llamar, Action<T> asignar) where T : class
+    {
+        try { var r = await llamar(); if (r is not null) asignar(r); }
+        catch { /* silencioso: cada sección falla aislada */ }
+    }
+
+    private static List<ModuloEstadoDto> ExtraerModulos(DashboardEstadoGeneralDto d) => new()
+    {
+        new() { Modulo = "Usuarios", Estado = d.Usuarios.Estado, Mensaje = d.Usuarios.Mensaje },
+        new() { Modulo = "OAuth", Estado = d.OAuth.Estado, Mensaje = d.OAuth.Mensaje },
+        new() { Modulo = "Email", Estado = d.Email.Estado, Mensaje = d.Email.Mensaje },
+        new() { Modulo = "MFA", Estado = d.MFA.Estado, Mensaje = d.MFA.Mensaje },
+        new() { Modulo = "Password", Estado = d.Password.Estado, Mensaje = d.Password.Mensaje },
+        new() { Modulo = "Auditoría", Estado = d.Auditoria.Estado, Mensaje = d.Auditoria.Mensaje },
+        new() { Modulo = "Background", Estado = d.Background.Estado, Mensaje = d.Background.Mensaje },
+        new() { Modulo = "Dashboard", Estado = d.Dashboard.Estado, Mensaje = d.Dashboard.Mensaje },
+        new() { Modulo = "API", Estado = d.API.Estado, Mensaje = d.API.Mensaje },
+        new() { Modulo = "Base Datos", Estado = d.BaseDatos.Estado, Mensaje = d.BaseDatos.Mensaje },
+        new() { Modulo = "SMTP", Estado = d.SMTP.Estado, Mensaje = d.SMTP.Mensaje },
+    };
+
+    private static string _moduloColor(string e) => e switch { "yellow" => "#fbc02d", "red" => "#d32f2f", _ => "#388e3c" };
+    private static Color _moduloMudColor(string e) => e switch { "yellow" => Color.Warning, "red" => Color.Error, _ => Color.Success };
+    private static string _moduloIcon(string e) => e switch { "yellow" => Icons.Material.Filled.Warning, "red" => Icons.Material.Filled.Error, _ => Icons.Material.Filled.CheckCircle };
+
+    private void AbrirInspector(string titulo, RenderFragment contenido)
+    {
+        _inspectorTitulo = titulo;
+        _inspectorContent = contenido;
+        _drawerOpen = true;
+    }
+
+    private void NavegarA(string url) => Navigation.NavigateTo(url);
+
+    private readonly string[] _paleta = { "#1976d2", "#388e3c", "#fbc02d", "#d32f2f", "#7b1fa2", "#00796b", "#ff7043", "#5d4037", "#455a64", "#c2185b" };
+
+    private async Task ExportarCsvAsync()
+    {
+        try
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("Seccion;Metrica;Valor");
+            if (_ejec is not null)
+            {
+                sb.AppendLine($"Ejecutivo;Total Usuarios;{_ejec.TotalUsuarios}");
+                sb.AppendLine($"Ejecutivo;Activos;{_ejec.UsuariosActivos}");
+                sb.AppendLine($"Ejecutivo;Bloqueados;{_ejec.UsuariosBloqueados}");
+                sb.AppendLine($"Ejecutivo;Eliminados;{_ejec.UsuariosEliminados}");
+                sb.AppendLine($"Ejecutivo;Identidades Externas;{_ejec.IdentidadesExternas}");
+                sb.AppendLine($"Ejecutivo;Roles;{_ejec.TotalRoles}");
+                sb.AppendLine($"Ejecutivo;Permisos;{_ejec.TotalPermisos}");
+                sb.AppendLine($"Ejecutivo;Sesiones Activas;{_ejec.SesionesActivas}");
+                sb.AppendLine($"Ejecutivo;Disp. Confiables;{_ejec.DispositivosConfiables}");
+                sb.AppendLine($"Ejecutivo;Notif. No Leidas;{_ejec.NotificacionesNoLeidas}");
+                sb.AppendLine($"Ejecutivo;Emails Hoy;{_ejec.EmailsEnviadosHoy}");
+                sb.AppendLine($"Ejecutivo;Emails Fallidos;{_ejec.EmailsFallidos}");
+            }
+            if (_seg is not null)
+            {
+                sb.AppendLine($"Seguridad;Logins Correctos;{_seg.LoginsCorrectos}");
+                sb.AppendLine($"Seguridad;Logins Fallidos;{_seg.LoginsFallidos}");
+                sb.AppendLine($"Seguridad;Bloqueos Activos;{_seg.BloqueosActivos}");
+                sb.AppendLine($"Seguridad;Alertas Seguridad;{_seg.AlertasSeguridad}");
+                sb.AppendLine($"Seguridad;Desbloqueos Hoy;{_seg.DesbloqueosHoy}");
+                sb.AppendLine($"Seguridad;MFA Habilitado;{_seg.MFAHabilitado}");
+                sb.AppendLine($"Seguridad;Passwords Expiradas;{_seg.PasswordsExpiradas}");
+                sb.AppendLine($"Seguridad;IPs Sospechosas;{_seg.IPsSospechosas}");
+                sb.AppendLine($"Seguridad;Paises Detectados;{_seg.PaisesDetectados}");
+                sb.AppendLine($"Seguridad;Usuarios Hibridos;{_seg.UsuariosHibridos}");
+            }
+            if (_oauth is not null)
+            {
+                sb.AppendLine($"OAuth;Google;{_oauth.UsuariosGoogle}");
+                sb.AppendLine($"OAuth;GitHub;{_oauth.UsuariosGithub}");
+                sb.AppendLine($"OAuth;LinkedIn;{_oauth.UsuariosLinkedIn}");
+                sb.AppendLine($"OAuth;Facebook;{_oauth.UsuariosFacebook}");
+                sb.AppendLine($"OAuth;Instagram;{_oauth.UsuariosInstagram}");
+                sb.AppendLine($"OAuth;Errores;{_oauth.ErroresOAuth}");
+                sb.AppendLine($"OAuth;Logins Hoy;{_oauth.LoginsOAuthHoy}");
+                sb.AppendLine($"OAuth;Logins Semana;{_oauth.LoginsOAuthSemana}");
+            }
+            if (_email is not null)
+            {
+                sb.AppendLine($"Email;Enviados;{_email.EmailsEnviados}");
+                sb.AppendLine($"Email;Pendientes;{_email.EmailsPendientes}");
+                sb.AppendLine($"Email;Errores;{_email.EmailsError}");
+                sb.AppendLine($"Email;Mes;{_email.EmailsMes}");
+                sb.AppendLine($"Email;Templates Usados;{_email.TemplatesUtilizados}");
+                sb.AppendLine($"Email;Templates Fallidos;{_email.TemplatesFallidos}");
+                sb.AppendLine($"Email;Cola;{_email.ColaEmail}");
+            }
+            if (_oper is not null)
+            {
+                sb.AppendLine($"Operacional;CPU %;{_oper.CpuPorcentaje}");
+                sb.AppendLine($"Operacional;RAM MB;{_oper.RamMb}");
+                sb.AppendLine($"Operacional;Tiempo Login ms;{_oper.TiempoRespuestaLoginMs}");
+                sb.AppendLine($"Operacional;Background Jobs;{_bgJobs.Count}");
+            }
+            if (_aud is not null)
+            {
+                sb.AppendLine($"Auditoria;Eventos Hoy;{_aud.EventosHoy}");
+                sb.AppendLine($"Auditoria;Eventos Mes;{_aud.EventosMes}");
+                sb.AppendLine($"Auditoria;Cambios Password;{_aud.CambiosPassword}");
+                sb.AppendLine($"Auditoria;Cambios Roles;{_aud.CambiosRoles}");
+                sb.AppendLine($"Auditoria;Cambios Permisos;{_aud.CambiosPermisos}");
+                sb.AppendLine($"Auditoria;Cambios MFA;{_aud.CambiosMFA}");
+                sb.AppendLine($"Auditoria;Cambios Email;{_aud.CambiosEmail}");
+                sb.AppendLine($"Auditoria;Cambios OAuth;{_aud.CambiosOAuth}");
+                sb.AppendLine($"Auditoria;Cambios Tenant;{_aud.CambiosTenant}");
+                sb.AppendLine($"Auditoria;Cambios Aplicacion;{_aud.CambiosAplicacion}");
+            }
+            if (_disp is not null)
+            {
+                sb.AppendLine($"Dispositivos;Activos;{_disp.DispositivosActivos}");
+                sb.AppendLine($"Dispositivos;Bloqueados;{_disp.DispositivosBloqueados}");
+                sb.AppendLine($"Dispositivos;Eliminados;{_disp.DispositivosEliminados}");
+                sb.AppendLine($"Dispositivos;Total IPs;{_disp.TotalIPs}");
+                sb.AppendLine($"Dispositivos;SO;{_disp.PorSO.Count}");
+                sb.AppendLine($"Dispositivos;Navegadores;{_disp.PorNavegador.Count}");
+                sb.AppendLine($"Dispositivos;Paises;{_disp.PorPais.Count}");
+            }
+
+            var bytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
+            var base64 = Convert.ToBase64String(bytes);
+            await JSRuntime.InvokeVoidAsync("eval", $"var a=document.createElement('a');a.href='data:text/csv;base64,{base64}';a.download='dashboard-enterprise.csv';a.click();");
+            Snackbar.Add("CSV exportado", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al exportar: {ex.Message}", Severity.Error);
+        }
+    }
+}
+
+
+
+
+

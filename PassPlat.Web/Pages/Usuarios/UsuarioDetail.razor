@@ -1,0 +1,393 @@
+@page "/usuario/{id:int}"
+@using PassPlat.Aplicacion.Dtos.Core
+@using PassPlat.Web.Pages.Usuarios.Components
+@using PassPlat.Web.Services
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@inject NavigationManager Navigation
+@inject AuthService Auth
+
+<MudContainer Class="pt-14">
+    @* ═══════════════ Breadcrumb ═══════════════ *@
+    <MudBreadcrumbs Class="mb-3">
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/usuarios"))">Usuarios</MudBreadcrumbItem>
+        @if (_usuario is not null)
+        {
+            <MudBreadcrumbItem>@_usuario.NomUsuario</MudBreadcrumbItem>
+        }
+        else
+        {
+            <MudBreadcrumbItem>Detalle</MudBreadcrumbItem>
+        }
+    </MudBreadcrumbs>
+
+    @* ═══════════════ Loading state ═══════════════ *@
+    @if (_loading)
+    {
+        <MudPaper Elevation="0" Class="pa-6" Style="border-radius:12px;">
+            <div class="d-flex align-center mb-6" style="gap:16px;">
+                <MudSkeleton Variant="SkeletonVariant.Circle" Width="64px" Height="64px" />
+                <div style="flex:1;">
+                    <MudSkeleton Variant="SkeletonVariant.Text" Width="200px" Height="20px" />
+                    <MudSkeleton Variant="SkeletonVariant.Text" Width="300px" Height="14px" Class="mt-2" />
+                </div>
+            </div>
+            <MudGrid>
+                @for (int i = 0; i < 4; i++)
+                {
+                    <MudItem xs6 sm3>
+                        <MudSkeleton Variant="SkeletonVariant.Rectangle" Width="100%" Height="80px" Style="border-radius:10px;" />
+                    </MudItem>
+                }
+            </MudGrid>
+            <MudSkeleton Variant="SkeletonVariant.Rectangle" Width="100%" Height="300px" Class="mt-4" Style="border-radius:10px;" />
+        </MudPaper>
+    }
+    else if (_usuario is null)
+    {
+        <MudPaper Elevation="0" Class="pa-8 text-center" Style="border-radius:12px;">
+            <MudIcon Icon="@Icons.Material.Filled.PersonOff" Size="Size.Large" Style="opacity:0.3;font-size:4rem;" />
+            <MudText Typo="Typo.h5" Class="mt-4 mb-2">Usuario no encontrado</MudText>
+            <MudText Typo="Typo.body2" Style="opacity:0.5;" Class="mb-4">El usuario solicitado no existe o ha sido eliminado.</MudText>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ArrowBack"
+                OnClick="@(() => Navigation.NavigateTo("/usuarios"))">
+                Volver a Usuarios
+            </MudButton>
+        </MudPaper>
+    }
+    else
+    {
+        @* ═══════════════ Header: avatar + nombre + badges + quick actions ═══════════════ *@
+        <MudPaper Elevation="0" Class="pa-4 mb-4" Style="border-radius:12px;position:relative;overflow:hidden;">
+            <div class="dash-stat-bar dash-stat-bar-primary"></div>
+            <div class="d-flex align-center flex-wrap" style="gap:16px;">
+                <MudAvatar Size="Size.Large" Color="Color.Primary" Class="detail-avatar"
+                    Style="box-shadow:0 4px 16px rgba(30,136,229,0.25);">
+                    <MudText Typo="Typo.h4">@_iniciales</MudText>
+                </MudAvatar>
+                <div class="flex-grow-1">
+                    <div class="d-flex align-center flex-wrap" style="gap:8px;">
+                        <MudText Typo="Typo.h4" Class="m-0">@_usuario.NomUsuario</MudText>
+                        <MudChip T="string" Size="Size.Small" Color="@_colorEstado">@_usuario.EstadoNombre</MudChip>
+                        @if (_usuario.Eliminado == true)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Error">ELIMINADO</MudChip>
+                        }
+                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Class="detail-tenant-chip">@_usuario.TenantNombre</MudChip>
+                    </div>
+                    <MudText Typo="Typo.body2" Style="opacity:0.6;" Class="mt-1">
+                        @_usuario.Nombre @_usuario.Apellido · @_usuario.Email
+                    </MudText>
+                </div>
+                <div class="d-flex" style="gap:8px;">
+                    @if (_sesionesCount > 0)
+                    {
+                        <MudTooltip Text="Cerrar todas las sesiones activas">
+                            <MudButton Variant="Variant.Outlined" Color="Color.Warning" Size="Size.Small"
+                                OnClick="@RevocarTodasSesiones" StartIcon="@Icons.Material.Filled.Logout">
+                                Cerrar sesiones
+                            </MudButton>
+                        </MudTooltip>
+                    }
+                    @if (_notificacionesCount > 0)
+                    {
+                        <MudTooltip Text="Marcar todas como leídas">
+                            <MudButton Variant="Variant.Outlined" Color="Color.Info" Size="Size.Small"
+                                OnClick="@MarcarTodasLeidas" StartIcon="@Icons.Material.Filled.MarkEmailRead">
+                                @_notificacionesCount no leídas
+                            </MudButton>
+                        </MudTooltip>
+                    }
+                </div>
+            </div>
+        </MudPaper>
+
+        @* ═══════════════ Stat cards ═══════════════ *@
+        <MudGrid Class="mb-4">
+            <MudItem xs6 sm3>
+                <MudPaper Elevation="0" Outlined="true" Class="dash-stat-card pa-3">
+                    <div class="dash-stat-bar dash-stat-bar-@(_usuario.EmailVerificado ? "success" : "error")"></div>
+                    <div class="d-flex align-center" style="gap:12px;">
+                        <MudAvatar Color="@(_usuario.EmailVerificado ? Color.Success : Color.Error)" Size="Size.Small">
+                            <MudIcon Icon="@Icons.Material.Filled.Email" Size="Size.Small" />
+                        </MudAvatar>
+                        <div>
+                            <MudText Typo="Typo.caption">Email verificado</MudText>
+                            <MudText Typo="Typo.body2" Style="font-weight:600;">@(_usuario.EmailVerificado ? "Sí" : "No")</MudText>
+                        </div>
+                    </div>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs6 sm3>
+                <MudPaper Elevation="0" Outlined="true" Class="dash-stat-card pa-3">
+                    <div class="dash-stat-bar dash-stat-bar-secondary"></div>
+                    <div class="d-flex align-center" style="gap:12px;">
+                        <MudAvatar Color="Color.Tertiary" Size="Size.Small">
+                            <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" />
+                        </MudAvatar>
+                        <div>
+                            <MudText Typo="Typo.caption">Últ. cambio contraseña</MudText>
+                            <MudText Typo="Typo.body2" Style="font-weight:600;">
+                                @(_usuario.FecUltCambioPwd?.ToLocalTime().ToString("dd/MM/yyyy") ?? "Nunca")
+                            </MudText>
+                        </div>
+                    </div>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs6 sm3>
+                <MudPaper Elevation="0" Outlined="true" Class="dash-stat-card pa-3">
+                    <div class="dash-stat-bar dash-stat-bar-@(_failedAttemptsCount > 0 ? "warning" : "info")"></div>
+                    <div class="d-flex align-center" style="gap:12px;">
+                        <MudAvatar Color="@(_failedAttemptsCount > 0 ? Color.Warning : Color.Default)" Size="Size.Small">
+                            <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Small" />
+                        </MudAvatar>
+                        <div>
+                            <MudText Typo="Typo.caption">Intentos fallidos (60 min)</MudText>
+                            <MudText Typo="Typo.body2" Style="font-weight:600;">@_failedAttemptsCount</MudText>
+                        </div>
+                    </div>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs6 sm3>
+                <MudTooltip Text="Las sesiones expiran automáticamente según FecExpira y se cierran al revocarlas manualmente.">
+                    <MudPaper Elevation="0" Outlined="true" Class="dash-stat-card pa-3">
+                        <div class="dash-stat-bar dash-stat-bar-@(_sesionesCount > 0 ? "info" : "secondary")"></div>
+                        <div class="d-flex align-center" style="gap:12px;">
+                            <MudAvatar Color="@(_sesionesCount > 0 ? Color.Info : Color.Default)" Size="Size.Small">
+                                <MudIcon Icon="@Icons.Material.Filled.Devices" Size="Size.Small" />
+                            </MudAvatar>
+                            <div>
+                                <MudText Typo="Typo.caption">Sesiones activas</MudText>
+                                <MudText Typo="Typo.body2" Style="font-weight:600;">@_sesionesCount</MudText>
+                            </div>
+                        </div>
+                    </MudPaper>
+                </MudTooltip>
+            </MudItem>
+        </MudGrid>
+
+        @* ═══════════════ Tabs ═══════════════ *@
+        <MudPaper Elevation="0" Class="detail-tabs-card">
+            <MudTabs @bind-ActivePanelIndex="_tabIndex" KeepPanelsAlive="true"
+                Class="detail-tabs" TabPanelStyle="padding-top:16px;">
+                <MudTabPanel Text="General" Icon="@Icons.Material.Filled.Person" Class="detail-tab">
+                    <UsuarioGeneral UserId="Id" IsActive="@(_tabIndex == 0)" />
+                </MudTabPanel>
+
+                <MudTabPanel Text="@FormatearTab("Contraseñas", _historialCount)" Icon="@Icons.Material.Filled.Password">
+                    <UsuarioPassword UserInfo="_usuario" UserId="Id" IsActive="@(_tabIndex == 1)" CountChanged="@OnHistorialCount" HistoryChanged="@OnHistoryChanged" HistoryVersion="@_historialVersion" />
+                </MudTabPanel>
+
+                <MudTabPanel Text="@FormatearTab("Accesos", _accesosCount)" Icon="@Icons.Material.Filled.Key">
+                    <UsuarioAccesos UserId="Id" IsActive="@(_tabIndex == 2)" CountChanged="@OnAccesosCount" />
+                </MudTabPanel>
+
+                <MudTabPanel Text="@FormatearTab("Sesiones", _sesionesCount)" Icon="@Icons.Material.Filled.Devices">
+                    <UsuarioSesiones UserId="Id" IsActive="@(_tabIndex == 3)" CountChanged="@OnSesionesCount" />
+                </MudTabPanel>
+
+                <MudTabPanel Text="@FormatearTab("MFA", _mfaCount)" Icon="@Icons.Material.Filled.Fingerprint">
+                    <UsuarioMFA UserId="Id" IsActive="@(_tabIndex == 4)" CountChanged="@OnMFACount" />
+                </MudTabPanel>
+
+                <MudTabPanel Text="@FormatearTab("Conf.", _dispConfCount)" Icon="@Icons.Material.Filled.Verified">
+                    <UsuarioDispConfiables UserId="Id" IsActive="@(_tabIndex == 5)" CountChanged="@OnDispConfCount" />
+                </MudTabPanel>
+
+                <MudTabPanel Text="@FormatearTab("Bloqueos", _bloqueosCount)" Icon="@Icons.Material.Filled.Block">
+                    <UsuarioBloqueos UserId="Id" IsActive="@(_tabIndex == 6)" CountChanged="@OnBloqueosCount" />
+                </MudTabPanel>
+
+                <MudTabPanel Text="@FormatearTab("Intentos", _intentosCount)" Icon="@Icons.Material.Filled.Login">
+                    <UsuarioIntentosAcceso UserId="Id" IsActive="@(_tabIndex == 7)" CountChanged="@OnIntentosCount" />
+                </MudTabPanel>
+
+                <MudTabPanel Text="@FormatearTab("Auditoría", _auditoriaCount)" Icon="@Icons.Material.Filled.Assignment">
+                    <UsuarioAuditoria UserId="Id" IsActive="@(_tabIndex == 8)" CountChanged="@OnAuditoriaCount" />
+                </MudTabPanel>
+
+                <MudTabPanel Text="@FormatearTab("Notif.", _notificacionesCount)" Icon="@Icons.Material.Filled.Notifications">
+                    <UsuarioNotificaciones UserId="Id" IsActive="@(_tabIndex == 9)" CountChanged="@OnNotificacionesCount" />
+                </MudTabPanel>
+
+                <MudTabPanel Text="@FormatearTab("Permisos Efectivos", _permisosEfectivosCount)" Icon="@Icons.Material.Filled.Shield">
+                    <UsuarioPermisosEfectivos UserId="Id" IsActive="@(_tabIndex == 10)" CountChanged="@OnPermisosEfectivosCount" />
+                </MudTabPanel>
+
+                <MudTabPanel Text="@FormatearTab("Identidades", _identidadesCount)" Icon="@Icons.Material.Filled.Hub">
+                    <UsuarioIdentidades UserId="Id" IsActive="@(_tabIndex == 11)" CountChanged="@OnIdentidadesCount" />
+                </MudTabPanel>
+            </MudTabs>
+        </MudPaper>
+    }
+
+</MudContainer>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private UsuarioDto? _usuario;
+    private string _iniciales = "";
+    private Color _colorEstado = Color.Default;
+    private int _tabIndex;
+    private bool _loading = true;
+
+    private int _sesionesCount;
+    private int _notificacionesCount;
+    private int _accesosCount = -1;
+    private int _historialCount = -1;
+    private int _mfaCount = -1;
+    private int _dispConfCount = -1;
+    private int _bloqueosCount = -1;
+    private int _intentosCount = -1;
+    private int _permisosEfectivosCount = -1;
+    private int _auditoriaCount = -1;
+    private int _identidadesCount = -1;
+    private int _failedAttemptsCount;
+    private int _historialVersion;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarUsuario();
+    }
+
+    private async Task CargarUsuario()
+    {
+        _loading = true;
+        try
+        {
+            _usuario = await Api.GetAsync<UsuarioDto>($"api/usuarios/{Id}");
+            if (_usuario is not null)
+            {
+                _iniciales = CalcularIniciales();
+                _colorEstado = ObtenerColorEstado();
+                _failedAttemptsCount = await CargarIntentosFallidosAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar usuario: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task<int> CargarIntentosFallidosAsync()
+    {
+        try
+        {
+            var items = await Api.GetAsync<List<IntentoAccesoDto>>($"api/intentosacceso/recientes/{Id}/60");
+            return items?.Count(i => !i.Exitoso) ?? 0;
+        }
+        catch
+        {
+            return _usuario?.IntentosFallidos ?? 0;
+        }
+    }
+
+    private string CalcularIniciales()
+    {
+        if (_usuario is null) return "?";
+        var n = (_usuario.Nombre ?? "").Trim();
+        var a = (_usuario.Apellido ?? "").Trim();
+        if (n.Length > 0 && a.Length > 0)
+            return $"{n[0]}{a[0]}".ToUpper();
+        if (n.Length > 0)
+            return n[..Math.Min(2, n.Length)].ToUpper();
+        return _usuario.NomUsuario[..Math.Min(2, _usuario.NomUsuario.Length)].ToUpper();
+    }
+
+    private Color ObtenerColorEstado()
+    {
+        if (_usuario?.Eliminado == true) return Color.Error;
+        return _usuario?.EstadoNombre switch
+        {
+            "Activo" => Color.Success,
+            "Bloqueado" => Color.Warning,
+            "Inactivo" => Color.Error,
+            "Pendiente" => Color.Info,
+            "Suspendido" => Color.Warning,
+            _ => Color.Default
+        };
+    }
+
+    private string FormatearTab(string nombre, int count) => count >= 0 ? $"{nombre} ({count})" : nombre;
+
+    private void OnAccesosCount(int c) => _accesosCount = c;
+    private void OnSesionesCount(int c) => _sesionesCount = c;
+    private void OnHistorialCount(int c) => _historialCount = c;
+    private void OnMFACount(int c) => _mfaCount = c;
+    private void OnDispConfCount(int c) => _dispConfCount = c;
+    private void OnBloqueosCount(int c) => _bloqueosCount = c;
+    private void OnIntentosCount(int c) => _intentosCount = c;
+    private void OnAuditoriaCount(int c) => _auditoriaCount = c;
+    private void OnNotificacionesCount(int c) => _notificacionesCount = c;
+    private void OnPermisosEfectivosCount(int c) => _permisosEfectivosCount = c;
+    private void OnIdentidadesCount(int c) => _identidadesCount = c;
+    private void OnHistoryChanged() => _historialVersion++;
+
+    private async Task RevocarTodasSesiones()
+    {
+        var parameters = new DialogParameters
+        {
+            ["Title"] = "Cerrar todas las sesiones",
+            ["Message"] = $"¿Cerrar todas las sesiones activas de {_usuario?.NomUsuario}? Deberá iniciar sesión nuevamente.",
+            ["ConfirmText"] = "Cerrar sesiones",
+            ["CancelText"] = "Cancelar"
+        };
+        var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parameters);
+        var result = await dialog.Result;
+        if (result.Canceled) return;
+
+        try
+        {
+            var ok = await Api.PostVoidAsync($"api/sesiones/revocar-todas/{Id}");
+            if (ok)
+            {
+                Snackbar.Add("Sesiones cerradas", Severity.Success);
+                _sesionesCount = 0;
+                StateHasChanged();
+            }
+            else
+                Snackbar.Add(Api.LastError ?? "Error al cerrar sesiones", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task MarcarTodasLeidas()
+    {
+        var parameters = new DialogParameters
+        {
+            ["Title"] = "Marcar todo como leído",
+            ["Message"] = $"¿Marcar todas las notificaciones de {_usuario?.NomUsuario} como leídas?",
+            ["ConfirmText"] = "Marcar",
+            ["CancelText"] = "Cancelar"
+        };
+        var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parameters);
+        var result = await dialog.Result;
+        if (result.Canceled) return;
+
+        try
+        {
+            var ok = await Api.PostVoidAsync($"api/notificaciones/marcar-todas-leidas/{Id}");
+            if (ok)
+            {
+                Snackbar.Add("Notificaciones marcadas", Severity.Success);
+                _notificacionesCount = 0;
+                StateHasChanged();
+            }
+            else
+                Snackbar.Add(Api.LastError ?? "Error al marcar leídas", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+        }
+    }
+}

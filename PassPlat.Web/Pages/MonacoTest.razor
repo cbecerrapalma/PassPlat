@@ -1,0 +1,93 @@
+@page "/monaco-test"
+@using BlazorMonaco.Editor
+@inject IJSRuntime JS
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudPaper Class="pa-4" Elevation="0" Outlined="true">
+        <MudText Typo="Typo.h5" Class="mb-2">Monaco Test — S46.2-A</MudText>
+        <MudText Typo="Typo.body2" Class="mb-4">Valida BlazorMonaco 3.5.0 en WASM + MudBlazor 9.8.0 + net10.0. Placeholders deben preservarse exactamente.</MudText>
+        <div style="height:400px; border:1px solid var(--mud-palette-lines-default);">
+            <StandaloneCodeEditor @ref="_editor" Id="monaco-test-editor" ConstructionOptions="EditorConstructionOptions" OnDidInit="OnEditorInit" OnDidChangeModelContent="OnContentChanged" />
+        </div>
+        <MudStack Row="true" Spacing="2" Class="mt-4">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GetValue">Get Value</MudButton>
+            <MudButton Variant="Variant.Outlined" OnClick="SetSample">Set Sample (table + {{AppName}})</MudButton>
+            <MudButton Variant="Variant.Outlined" OnClick="FormatDocument">Formatear</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Info" OnClick="OpenDialog">Abrir Dialog (lifecycle)</MudButton>
+        </MudStack>
+        <MudAlert Severity="Severity.Info" Class="mt-4" Dense="true">Valor actual: <code>@_currentValuePreview</code></MudAlert>
+        <MudText Typo="Typo.caption" Class="mt-2">JSInterop: @(_jsOk ? "OK" : "pendiente") · Editor: @(_editorReady ? "Ready" : "inicializando") · Placeholders: @(_placeholderOk ? "preservados" : "verificar")</MudText>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private StandaloneCodeEditor _editor = null!;
+    private string _currentValuePreview = "";
+    private bool _editorReady;
+    private bool _jsOk;
+    private bool _placeholderOk = true;
+    private string _initialHtml = "<table><tr><td><h1>{{AppName}}</h1><p>Hola {{UserName}}</p><p>Codigo {{MfaCode}} expira {{ExpiraMinutos}} min</p></td></tr></table>";
+
+    private StandaloneEditorConstructionOptions EditorConstructionOptions(StandaloneCodeEditor editor) => new()
+    {
+        Language = "html",
+        Theme = "vs",
+        AutomaticLayout = true,
+        Minimap = new() { Enabled = false },
+        Folding = true,
+        WordWrap = "on",
+        TabSize = 2,
+        Value = _initialHtml
+    };
+
+    private async Task OnEditorInit()
+    {
+        _editorReady = true;
+        _jsOk = true;
+        await CheckPlaceholders();
+        StateHasChanged();
+    }
+
+    private async Task OnContentChanged(ModelContentChangedEvent e)
+    {
+        await CheckPlaceholders();
+    }
+
+    private async Task CheckPlaceholders()
+    {
+        if (!_editorReady) return;
+        try
+        {
+            var val = await _editor.GetValue();
+            _currentValuePreview = val.Length > 120 ? val[..120] + "..." : val;
+            _placeholderOk = val.Contains("{{AppName}}") && val.Contains("{{UserName}}");
+        }
+        catch { _placeholderOk = false; }
+    }
+
+    private async Task GetValue()
+    {
+        var v = await _editor.GetValue();
+        _currentValuePreview = v;
+    }
+
+    private async Task SetSample()
+    {
+        await _editor.SetValue(_initialHtml);
+        await CheckPlaceholders();
+    }
+
+    private async Task FormatDocument()
+    {
+        await _editor.Trigger("editor", "editor.action.formatDocument", null);
+    }
+
+    [Inject] private IDialogService DialogService { get; set; } = null!;
+
+    private async Task OpenDialog()
+    {
+        var opts = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true };
+        var dialog = await DialogService.ShowAsync<MonacoTestDialog>("Monaco Dialog Lifecycle", opts);
+        await dialog.Result;
+    }
+}

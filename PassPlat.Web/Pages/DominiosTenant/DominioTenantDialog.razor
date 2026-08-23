@@ -1,0 +1,82 @@
+@inject ApiClient Api
+@inject AuthService Auth
+@inject ISnackbar Snackbar
+@using PassPlat.Web.Models
+
+<MudDialog Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Agregar Dominio</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudAutocomplete T="TenantDto" @bind-Value="_tenantSelected"
+            SearchFunc="@SearchTenants" ToStringFunc="@(t => t is null ? "" : $"{t.Nombre} ({t.Codigo})")"
+            Label="Tenant" Variant="Variant.Outlined" Class="mb-3"
+            Error="@(_submitted && _tenantSelected is null)" ErrorText="El tenant es requerido" />
+        <MudTextField @bind-Value="_dominio" Label="Dominio" Variant="Variant.Outlined" Class="mb-3" Required="true"
+                      Error="@(_submitted && string.IsNullOrWhiteSpace(_dominio))" ErrorText="El dominio es requerido" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@Save" Disabled="@(!CanSave() || _saving)">
+            Crear
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+
+    private string _dominio = "";
+    private List<TenantDto> _tenants = [];
+    private TenantDto? _tenantSelected;
+    private bool _saving;
+    private bool _submitted;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var data = await Api.GetAsync<List<TenantDto>>("api/tenants");
+        _tenants = data ?? [];
+        _tenantSelected = _tenants.FirstOrDefault(t => t.Id == (Auth.IdTenant ?? 0));
+    }
+
+    private Task<IEnumerable<TenantDto>> SearchTenants(string value, CancellationToken _)
+    {
+        if (string.IsNullOrEmpty(value))
+            return Task.FromResult(_tenants.Take(20));
+        return Task.FromResult(_tenants.Where(t =>
+            t.Nombre.Contains(value, StringComparison.OrdinalIgnoreCase) ||
+            t.Codigo.Contains(value, StringComparison.OrdinalIgnoreCase)).Take(20));
+    }
+
+    private bool CanSave() => _tenantSelected is not null && !string.IsNullOrWhiteSpace(_dominio);
+
+    private async Task Save()
+    {
+        _submitted = true;
+        if (!CanSave()) return;
+        _saving = true;
+        try
+        {
+            var idTenant = _tenantSelected?.Id ?? (Auth.IdTenant ?? 0);
+            var result = await Api.PostAsync<DominioTenantDto>("api/DominiosTenant",
+                new { idTenant, dominio = _dominio });
+            if (result is not null)
+            {
+                Snackbar.Add("Dominio agregado", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+                Snackbar.Add(Api.LastError ?? "Error al crear", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

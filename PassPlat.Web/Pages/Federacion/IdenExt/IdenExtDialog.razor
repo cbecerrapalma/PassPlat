@@ -1,0 +1,108 @@
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Vincular Identidad Externa</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudSelect @bind-Value="_idTenant" Label="Tenant" Variant="Variant.Outlined" Class="mb-3" Required="true"
+                    Error="@(_submitted && _idTenant == 0)" ErrorText="El tenant es requerido">
+            @foreach (var t in _tenants)
+            {
+                <MudSelectItem Value="t.Id">@t.Nombre (@t.Codigo)</MudSelectItem>
+            }
+        </MudSelect>
+        <MudSelect @bind-Value="_idUsuario" Label="Usuario" Variant="Variant.Outlined" Class="mb-3" Required="true"
+                    Error="@(_submitted && _idUsuario == 0)" ErrorText="El usuario es requerido">
+            @foreach (var u in _usuarios)
+            {
+                <MudSelectItem Value="u.Id">@u.NomUsuario @(!string.IsNullOrEmpty(u.Email) ? $"({u.Email})" : "")</MudSelectItem>
+            }
+        </MudSelect>
+        <MudSelect @bind-Value="_idProvIden" Label="Proveedor" Variant="Variant.Outlined" Class="mb-3" Required="true"
+                    Error="@(_submitted && _idProvIden == 0)" ErrorText="El proveedor es requerido">
+            @foreach (var p in _providers)
+            {
+                <MudSelectItem Value="p.Id">@p.Nombre (@p.Codigo)</MudSelectItem>
+            }
+        </MudSelect>
+        <MudTextField @bind-Value="_subExterno" Label="Sub (ID Externo)" Variant="Variant.Outlined" Class="mb-3" Required="true"
+                      Error="@(_submitted && string.IsNullOrWhiteSpace(_subExterno))" ErrorText="El ID externo es requerido" HelperText="Identificador único del usuario en el proveedor" />
+        <MudTextField @bind-Value="_providerUserName" Label="Provider UserName" Variant="Variant.Outlined" Class="mb-3" />
+        <MudTextField @bind-Value="_emailExterno" Label="Email Externo" Variant="Variant.Outlined" Class="mb-3" />
+        <MudTextField @bind-Value="_nombreExterno" Label="Nombre Externo" Variant="Variant.Outlined" Class="mb-3" />
+        <MudTextField @bind-Value="_avatar" Label="Avatar URL" Variant="Variant.Outlined" Class="mb-3" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@Save" Disabled="@(!CanSave() || _saving)">
+            Vincular
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+
+    [Parameter] public bool IsEdit { get; set; }
+
+    private List<TenantDto> _tenants = [];
+    private List<ProvIdenDto> _providers = [];
+    private List<UsuarioDto> _usuarios = [];
+    private int _idTenant = 1;
+    private int _idUsuario;
+    private int _idProvIden;
+    private string _subExterno = "";
+    private string? _providerUserName;
+    private string? _emailExterno;
+    private string? _nombreExterno;
+    private string? _avatar;
+    private bool _saving;
+    private bool _submitted;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _tenants = (await Api.GetAsync<List<TenantDto>>("api/tenants")) ?? [];
+            _providers = (await Api.GetAsync<List<ProvIdenDto>>("api/providen/activos")) ?? [];
+            _usuarios = (await Api.GetAsync<List<UsuarioDto>>("api/usuarios")) ?? [];
+        }
+        catch { }
+    }
+
+    private bool CanSave() => _idTenant > 0 && _idUsuario > 0 && _idProvIden > 0
+        && !string.IsNullOrWhiteSpace(_subExterno);
+
+    private async Task Save()
+    {
+        _submitted = true;
+        if (!CanSave()) return;
+        _saving = true;
+        try
+        {
+            var result = await Api.PostAsync<IdenExtDto>("api/iden-ext",
+                new { idTenant = _idTenant, idUsuario = _idUsuario, idProvIden = _idProvIden,
+                    subExterno = _subExterno, providerUserName = _providerUserName,
+                    emailExterno = _emailExterno, nombreExterno = _nombreExterno, avatar = _avatar });
+            if (result is not null)
+            {
+                Snackbar.Add("Identidad vinculada", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+                Snackbar.Add(Api.LastError ?? "Error al vincular", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

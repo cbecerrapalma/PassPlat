@@ -1,0 +1,105 @@
+@inject ISnackbar Snackbar
+
+<MudDialog Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Detalle del Proveedor</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_cargado)
+        {
+            <MudText Typo="Typo.body2" Class="mb-3"><strong>Código</strong></MudText>
+            <MudText Typo="Typo.body1" Class="mb-3 mono">@_provIden.Codigo</MudText>
+
+            <MudText Typo="Typo.body2" Class="mb-3"><strong>Nombre</strong></MudText>
+            <MudText Typo="Typo.body1" Class="mb-3">@_provIden.Nombre</MudText>
+
+            <MudText Typo="Typo.body2" Class="mb-3"><strong>Versión</strong></MudText>
+            <MudText Typo="Typo.body1" Class="mb-3">@(!string.IsNullOrEmpty(_provIden.Version) ? _provIden.Version : "—")</MudText>
+
+            <MudText Typo="Typo.body2" Class="mb-3"><strong>Protocolo</strong></MudText>
+            <MudChip T="string" Size="Size.Small" Color="Color.Primary">OAuth</MudChip>
+
+            <MudText Typo="Typo.body2" Class="mt-3 mb-3"><strong>URL Issuer</strong></MudText>
+            <MudText Typo="Typo.body1" Class="mb-3 mono">@(!string.IsNullOrEmpty(_provIden.UrlIssuer) ? _provIden.UrlIssuer : "—")</MudText>
+
+            <MudDivider Class="my-3" />
+            <MudText Typo="Typo.subtitle2" Class="mb-3">Endpoints</MudText>
+
+            <MudText Typo="Typo.body2" Class="mb-3"><strong>Autorización</strong></MudText>
+            <MudText Typo="Typo.body1" Class="mb-3 mono small-text">@(!string.IsNullOrEmpty(_provIden.EndpointAutorizacion) ? _provIden.EndpointAutorizacion : "—")</MudText>
+
+            <MudText Typo="Typo.body2" Class="mb-3"><strong>Token</strong></MudText>
+            <MudText Typo="Typo.body1" Class="mb-3 mono small-text">@(!string.IsNullOrEmpty(_provIden.EndpointToken) ? _provIden.EndpointToken : "—")</MudText>
+
+            <MudText Typo="Typo.body2" Class="mb-3"><strong>UserInfo</strong></MudText>
+            <MudText Typo="Typo.body1" Class="mb-3 mono small-text">@(!string.IsNullOrEmpty(_provIden.EndpointUserInfo) ? _provIden.EndpointUserInfo : "—")</MudText>
+
+            <MudText Typo="Typo.body2" Class="mb-3"><strong>JWKS</strong></MudText>
+            <MudText Typo="Typo.body1" Class="mb-3 mono small-text">@(!string.IsNullOrEmpty(_provIden.JwksUri) ? _provIden.JwksUri : "—")</MudText>
+
+            <MudText Typo="Typo.body2" Class="mb-3"><strong>Revocación</strong></MudText>
+            <MudText Typo="Typo.body1" Class="mb-3 mono small-text">@(!string.IsNullOrEmpty(_provIden.EndpointRevocacion) ? _provIden.EndpointRevocacion : "—")</MudText>
+
+            <MudDivider Class="my-3" />
+            <MudText Typo="Typo.subtitle2" Class="mb-3">Capacidades</MudText>
+
+            <div class="d-flex flex-wrap gap-3 mb-3">
+                <div>
+                    <MudText Typo="Typo.body2"><strong>PKCE</strong></MudText>
+                    <MudIcon Icon="@(_provIden.SoportaPKCE ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)" Size="Size.Small" Color="@(_provIden.SoportaPKCE ? Color.Success : Color.Error)" />
+                </div>
+                <div>
+                    <MudText Typo="Typo.body2"><strong>Refresh Token</strong></MudText>
+                    <MudIcon Icon="@(_provIden.SoportaRefreshToken ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)" Size="Size.Small" Color="@(_provIden.SoportaRefreshToken ? Color.Success : Color.Error)" />
+                </div>
+                <div>
+                    <MudText Typo="Typo.body2"><strong>MFA</strong></MudText>
+                    <MudIcon Icon="@(_provIden.SoportaMFA ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)" Size="Size.Small" Color="@(_provIden.SoportaMFA ? Color.Success : Color.Error)" />
+                </div>
+            </div>
+
+            <MudText Typo="Typo.body2" Class="mb-3"><strong>Icono</strong></MudText>
+            <MudText Typo="Typo.body1" Class="mb-3">@(!string.IsNullOrEmpty(_provIden.Icono) ? _provIden.Icono : "—")</MudText>
+
+            <MudText Typo="Typo.body2" Class="mb-3"><strong>Orden</strong></MudText>
+            <MudText Typo="Typo.body1" Class="mb-3">@_provIden.Orden</MudText>
+
+            <MudText Typo="Typo.body2" Class="mb-3"><strong>Activo</strong></MudText>
+            <MudChip T="string" Size="Size.Small" Color="@(_provIden.Activo ? Color.Success : Color.Error)">@(_provIden.Activo ? "Sí" : "No")</MudChip>
+
+            @if (!string.IsNullOrEmpty(_provIden.Metadata))
+            {
+                <MudDivider Class="my-3" />
+                <MudText Typo="Typo.subtitle2" Class="mb-3">Metadata</MudText>
+                <MudText Typo="Typo.body2" Class="mb-3"><pre class="metadata-json">@_provIden.Metadata</pre></MudText>
+            }
+
+            <MudText Typo="Typo.body2" Class="mt-3 mb-3"><strong>Creado</strong></MudText>
+            <MudText Typo="Typo.body1" Class="mb-3">@(_provIden.FecCrea?.ToLocalTime().ToString("dd MMM yyyy HH:mm") ?? "—")</MudText>
+        }
+        else
+        {
+            <MudSkeleton Width="100%" Height="300px" />
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => MudDialog.Cancel())">Cerrar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+
+    [Parameter] public ProvIdenDto ProvIden { get; set; } = null!;
+
+    private ProvIdenDto _provIden = null!;
+    private bool _cargado;
+
+    protected override void OnInitialized()
+    {
+        _provIden = ProvIden;
+        _cargado = _provIden is not null;
+    }
+}

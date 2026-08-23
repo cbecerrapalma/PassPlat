@@ -1,0 +1,6 @@
+Msg 207, Level 16, State 1, Server DESKTOP-LD40FI3, Line 1
+Invalid column name 'Codigo'.
+Msg 207, Level 16, State 1, Server DESKTOP-LD40FI3, Line 1
+Invalid column name 'Activo'.
+Msg 207, Level 16, State 1, Server DESKTOP-LD40FI3, Line 1
+Invalid column name 'IdCategoria'.

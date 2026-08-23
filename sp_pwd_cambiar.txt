@@ -1,0 +1,13 @@
+
+CREATE   PROCEDURE dbo.SP_Pwd_Cambiar
+    @IdUsuario int,
+    @IdTenant int,
+    @HashPwdNuevo nvarchar(512),
+    @PepperVersion tinyint,
+    @IdTipoCambio int,
+    @IdDisp int = NULL,
+    @IdIP int = NULL,
+    @IdAgente int = NULL
+AS
+BEGIN
+  

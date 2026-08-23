@@ -1,0 +1,89 @@
+@using PassPlat.Aplicacion.Dtos.Core
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+
+@if (_loading)
+{
+    <MudSkeleton Width="100%" Height="200px" />
+}
+else if (_items.Count == 0)
+{
+    <MudContainer Class="mt-4">
+        <MudText Typo="Typo.subtitle2" Class="mb-3" Style="color:var(--mud-palette-text-secondary);">
+            Cambios de contraseña registrados (actual + anteriores).
+        </MudText>
+        <MudText Align="Align.Center" Class="py-8">
+            <MudIcon Icon="@Icons.Material.Filled.HistoryToggleOff" Class="mb-2" /><br />Sin historial
+        </MudText>
+    </MudContainer>
+}
+else
+{
+    <MudContainer Class="mt-4">
+        <MudText Typo="Typo.subtitle2" Class="mb-3" Style="color:var(--mud-palette-text-secondary);">
+            Cambios de contraseña registrados (actual + anteriores).
+        </MudText>
+        <MudTable T="HistorialPwdDto" Items="@_items" Hover="true" Breakpoint="Breakpoint.Sm">
+            <ColGroup>
+                <col style="width:80px;" /><col /><col /><col /><col style="width:100px;" />
+            </ColGroup>
+            <HeaderContent>
+                <MudTh>Id</MudTh><MudTh>Política</MudTh><MudTh>Actual</MudTh><MudTh>Registro</MudTh><MudTh>Expira</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Id">@context.Id</MudTd>
+                <MudTd DataLabel="Política">@context.PoliticaNombre</MudTd>
+                <MudTd DataLabel="Actual">
+                    <MudChip T="string" Size="Size.Small" Color="@(context.EsActual ? Color.Success : Color.Default)">
+                        @(context.EsActual ? "Sí" : "No")
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Registro">@context.FecRegistro?.ToLocalTime().ToString("g")</MudTd>
+                <MudTd DataLabel="Expira">@context.FecExpira?.ToLocalTime().ToString("g")</MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                <MudText Align="Align.Center" Class="py-8">
+                    <MudIcon Icon="@Icons.Material.Filled.HistoryToggleOff" Class="mb-2" /><br />Sin historial
+                </MudText>
+            </NoRecordsContent>
+        </MudTable>
+    </MudContainer>
+}
+
+@code {
+    [Parameter] public int UserId { get; set; }
+    [Parameter] public bool IsActive { get; set; }
+    [Parameter] public int Version { get; set; }
+    [Parameter] public EventCallback<int> CountChanged { get; set; }
+
+    private List<HistorialPwdDto> _items = [];
+    private bool _loading = true;
+    private int _lastVersion = -1;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsActive && (Version != _lastVersion))
+        {
+            _lastVersion = Version;
+            await LoadData();
+        }
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        try
+        {
+            _items = await Api.GetAsync<List<HistorialPwdDto>>($"api/historialpwd/reciente/{UserId}/20") ?? [];
+            await CountChanged.InvokeAsync(_items.Count);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

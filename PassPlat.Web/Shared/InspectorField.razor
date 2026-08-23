@@ -1,0 +1,25 @@
+@namespace PassPlat.Web.Shared
+
+<div class="d-flex align-center mb-2" style="gap:8px;">
+    @if (!string.IsNullOrEmpty(Icon))
+    {
+        <MudIcon Icon="@Icon" Size="Size.Small" Class="mud-text-secondary" Style="min-width:20px;" />
+    }
+    <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="@($"min-width:{LabelWidth};")">@Label:</MudText>
+    @if (ChildContent is not null)
+    {
+        @ChildContent
+    }
+    else if (Value is not null)
+    {
+        <MudText Typo="Typo.body2">@Value</MudText>
+    }
+</div>
+
+@code {
+    [Parameter] public string Label { get; set; } = "";
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public string LabelWidth { get; set; } = "100px";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

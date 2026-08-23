@@ -1,0 +1,534 @@
+@page "/"
+@inject AuthService Auth
+@inject ApiClient Api
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@using PassPlat.Aplicacion.Dtos.Core
+
+<MudContainer>
+    @* ── Welcome Header ─────────────────────────────── *@
+    <MudPaper Class="pa-6 mb-6 dash-welcome" Elevation="0" Outlined="true">
+        <div class="d-flex flex-wrap align-center gap-4" style="position:relative;z-index:1">
+            <div class="flex-grow-1">
+                <MudBreadcrumbs Class="mb-3">
+                    <MudBreadcrumbItem>Dashboard</MudBreadcrumbItem>
+                </MudBreadcrumbs>
+                <MudText Typo="Typo.h3" Class="font-weight-bold mb-1">Bienvenido, @(Auth.NomUsuario ?? "Usuario")</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    @DateTime.Now.ToString("dddd dd 'de' MMMM 'de' yyyy")
+                </MudText>
+            </div>
+        </div>
+    </MudPaper>
+
+    @* ── Stat Cards ──────────────────────────────── *@
+    <MudGrid Class="mb-6">
+        @if (Auth.TienePermiso("USUARIOS_VER"))
+        {
+            <MudItem xs="6" sm="6" md="3">
+                <MudPaper Class="dash-stat-card" Elevation="0" Outlined="true">
+                    <div class="dash-stat-bar dash-stat-bar-primary"></div>
+                    <div class="dash-stat-decoration">
+                        <MudIcon Icon="@Icons.Material.Filled.People" />
+                    </div>
+                    <div class="pa-4 d-flex align-center gap-3" style="position:relative">
+                        <MudAvatar Color="Color.Primary" Variant="Variant.Filled">
+                            <MudIcon Icon="@Icons.Material.Filled.People" />
+                        </MudAvatar>
+                        <div>
+                            <MudText Typo="Typo.h4" Class="font-weight-bold mb-0">@_totalUsuarios</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Usuarios registrados</MudText>
+                        </div>
+                    </div>
+                </MudPaper>
+            </MudItem>
+        }
+        @if (Auth.TienePermiso("SESIONES_VER"))
+        {
+            <MudItem xs="6" sm="6" md="3">
+                <MudPaper Class="dash-stat-card" Elevation="0" Outlined="true">
+                    <div class="dash-stat-bar dash-stat-bar-success"></div>
+                    <div class="dash-stat-decoration">
+                        <MudIcon Icon="@Icons.Material.Filled.DevicesOther" />
+                    </div>
+                    <div class="pa-4 d-flex align-center gap-3" style="position:relative">
+                        <MudAvatar Color="Color.Success" Variant="Variant.Filled">
+                            <MudIcon Icon="@Icons.Material.Filled.DevicesOther" />
+                        </MudAvatar>
+                        <div>
+                            <MudText Typo="Typo.h4" Class="font-weight-bold mb-0">@_totalSesiones</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Sesiones activas</MudText>
+                        </div>
+                    </div>
+                </MudPaper>
+            </MudItem>
+        }
+        @if (Auth.TienePermiso("APPS_VER"))
+        {
+            <MudItem xs="6" sm="6" md="3">
+                <MudPaper Class="dash-stat-card" Elevation="0" Outlined="true">
+                    <div class="dash-stat-bar dash-stat-bar-info"></div>
+                    <div class="dash-stat-decoration">
+                        <MudIcon Icon="@Icons.Material.Filled.Apps" />
+                    </div>
+                    <div class="pa-4 d-flex align-center gap-3" style="position:relative">
+                        <MudAvatar Color="Color.Info" Variant="Variant.Filled">
+                            <MudIcon Icon="@Icons.Material.Filled.Apps" />
+                        </MudAvatar>
+                        <div>
+                            <MudText Typo="Typo.h4" Class="font-weight-bold mb-0">@_totalApps</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Aplicaciones</MudText>
+                        </div>
+                    </div>
+                </MudPaper>
+            </MudItem>
+        }
+        @if (Auth.TienePermiso("TENANTS_VER"))
+        {
+            <MudItem xs="6" sm="6" md="3">
+                <MudPaper Class="dash-stat-card" Elevation="0" Outlined="true">
+                    <div class="dash-stat-bar dash-stat-bar-secondary"></div>
+                    <div class="dash-stat-decoration">
+                        <MudIcon Icon="@Icons.Material.Filled.Business" />
+                    </div>
+                    <div class="pa-4 d-flex align-center gap-3" style="position:relative">
+                        <MudAvatar Color="Color.Secondary" Variant="Variant.Filled">
+                            <MudIcon Icon="@Icons.Material.Filled.Business" />
+                        </MudAvatar>
+                        <div>
+                            <MudText Typo="Typo.h4" Class="font-weight-bold mb-0">@_totalTenants</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Inquilinos activos</MudText>
+                        </div>
+                    </div>
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
+
+    @* ── Activity + Security ───────────────────────── *@
+    <MudGrid Class="mb-6">
+        @* Recent Activity *@
+        @if (Auth.TienePermiso("AUDITORIA_VER"))
+        {
+            <MudItem xs="12" md="7">
+                <MudPaper Class="dash-section-card" Elevation="0" Outlined="true">
+                    <div class="d-flex align-center gap-3 pa-4 pb-0">
+                        <div class="section-accent section-accent-info"></div>
+                        <MudText Typo="Typo.h6" Class="font-weight-bold flex-grow-1 mb-0">Actividad Reciente</MudText>
+                    </div>
+                    @if (_actividades is not null && _actividades.Count > 0)
+                {
+                    <div class="dash-timeline pa-4">
+                        @foreach (var act in _actividades)
+                        {
+                            <div class="dash-timeline-item">
+                                <div class="dash-timeline-dot dash-timeline-dot-@RiesgoCss(act.NivelRiesgo)"></div>
+                                <div class="dash-timeline-content">
+                                    <div class="d-flex align-center gap-2 mb-1">
+                                        <MudAvatar Size="Size.Small" Color="@RiesgoColor(act.NivelRiesgo)" Class="dash-timeline-avatar">
+                                            @(act.UsuarioNombre?.Length > 0 ? act.UsuarioNombre[..1].ToUpper() : "?")
+                                        </MudAvatar>
+                                        <MudText Typo="Typo.body2" Class="font-weight-medium">@(act.Detalles ?? act.TipoAccionNombre ?? "Sin descripción")</MudText>
+                                        @if (act.NivelRiesgo is not null && act.NivelRiesgo >= 7)
+                                        {
+                                            <MudChip T="int" Size="Size.Small" Color="Color.Error" Class="dash-risk-chip" Variant="Variant.Outlined">@act.NivelRiesgo</MudChip>
+                                        }
+                                    </div>
+                                    <div class="d-flex gap-2 align-center">
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="font-weight-medium">@act.TipoAccionNombre</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">·</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">@act.FecAccion?.ToString("g")</MudText>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="pa-6 text-center">
+                        <MudIcon Icon="@Icons.Material.Filled.Inbox" Size="Size.Large" Color="Color.Default" />
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">No hay actividad reciente</MudText>
+                    </div>
+                }
+</MudPaper>
+                </MudItem>
+        }
+
+        @* Security Status *@
+        @if (Auth.TienePermiso("USUARIOS_VER"))
+        {
+            <MudItem xs="12" md="5">
+                <MudPaper Class="dash-section-card" Elevation="0" Outlined="true">
+                    <div class="d-flex align-center gap-3 pa-4 pb-0">
+                        <div class="section-accent section-accent-warning"></div>
+                        <MudText Typo="Typo.h6" Class="font-weight-bold flex-grow-1 mb-0">Estado de Seguridad</MudText>
+                    </div>
+                <div class="pa-4">
+                    @* Alert cards *@
+                    <div class="d-flex align-center gap-3 pa-3 mb-3 dash-alert-card">
+                        <div class="dash-alert-icon dash-alert-icon-@(_conIntentosExcedidos > 0 ? "warning" : "success")">
+                            <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Small" />
+                        </div>
+                        <div class="flex-grow-1">
+                            <MudText Typo="Typo.body2" Class="font-weight-bold">@_conIntentosExcedidos usuarios</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Con intentos de acceso excedidos</MudText>
+                        </div>
+                        @if (_conIntentosExcedidos > 0)
+                        {
+                            <MudChip T="int" Size="Size.Small" Color="Color.Warning">@_conIntentosExcedidos</MudChip>
+                        }
+                    </div>
+                    <div class="d-flex align-center gap-3 pa-3 mb-3 dash-alert-card">
+                        <div class="dash-alert-icon dash-alert-icon-@(_conPasswordExpirada > 0 ? "error" : "success")">
+                            <MudIcon Icon="@Icons.Material.Filled.Password" Size="Size.Small" />
+                        </div>
+                        <div class="flex-grow-1">
+                            <MudText Typo="Typo.body2" Class="font-weight-bold">@_conPasswordExpirada usuarios</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Con contraseña expirada</MudText>
+                        </div>
+                        @if (_conPasswordExpirada > 0)
+                        {
+                            <MudChip T="int" Size="Size.Small" Color="Color.Error">@_conPasswordExpirada</MudChip>
+                        }
+                    </div>
+                    @* Overall status *@
+                    <MudPaper Class="pa-3 mt-4 dash-overall-status" Elevation="0" Outlined="false">
+                        <div class="d-flex align-center gap-2">
+                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="@(_conIntentosExcedidos + _conPasswordExpirada == 0 ? Color.Success : Color.Warning)" Size="Size.Small" />
+                            <MudText Typo="Typo.caption" Class="font-weight-medium">
+                                @if (_conIntentosExcedidos + _conPasswordExpirada == 0)
+                                {
+                                    <span>Sistema saludable — sin incidencias</span>
+                                }
+                                else
+                                {
+                                    <span>@(_conIntentosExcedidos + _conPasswordExpirada) incidencias detectadas</span>
+                                }
+                            </MudText>
+                        </div>
+                    </MudPaper>
+                    <MudButton Href="/admin/roles-permisos" Variant="Variant.Text" Color="Color.Primary" FullWidth="true"
+                        StartIcon="@Icons.Material.Filled.Settings" Class="mt-3">
+Ir a configuración de seguridad
+                    </MudButton>
+                </div>
+            </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
+
+    @* ── Dispositivos ────────────────────────────────── *@
+    @if (Auth.TienePermiso("USUARIOS_VERDISP"))
+    {
+        <MudGrid Class="mb-6">
+            <MudItem xs="12">
+                <MudPaper Class="dash-section-card" Elevation="0" Outlined="true">
+                    <div class="d-flex align-center gap-3 pa-4 pb-3">
+                        <div class="section-accent section-accent-success"></div>
+                        <MudIcon Icon="@Icons.Material.Filled.DevicesOther" Size="Size.Small" Color="Color.Success" />
+                        <MudText Typo="Typo.h6" Class="font-weight-bold mb-0">Dispositivos</MudText>
+                    </div>
+                    <div class="pa-4 pt-0">
+                        <MudGrid>
+                            <MudItem xs="4" sm="3">
+                                <MudText Typo="Typo.h4" Class="font-weight-bold mb-0" Color="Color.Primary">@_totalDisp</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Dispositivos registrados</MudText>
+                            </MudItem>
+                            <MudItem xs="4" sm="3">
+                                <MudText Typo="Typo.h4" Class="font-weight-bold mb-0" Color="Color.Success">@_totalDispConf</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Confiables</MudText>
+                            </MudItem>
+                            <MudItem xs="4" sm="3">
+                                <MudText Typo="Typo.h4" Class="font-weight-bold mb-0" Color="Color.Warning">@_totalDispNoConf</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">No confiables</MudText>
+                            </MudItem>
+                            <MudItem xs="12" sm="3" Class="d-flex align-center">
+                                <MudButton Href="/dispositivos" Variant="Variant.Text" Color="Color.Success" StartIcon="@Icons.Material.Filled.Visibility">
+                                    Ver dispositivos
+                                </MudButton>
+                            </MudItem>
+                        </MudGrid>
+                    </div>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+
+    @* ── Federación ──────────────────────────────────── *@
+    <MudGrid>
+        <MudItem xs="12">
+            <MudPaper Class="dash-section-card" Elevation="0" Outlined="true">
+                <div class="d-flex align-center gap-3 pa-4 pb-3">
+                    <div class="section-accent section-accent-primary"></div>
+                    <MudIcon Icon="@Icons.Material.Filled.Hub" Size="Size.Small" Color="Color.Primary" />
+                    <MudText Typo="Typo.h6" Class="font-weight-bold mb-0">Federación de Identidades</MudText>
+                </div>
+                @if (_federacionStats != null)
+                {
+                    <div class="pa-4 pt-0">
+                        <MudGrid>
+                            <MudItem xs="6" sm="3">
+                                <MudText Typo="Typo.h4" Class="font-weight-bold mb-0" Color="Color.Primary">@_federacionStats.TotalIdentidadesVinculadas</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Identidades vinculadas</MudText>
+                            </MudItem>
+                            <MudItem xs="6" sm="3">
+                                <MudText Typo="Typo.h4" Class="font-weight-bold mb-0" Color="Color.Success">@_federacionStats.TotalProveedoresActivos</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Proveedores activos</MudText>
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.body2" Class="font-weight-medium mb-2">Por proveedor</MudText>
+                                <div class="d-flex gap-4 flex-wrap">
+                                    @foreach (var prov in _federacionStats.DesglosePorProveedor)
+                                    {
+                                        <div class="d-flex align-center gap-1">
+                                            <MudAvatar Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled">
+                                                @(prov.Codigo.Length > 0 ? prov.Codigo[..1] : "?")
+                                            </MudAvatar>
+                                            <div>
+                                                <MudText Typo="Typo.caption" Class="font-weight-bold">@prov.Nombre</MudText>
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">@prov.TotalVinculadas</MudText>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </MudItem>
+                        </MudGrid>
+                        @if (_federacionStats.UltimasActividades.Count > 0)
+                        {
+                            <MudText Typo="Typo.body2" Class="font-weight-medium mb-2 mt-3">Últimas actividades</MudText>
+                            <MudTable Items="@_federacionStats.UltimasActividades" Dense="true" Hover="true" Elevation="0" Outlined="false">
+                                <ColGroup>
+                                    <col style="width:20%" />
+                                    <col style="width:15%" />
+                                    <col style="width:15%" />
+                                    <col style="width:50%" />
+                                </ColGroup>
+                                <HeaderContent>
+                                    <MudTh><MudTableSortLabel SortBy="new Func<UltimaActividadFederacionDto, object>(x => x.FecEvento)">Fecha</MudTableSortLabel></MudTh>
+                                    <MudTh>Proveedor</MudTh>
+                                    <MudTh>Evento</MudTh>
+                                    <MudTh>Detalle</MudTh>
+                                </HeaderContent>
+                                <RowTemplate>
+                                    <MudTd DataLabel="Fecha">@context.FecEvento.ToString("g")</MudTd>
+                                    <MudTd DataLabel="Proveedor">@context.ProveedorNombre</MudTd>
+                                    <MudTd DataLabel="Evento">
+                                        <MudChip T="string" Size="Size.Small" Color="@ColorParaResultado(context.Resultado)">@context.Evento</MudChip>
+                                    </MudTd>
+                                    <MudTd DataLabel="Detalle">@context.Detalle</MudTd>
+                                </RowTemplate>
+                            </MudTable>
+                        }
+                        else
+                        {
+                            <div class="pa-4 text-center">
+                                <MudIcon Icon="@Icons.Material.Filled.Hub" Size="Size.Large" Color="Color.Default" />
+                                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">Sin actividad de federación</MudText>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="pa-6 text-center">
+                        <MudIcon Icon="@Icons.Material.Filled.Hub" Size="Size.Large" Color="Color.Default" />
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">Cargando estadísticas de federación...</MudText>
+                    </div>
+                }
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+@code {
+    private string _totalUsuarios = "0";
+    private string _totalSesiones = "0";
+    private string _totalApps = "0";
+    private string _totalTenants = "0";
+    private int _conIntentosExcedidos;
+    private int _conPasswordExpirada;
+    private int _totalDisp;
+    private int _totalDispConf;
+    private int _totalDispNoConf;
+    private List<AuditoriaPwdDto>? _actividades;
+    private FederacionEstadisticasDto? _federacionStats;
+    private bool _statsLoaded;
+    private bool _initialized;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.IsAuthenticated)
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+
+        if (_initialized) return;
+        _initialized = true;
+
+        await Task.WhenAll(
+            CargarStatsAsync(),
+            CargarActividadesAsync(),
+            CargarAlertasAsync(),
+            CargarFederacionAsync(),
+            CargarDispositivosAsync()
+        );
+    }
+
+    private async Task CargarFederacionAsync()
+    {
+        try
+        {
+            var tenantId = Auth.IdTenant ?? 1;
+            _federacionStats = await Api.GetAsync<FederacionEstadisticasDto>($"api/federacion/estadisticas/{tenantId}");
+        }
+        catch (TaskCanceledException)
+        {
+            _federacionStats = null;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar federación: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task CargarDispositivosAsync()
+    {
+        if (!Auth.TienePermiso("USUARIOS_VERDISP")) return;
+        try
+        {
+            var items = await Api.GetAsync<List<DispConfiableDto>>("api/DispConfiables");
+            if (items != null)
+            {
+                _totalDisp = items.Count;
+                _totalDispConf = items.Count(d => d.Confiable);
+                _totalDispNoConf = items.Count(d => !d.Confiable);
+            }
+        }
+        catch (TaskCanceledException) { }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar dispositivos: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task CargarStatsAsync()
+    {
+        try
+        {
+            var tasks = new List<Task<(string Prop, int Count)>>();
+
+            if (Auth.TienePermiso("USUARIOS_VER"))
+                tasks.Add(Task.Run(async () => ("USUARIOS", await Api.GetAsync<int>("api/Usuarios/count"))));
+            if (Auth.TienePermiso("SESIONES_VER"))
+                tasks.Add(Task.Run(async () => ("SESIONES", await Api.GetAsync<int>("api/Sesiones/contar-tenant"))));
+            if (Auth.TienePermiso("APPS_VER"))
+                tasks.Add(Task.Run(async () => ("APPS", await Api.GetAsync<int>("api/Apps/count"))));
+            if (Auth.TienePermiso("TENANTS_VER"))
+                tasks.Add(Task.Run(async () => ("TENANTS", await Api.GetAsync<int>("api/Tenants/count"))));
+
+            if (tasks.Count == 0)
+            {
+                _statsLoaded = true;
+                return;
+            }
+
+            var results = await Task.WhenAll(tasks);
+            foreach (var (prop, count) in results)
+            {
+                switch (prop)
+                {
+                    case "USUARIOS": _totalUsuarios = count.ToString("N0"); break;
+                    case "SESIONES": _totalSesiones = count.ToString("N0"); break;
+                    case "APPS": _totalApps = count.ToString("N0"); break;
+                    case "TENANTS": _totalTenants = count.ToString("N0"); break;
+                }
+            }
+            _statsLoaded = true;
+        }
+        catch (TaskCanceledException)
+        {
+            _totalUsuarios = _totalSesiones = _totalApps = _totalTenants = "—";
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar estadísticas: {ex.Message}", Severity.Error);
+            _totalUsuarios = _totalSesiones = _totalApps = _totalTenants = "—";
+        }
+        finally
+        {
+            _statsLoaded = true;
+        }
+    }
+
+    private async Task CargarActividadesAsync()
+    {
+        if (!Auth.TienePermiso("AUDITORIA_VER"))
+        {
+            _actividades = [];
+            return;
+        }
+
+        try
+        {
+            var tenantId = Auth.IdTenant ?? 1;
+            _actividades = await Api.GetAsync<List<AuditoriaPwdDto>>($"api/AuditoriaPwd/tenant/{tenantId}");
+        }
+        catch (TaskCanceledException)
+        {
+            _actividades = [];
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar actividad: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task CargarAlertasAsync()
+    {
+        if (!Auth.TienePermiso("USUARIOS_VER"))
+        {
+            _conIntentosExcedidos = 0;
+            _conPasswordExpirada = 0;
+            return;
+        }
+
+        try
+        {
+            var tIntentos = Api.GetAsync<List<UsuarioDto>>("api/Usuarios/con-intentos-excedidos");
+            var tExpirados = Api.GetAsync<List<UsuarioDto>>("api/Usuarios/con-password-expirada");
+
+            await Task.WhenAll(tIntentos, tExpirados);
+
+            _conIntentosExcedidos = tIntentos.Result?.Count ?? 0;
+            _conPasswordExpirada = tExpirados.Result?.Count ?? 0;
+        }
+        catch (TaskCanceledException)
+        {
+            _conIntentosExcedidos = 0;
+            _conPasswordExpirada = 0;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar alertas: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private static Color RiesgoColor(int? nivel) => nivel switch
+    {
+        >= 7 => Color.Error,
+        >= 4 => Color.Warning,
+        _ => Color.Info
+    };
+
+    private static string RiesgoCss(int? nivel) => nivel switch
+    {
+        >= 7 => "error",
+        >= 4 => "warning",
+        _ => "info"
+    };
+
+    private static Color ColorParaResultado(string resultado) =>
+        resultado == "EXITOSO" ? Color.Success : Color.Warning;
+}

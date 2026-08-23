@@ -1,0 +1,124 @@
+@page "/email/providers"
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@inject NavigationManager Navigation
+@inject AuthService Auth
+@using PassPlat.Web.Models
+@using PassPlat.Web.Shared
+@using PassPlat.Aplicacion.Dtos.Catalogos
+
+<MudContainer>
+    <MudBreadcrumbs Class="mb-3">
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
+        <MudBreadcrumbItem>Comunicaciones</MudBreadcrumbItem>
+        <MudBreadcrumbItem>Providers de Correo</MudBreadcrumbItem>
+    </MudBreadcrumbs>
+
+    <MudPaper Class="pa-4 mb-4 d-flex flex-wrap align-center gap-4" Elevation="0" Outlined="true">
+        <div>
+            <MudText Typo="Typo.h5" Class="mb-0">Providers de Correo</MudText>
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">Configura y administra los proveedores de envío disponibles en la plataforma.</MudText>
+        </div>
+        <MudSpacer />
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium" Class="mr-2" OnClick="@(() => _ = RefreshAsync())" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Size="Size.Medium" OnClick="@(() => _ = OpenCreateDialogAsync())">
+            Nuevo Provider
+        </MudButton>
+    </MudPaper>
+
+    <MudTable Items="@_providers" Hover="true" Breakpoint="Breakpoint.Sm">
+        <ColGroup>
+            <col style="width: 200px;" />
+            <col />
+            <col style="width: 100px;" />
+            <col style="width: 100px;" />
+            <col style="width: 80px;" />
+        </ColGroup>
+        <HeaderContent>
+            <MudTh>Provider</MudTh>
+            <MudTh>Descripción</MudTh>
+            <MudTh>Cuentas</MudTh>
+            <MudTh>Estado</MudTh>
+            <MudTh></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Provider">
+                <div class="d-flex align-center">
+                    <MudIcon Icon="@context.Icon" Color="@context.IconColor" Class="mr-2" Size="Size.Small" />
+                    <MudText Typo="Typo.body2" Class="font-weight-medium">@context.Nombre</MudText>
+                </div>
+            </MudTd>
+            <MudTd DataLabel="Descripción"><MudText Typo="Typo.body2" Class="mud-text-secondary">@context.Descripcion</MudText></MudTd>
+            <MudTd DataLabel="Cuentas"><MudText Typo="Typo.body2">@context.Accounts.Count</MudText></MudTd>
+            <MudTd DataLabel="Estado">
+                <MudChip T="string" Size="Size.Small" Color="@(context.Activo ? Color.Success : Color.Default)">
+                    @(context.Activo ? "Activo" : "Inactivo")
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary"
+                               OnClick="@(() => _ = OpenEditDialogAsync(context.Nombre))" />
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText Align="Align.Center" Class="pa-4 mud-text-secondary">Sin providers configurados</MudText>
+        </NoRecordsContent>
+    </MudTable>
+</MudContainer>
+
+@code {
+    private List<ProviderGroup> _providers = [];
+
+    protected override void OnInitialized()
+    {
+        _providers = GetMockProviders();
+    }
+
+    private async Task OpenCreateDialogAsync()
+    {
+        var options = new DialogOptions { MaxWidth = MaxWidth.ExtraExtraLarge, FullWidth = true, CloseButton = true };
+        await Dialog.ShowAsync<ProviderDialog>("Nuevo Provider", options);
+    }
+
+    private async Task OpenEditDialogAsync(string providerName)
+    {
+        var parameters = new DialogParameters { ["IsEdit"] = true, ["ProviderNombre"] = providerName };
+        var options = new DialogOptions { MaxWidth = MaxWidth.ExtraExtraLarge, FullWidth = true, CloseButton = true };
+        await Dialog.ShowAsync<ProviderDialog>("Editar Provider", parameters, options);
+    }
+
+    private async Task RefreshAsync()
+    {
+        await Task.Delay(300);
+        Snackbar.Add("Providers actualizados", Severity.Info);
+    }
+
+    private static List<ProviderGroup> GetMockProviders()
+    {
+        return
+        [
+            new() { Nombre = "SMTP", Descripcion = "Protocolo estándar de correo — conexión directa a servidores SMTP.", Activo = true, Icon = Icons.Material.Filled.Email, IconColor = Color.Info, Accounts = [new(), new(), new()] },
+            new() { Nombre = "SendGrid", Descripcion = "API RESTful de Twilio para envío transaccional y marketing.", Activo = true, Icon = Icons.Material.Filled.Send, IconColor = Color.Info, Accounts = [new(), new()] },
+            new() { Nombre = "Amazon SES", Descripcion = "Servicio de correo de AWS — escalable, de bajo costo, ideal para producción.", Activo = true, Icon = Icons.Material.Filled.Cloud, IconColor = Color.Warning, Accounts = [new()] },
+            new() { Nombre = "Microsoft Graph", Descripcion = "API de Microsoft 365 / Exchange Online — integración con ecosistema Microsoft.", Activo = true, Icon = Icons.Material.Filled.DesktopWindows, IconColor = Color.Info, Accounts = [new()] },
+            new() { Nombre = "Mailgun", Descripcion = "API de correo enfocada en desarrolladores — tracking, webhooks y analytics.", Activo = true, Icon = Icons.Material.Filled.MailOutline, IconColor = Color.Secondary, Accounts = [new()] }
+        ];
+    }
+
+    private class ProviderGroup
+    {
+        public string Nombre { get; set; } = "";
+        public string Descripcion { get; set; } = "";
+        public bool Activo { get; set; }
+        public string Icon { get; set; } = "";
+        public Color IconColor { get; set; }
+        public List<ProviderAccountRow> Accounts { get; set; } = [];
+    }
+
+    private class ProviderAccountRow
+    {
+        public string Nombre { get; set; } = "";
+        public string Host { get; set; } = "";
+    }
+}

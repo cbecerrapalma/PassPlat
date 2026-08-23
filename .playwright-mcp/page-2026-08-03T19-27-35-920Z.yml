@@ -1,0 +1,26 @@
+- generic [ref=e2]:
+  - listbox [ref=e34]:
+    - option [ref=e35] [cursor=pointer]:
+      - paragraph [ref=e37]: Plataforma
+    - option [ref=e38] [cursor=pointer]:
+      - paragraph [ref=e40]: Abarrotes del Sur
+    - option [ref=e41] [cursor=pointer]:
+      - paragraph [ref=e43]: Vestuario del Norte
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: 🔒
+      - heading "AccessPlat" [level=5] [ref=e10]
+      - paragraph [ref=e11]: Inicia sesión para continuar
+    - paragraph [ref=e12]: Selecciona una aplicación para continuar
+    - generic [ref=e15]:
+      - generic [ref=e16] [cursor=pointer]:
+        - combobox "Aplicación" [ref=e17]: AccessPlat
+        - group "Aplicación"
+      - generic: Aplicación
+    - paragraph [ref=e22]: Selecciona un tenant para continuar
+    - generic [ref=e25]:
+      - generic [ref=e26] [cursor=pointer]:
+        - combobox "Tenant" [expanded] [active] [ref=e27]
+        - group "Tenant"
+      - generic: Tenant
+    - generic [ref=e32]: Plataforma de Acceso — v1.0

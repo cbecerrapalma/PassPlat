@@ -1,0 +1,285 @@
+@page "/dispositivos"
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@inject NavigationManager Navigation
+@inject AuthService Auth
+
+<MudContainer>
+    <MudBreadcrumbs Class="mb-3">
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
+        <MudBreadcrumbItem>Seguridad</MudBreadcrumbItem>
+        <MudBreadcrumbItem>Dispositivos</MudBreadcrumbItem>
+    </MudBreadcrumbs>
+
+    <MudGrid Class="mb-4">
+        <MudItem xs="12" sm="6" md="3">
+            <IamKpiCard Icon="@Icons.Material.Filled.Devices" Valor="@_totalDisp.ToString()" Label="Total Dispositivos" ColorClass="primary" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <IamKpiCard Icon="@Icons.Material.Filled.Shield" Valor="@_totalConf.ToString()" Label="Confiables" ColorClass="success" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <IamKpiCard Icon="@Icons.Material.Filled.Block" Valor="@_totalNoConf.ToString()" Label="No Confiables" ColorClass="warning" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <IamKpiCard Icon="@Icons.Material.Filled.Person" Valor="@_totalUsuarios.ToString()" Label="Usuarios" ColorClass="info" />
+        </MudItem>
+    </MudGrid>
+
+    <MudPaper Class="pa-4 mb-4 d-flex flex-wrap align-center gap-4" Elevation="0" Outlined="true">
+        <MudText Typo="Typo.h5" Class="flex-grow-1 mb-0">Gestión de Dispositivos</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium" OnClick="@LoadData" />
+    </MudPaper>
+
+    <MudTable T="DispConfiableDto" Items="@_items" Hover="true" Breakpoint="Breakpoint.Sm"
+        SelectedItem="@_selectedItem" SelectedItemChanged="@OnSelectedItemChanged"
+        Loading="@_loading" Class="mt-2">
+        <ColGroup>
+            <col style="width:60px;" />
+            <col />
+            <col />
+            <col />
+            <col style="width:120px;" />
+            <col style="width:80px;" />
+            <col style="width:80px;" />
+            <col style="width:100px;" />
+            <col style="width:140px;" />
+        </ColGroup>
+        <HeaderContent>
+            <MudTh>Id</MudTh>
+            <MudTh>Dispositivo</MudTh>
+            <MudTh>Usuario</MudTh>
+            <MudTh>Nombre</MudTh>
+            <MudTh>IP / País</MudTh>
+            <MudTh>Navegador</MudTh>
+            <MudTh>SO</MudTh>
+            <MudTh>Confianza</MudTh>
+            <MudTh>Acciones</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Id">@context.Id</MudTd>
+            <MudTd DataLabel="Dispositivo">
+                <div class="d-flex flex-column">
+                    <span>@context.DispModelo</span>
+                    <span class="text-caption">@context.DispFabricante</span>
+                </div>
+            </MudTd>
+            <MudTd DataLabel="Usuario">@context.UsuarioNombre</MudTd>
+            <MudTd DataLabel="Nombre">@context.Nombre</MudTd>
+            <MudTd DataLabel="IP / País">
+                <div class="d-flex flex-column">
+                    <span class="mono">@(!string.IsNullOrEmpty(context.IP) ? context.IP : "—")</span>
+                    <span class="text-caption">@(!string.IsNullOrEmpty(context.Pais) ? context.Pais : "")</span>
+                </div>
+            </MudTd>
+            <MudTd DataLabel="Navegador">@context.Navegador</MudTd>
+            <MudTd DataLabel="SO">@context.SO</MudTd>
+            <MudTd DataLabel="Confianza">
+                <MudChip T="string" Size="Size.Small" Color="@(context.Confiable ? Color.Success : Color.Error)">
+                    @(context.Confiable ? "Sí" : "No")
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Acciones">
+                <MudTooltip Text="Marcar confiable">
+                    <MudIconButton Icon="@Icons.Material.Filled.Shield" Size="Size.Small" Color="Color.Success"
+                        Disabled="@context.Confiable"
+                        OnClick="@(() => MarcarConfiable(context))" />
+                </MudTooltip>
+                <MudTooltip Text="Revocar confianza">
+                    <MudIconButton Icon="@Icons.Material.Filled.Block" Size="Size.Small" Color="Color.Warning"
+                        Disabled="@(!context.Confiable)"
+                        OnClick="@(() => RevocarConfianza(context))" />
+                </MudTooltip>
+                <MudTooltip Text="Bloquear dispositivo">
+                    <MudIconButton Icon="@Icons.Material.Filled.Dangerous" Size="Size.Small" Color="Color.Error"
+                        OnClick="@(() => Bloquear(context))" />
+                </MudTooltip>
+                <MudTooltip Text="Eliminar dispositivo">
+                    <MudIconButton Icon="@Icons.Material.Filled.DeleteForever" Size="Size.Small" Color="Color.Error"
+                        OnClick="@(() => Eliminar(context))" />
+                </MudTooltip>
+            </MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new int[]{10, 25, 50}" />
+        </PagerContent>
+        <NoRecordsContent>
+            <MudText Align="Align.Center" Class="py-6">
+                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Class="mr-2" />
+                No hay dispositivos registrados
+            </MudText>
+        </NoRecordsContent>
+    </MudTable>
+
+    @if (_selectedItem is not null)
+    {
+        <MudPaper Class="pa-4 mt-4" Elevation="0" Outlined="true">
+            <MudText Typo="Typo.h6" Class="mb-3">
+                Detalle del Dispositivo #@_selectedItem.Id
+                <MudChip T="string" Size="Size.Small" Color="@(_selectedItem.Confiable ? Color.Success : Color.Error)" Class="ml-2">
+                    @(_selectedItem.Confiable ? "Confiable" : "No confiable")
+                </MudChip>
+            </MudText>
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <div class="field-row"><div class="field-label">Dispositivo</div><div class="field-value">@_selectedItem.DispModelo</div></div>
+                    <div class="field-row"><div class="field-label">Fabricante</div><div class="field-value">@(_selectedItem.DispFabricante ?? "—")</div></div>
+                    <div class="field-row"><div class="field-label">Tipo</div><div class="field-value">@(_selectedItem.DispTipo ?? "—")</div></div>
+                    <div class="field-row"><div class="field-label">Nombre</div><div class="field-value">@(_selectedItem.Nombre ?? "—")</div></div>
+                    <div class="field-row"><div class="field-label">Usuario</div><div class="field-value">@(_selectedItem.UsuarioNombre ?? $"#{_selectedItem.IdUsuario}")</div></div>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <div class="field-row"><div class="field-label">IP</div><div class="field-value mono">@(_selectedItem.IP ?? "—")</div></div>
+                    <div class="field-row"><div class="field-label">País</div><div class="field-value">@(_selectedItem.Pais ?? "—")</div></div>
+                    <div class="field-row"><div class="field-label">Navegador</div><div class="field-value">@(_selectedItem.Navegador ?? "—")</div></div>
+                    <div class="field-row"><div class="field-label">Sistema Operativo</div><div class="field-value">@(_selectedItem.SO ?? "—")</div></div>
+                    <div class="field-row"><div class="field-label">Proveedor Auth</div><div class="field-value">@(_selectedItem.ProveedorAuth ?? "Local")</div></div>
+                    <div class="field-row"><div class="field-label">Logins</div><div class="field-value">@_selectedItem.CantidadLogins</div></div>
+                    <div class="field-row"><div class="field-label">Último Uso</div><div class="field-value">@(_selectedItem.UltUso?.ToLocalTime().ToString("dd MMM yyyy HH:mm") ?? "—")</div></div>
+                    <div class="field-row"><div class="field-label">Fec. Alta</div><div class="field-value">@_selectedItem.FecAlta.ToLocalTime().ToString("dd MMM yyyy HH:mm")</div></div>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    private List<DispConfiableDto> _items = [];
+    private bool _loading;
+    private int _totalDisp;
+    private int _totalConf;
+    private int _totalNoConf;
+    private int _totalUsuarios;
+    private DispConfiableDto? _selectedItem;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        try
+        {
+            _items = await Api.GetAsync<List<DispConfiableDto>>("api/DispConfiables") ?? [];
+            _totalDisp = _items.Count;
+            _totalConf = _items.Count(d => d.Confiable);
+            _totalNoConf = _items.Count(d => !d.Confiable);
+            _totalUsuarios = _items.Select(d => d.IdUsuario).Distinct().Count();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void OnSelectedItemChanged(DispConfiableDto? item)
+    {
+        _selectedItem = item;
+    }
+
+    private async Task MarcarConfiable(DispConfiableDto item)
+    {
+        try
+        {
+            var ok = await Api.PostVoidAsync($"api/DispConfiables/marcar-confiable/{item.IdUsuario}/{item.IdDisp}");
+            if (ok)
+            {
+                Snackbar.Add("Dispositivo marcado como confiable", Severity.Success);
+                await LoadData();
+            }
+            else
+                Snackbar.Add(Api.LastError ?? "Error al marcar como confiable", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task RevocarConfianza(DispConfiableDto item)
+    {
+        try
+        {
+            var ok = await Api.PostVoidAsync($"api/DispConfiables/revocar-confianza/{item.IdUsuario}/{item.IdDisp}");
+            if (ok)
+            {
+                Snackbar.Add("Confianza revocada", Severity.Success);
+                await LoadData();
+            }
+            else
+                Snackbar.Add(Api.LastError ?? "Error al revocar confianza", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task Bloquear(DispConfiableDto item)
+    {
+        var parameters = new DialogParameters
+        {
+            ["Title"] = "Bloquear dispositivo",
+            ["Message"] = $"¿Bloquear el dispositivo '{item.DispModelo}' de '{item.UsuarioNombre}'? Se revocará la confianza.",
+            ["ConfirmText"] = "Bloquear",
+            ["CancelText"] = "Cancelar"
+        };
+        var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parameters);
+        var result = await dialog.Result;
+        if (result.Canceled) return;
+
+        try
+        {
+            var ok = await Api.PostVoidAsync($"api/DispConfiables/bloquear/{item.Id}");
+            if (ok)
+            {
+                Snackbar.Add("Dispositivo bloqueado", Severity.Success);
+                await LoadData();
+            }
+            else
+                Snackbar.Add(Api.LastError ?? "Error al bloquear dispositivo", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task Eliminar(DispConfiableDto item)
+    {
+        var parameters = new DialogParameters
+        {
+            ["Title"] = "Eliminar dispositivo",
+            ["Message"] = $"¿Eliminar permanentemente el dispositivo '{item.DispModelo}' de '{item.UsuarioNombre}'? Esta acción no se puede deshacer.",
+            ["ConfirmText"] = "Eliminar",
+            ["CancelText"] = "Cancelar",
+            ["ConfirmColor"] = Color.Error
+        };
+        var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parameters);
+        var result = await dialog.Result;
+        if (result.Canceled) return;
+
+        try
+        {
+            var ok = await Api.DeleteAsync($"api/DispConfiables/{item.Id}");
+            if (ok)
+            {
+                Snackbar.Add("Dispositivo eliminado", Severity.Success);
+                await LoadData();
+            }
+            else
+                Snackbar.Add(Api.LastError ?? "Error al eliminar dispositivo", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+        }
+    }
+}

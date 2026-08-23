@@ -1,0 +1,329 @@
+@inject ApiClient Api
+@inject AuthService Auth
+@inject ISnackbar Snackbar
+@using PassPlat.Web.Models
+
+<MudDialog Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(IsEdit ? "Editar" : "Nuevo") Usuario</MudText>
+    </TitleContent>
+    <DialogContent>
+        <div class="usuario-dialog-columns">
+            <div class="usuario-dialog-left">
+                <MudPaper Elevation="0" Outlined="true" Class="pa-4" Style="border-radius:10px;height:100%;">
+                    <MudText Typo="Typo.subtitle2" Class="mb-3 d-flex align-center gap-1">
+                        <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
+                        Detalle del usuario
+                    </MudText>
+<MudTextField @bind-Value="_nomUsuario" Label="Usuario" Variant="Variant.Outlined" Class="mb-3"
+                              Disabled="@IsEdit" Autocomplete="off" Required="true"
+                              Error="@(_submitted && string.IsNullOrWhiteSpace(_nomUsuario))"
+                              ErrorText="El usuario es requerido" />
+                    <MudTextField @bind-Value="_email" Label="Email (opcional)" Variant="Variant.Outlined" Class="mb-3" Autocomplete="off"
+                                  Error="@(_submitted && !string.IsNullOrWhiteSpace(_email) && !IsValidEmail(_email))"
+                                  ErrorText="Formato de email inválido" />
+                    <MudTextField @bind-Value="_nombre" Label="Nombre" Variant="Variant.Outlined" Class="mb-3" Autocomplete="off" Required="true"
+                                  Error="@(_submitted && string.IsNullOrWhiteSpace(_nombre))"
+                                  ErrorText="El nombre es requerido" />
+                    <MudTextField @bind-Value="_apellido" Label="Apellido" Variant="Variant.Outlined" Class="mb-0" Autocomplete="off" Required="true"
+                                  Error="@(_submitted && string.IsNullOrWhiteSpace(_apellido))"
+                                  ErrorText="El apellido es requerido" />
+                    @if (!IsEdit)
+                    {
+                        <hr class="my-4" style="border-color:var(--mud-palette-lines-default);opacity:0.3;" />
+                        <MudText Typo="Typo.subtitle2" Class="mb-3 d-flex align-center gap-1">
+                            <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" />
+                            Contraseña
+                        </MudText>
+                        <div class="d-flex align-center gap-2 mb-3">
+                            <div class="d-flex align-center gap-2 flex-grow-1">
+                                @if (_showPassword)
+                                {
+                                    <MudTextField @bind-Value="_password" Label="Nueva contraseña" Variant="Variant.Outlined" Class="flex-grow-1 mb-0"
+                                                  InputType="InputType.Text" Immediate="true" Autocomplete="new-password"
+                                                  Error="@(!string.IsNullOrEmpty(_password) && _strengthResult != null && !_strengthResult.IsValid)"
+                                                  OnKeyDown="@HandleKeyDown" />
+                                }
+                                else
+                                {
+                                    <MudTextField @bind-Value="_password" Label="Nueva contraseña" Variant="Variant.Outlined" Class="flex-grow-1 mb-0"
+                                                  InputType="InputType.Password" Immediate="true" Autocomplete="new-password"
+                                                  Error="@(!string.IsNullOrEmpty(_password) && _strengthResult != null && !_strengthResult.IsValid)"
+                                                  OnKeyDown="@HandleKeyDown" />
+                                }
+                                <MudIconButton Icon="@(_showPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                               Color="Color.Default" OnClick="@(() => _showPassword = !_showPassword)"
+                                               Size="Size.Small" />
+                            </div>
+                            <MudIconButton Icon="@Icons.Material.Filled.AutoAwesome" Color="Color.Primary"
+                                           Title="Generar contraseña segura (Ctrl+G)" Disabled="@_generating"
+                                           OnClick="@GenerarPassword" Size="Size.Small" />
+                        </div>
+                        @if (_showPassword)
+                        {
+                            <MudTextField @bind-Value="_confirmPassword" Label="Confirmar contraseña" Variant="Variant.Outlined" Class="mb-0"
+                                          InputType="InputType.Text" Immediate="true" Autocomplete="new-password"
+                                          Error="@(!string.IsNullOrEmpty(_confirmPassword) && _password != _confirmPassword)"
+                                          ErrorText="Las contraseñas no coinciden"
+                                          Adornment="Adornment.End"
+                                          AdornmentIcon="@GetConfirmIcon()"
+                                          AdornmentColor="@GetConfirmColor()" />
+                        }
+                        else
+                        {
+                            <MudTextField @bind-Value="_confirmPassword" Label="Confirmar contraseña" Variant="Variant.Outlined" Class="mb-0"
+                                          InputType="InputType.Password" Immediate="true" Autocomplete="new-password"
+                                          Error="@(!string.IsNullOrEmpty(_confirmPassword) && _password != _confirmPassword)"
+                                          ErrorText="Las contraseñas no coinciden"
+                                          Adornment="Adornment.End"
+                                          AdornmentIcon="@GetConfirmIcon()"
+                                          AdornmentColor="@GetConfirmColor()" />
+                        }
+                    }
+                </MudPaper>
+            </div>
+            @if (!IsEdit)
+            {
+                <div class="usuario-dialog-right">
+                    <MudPaper Elevation="0" Outlined="true" Class="pa-4" Style="border-radius:10px;height:100%;">
+                        <MudText Typo="Typo.subtitle2" Class="mb-3 d-flex align-center gap-1">
+                            <MudIcon Icon="@Icons.Material.Filled.Shield" Size="Size.Small" />
+                            Seguridad de contraseña
+                        </MudText>
+                        @if (_policy != null)
+                        {
+                            <MudText Typo="Typo.caption" Class="mb-2 font-weight-bold">Requisitos</MudText>
+                            <div class="d-flex flex-wrap gap-1 mb-3">
+                                @if (_policy.LongMin > 0)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default">Mín. @_policy.LongMin car.</MudChip>
+                                }
+                                @if (_policy.ReqMayuscula)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default">Mayúscula</MudChip>
+                                }
+                                @if (_policy.ReqMinuscula)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default">Minúscula</MudChip>
+                                }
+                                @if (_policy.ReqNumero)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default">Número</MudChip>
+                                }
+                                @if (_policy.ReqEspecial)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default">Car. especial</MudChip>
+                                }
+                            </div>
+                        }
+                        <PasswordStrength Password="@_password" NomUsuario="@_nomUsuario" Email="@_email"
+                                          OnStrengthChanged="@OnStrengthChanged" />
+                    </MudPaper>
+                </div>
+            }
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@Save"
+                   Disabled="@(IsEdit ? false : (!CanSave() || _saving))">
+            @(IsEdit ? "Guardar" : "Crear")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<style>
+    .usuario-dialog-columns {
+        display: flex;
+        gap: 24px;
+        flex-wrap: wrap;
+    }
+    .usuario-dialog-left {
+        flex: 7 1 300px;
+        min-width: 0;
+    }
+    .usuario-dialog-right {
+        flex: 5 1 260px;
+        min-width: 0;
+    }
+</style>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private DialogOptions _dialogOptions = new() { CloseButton = true };
+
+    [Parameter] public bool IsEdit { get; set; }
+    [Parameter] public UsuarioDto? Usuario { get; set; }
+
+    private string _nomUsuario = "";
+    private string _email = "";
+    private string _nombre = "";
+    private string _apellido = "";
+    private string _password = "";
+    private string _confirmPassword = "";
+    private bool _saving;
+    private bool _showPassword;
+    private bool _generating;
+    private bool _submitted;
+    private PoliticaPwdDto? _policy;
+    private PasswordStrengthInfoDto? _strengthResult;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Usuario is not null)
+        {
+            _nomUsuario = Usuario.NomUsuario;
+            _email = Usuario.Email;
+            _nombre = Usuario.Nombre;
+            _apellido = Usuario.Apellido;
+        }
+        _policy = await Api.GetAsync<PoliticaPwdDto>("api/usuarios/password-policy");
+    }
+
+    private void HandleKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "g" && args.CtrlKey)
+            _ = GenerarPassword();
+    }
+
+    private async Task GenerarPassword()
+    {
+        if (_generating) return;
+        _generating = true;
+        try
+        {
+            var result = await Api.PostAsync<PasswordGenerationResultDto>("api/password/seguridad/generar",
+                new { politicaId = _policy?.Id });
+            if (result?.Success == true && !string.IsNullOrEmpty(result.Password))
+            {
+                _password = result.Password;
+                _confirmPassword = result.Password;
+                _showPassword = true;
+                Snackbar.Add("Contraseña generada", Severity.Success);
+            }
+            else
+            {
+                var err = result?.Errors?.FirstOrDefault() ?? "Error desconocido";
+                Snackbar.Add($"Error: {err}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _generating = false;
+        }
+    }
+
+    private void OnStrengthChanged(PasswordStrengthInfoDto? result)
+    {
+        _strengthResult = result;
+        StateHasChanged();
+    }
+
+    private bool CanSave()
+    {
+        if (IsEdit) return true;
+        if (string.IsNullOrWhiteSpace(_nomUsuario)) return false;
+        if (string.IsNullOrWhiteSpace(_nombre)) return false;
+        if (string.IsNullOrWhiteSpace(_apellido)) return false;
+        if (string.IsNullOrWhiteSpace(_password) && string.IsNullOrWhiteSpace(_confirmPassword))
+            return true;
+        if (string.IsNullOrWhiteSpace(_password) || string.IsNullOrWhiteSpace(_confirmPassword))
+            return false;
+        if (_password != _confirmPassword)
+            return false;
+        if (_strengthResult != null && !_strengthResult.IsValid)
+            return false;
+        return true;
+    }
+
+    private bool IsValidEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email)) return true;
+        try
+        {
+            var addr = new System.Net.Mail.MailAddress(email);
+            return addr.Address == email && addr.Host.Contains('.');
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private string GetSaveTooltip()
+    {
+        if (IsEdit) return "";
+        if (string.IsNullOrWhiteSpace(_password) && string.IsNullOrWhiteSpace(_confirmPassword))
+            return "Sin contraseña — el usuario deberá cambiarla en el primer inicio";
+        if (!CanSave())
+        {
+            if (_password != _confirmPassword)
+                return "Las contraseñas no coinciden";
+            if (_strengthResult != null && !_strengthResult.IsValid)
+                return "La contraseña no cumple los requisitos de seguridad";
+            return "Verifica la contraseña";
+        }
+        return "";
+    }
+
+    private string GetConfirmIcon()
+    {
+        if (string.IsNullOrEmpty(_confirmPassword)) return Icons.Material.Filled.Lock;
+        return _password == _confirmPassword
+            ? Icons.Material.Filled.CheckCircle
+            : Icons.Material.Filled.Cancel;
+    }
+
+    private Color GetConfirmColor()
+    {
+        if (string.IsNullOrEmpty(_confirmPassword)) return Color.Default;
+        return _password == _confirmPassword ? Color.Success : Color.Error;
+    }
+
+    private async Task Save()
+    {
+        _submitted = true;
+        if (!CanSave()) return;
+        _saving = true;
+        try
+        {
+            if (IsEdit)
+            {
+                var ok = await Api.PutVoidAsync("api/usuarios",
+                    new { id = Usuario!.Id, nombre = _nombre, apellido = _apellido, email = string.IsNullOrWhiteSpace(_email) ? "" : _email });
+                if (ok)
+                {
+                    Snackbar.Add("Usuario actualizado", Severity.Success);
+                    MudDialog.Close(DialogResult.Ok(true));
+                }
+            else
+                Snackbar.Add(Api.LastError ?? "Error al actualizar", Severity.Error);
+            }
+            else
+            {
+                var result = await Api.PostAsync<UsuarioDto>("api/usuarios",
+                    new { idTenant = Auth.IdTenant ?? 0, idEstado = 1, nomUsuario = _nomUsuario, email = string.IsNullOrWhiteSpace(_email) ? null : _email, nombre = _nombre, apellido = _apellido, password = string.IsNullOrWhiteSpace(_password) ? null : _password });
+                if (result is not null)
+                {
+                    Snackbar.Add("Usuario creado", Severity.Success);
+                    MudDialog.Close(DialogResult.Ok(true));
+                }
+                else
+                    Snackbar.Add(Api.LastError ?? "Error al crear", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

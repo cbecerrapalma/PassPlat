@@ -1,0 +1,272 @@
+- generic [ref=e44]:
+  - banner [ref=e45]:
+    - toolbar [ref=e46]:
+      - button [ref=e47] [cursor=pointer]:
+        - img [ref=e49]
+      - generic [ref=e54]: AccessPlat
+      - heading "Email/providers" [level=6] [ref=e3644]
+      - generic [ref=e59]:
+        - generic [ref=e60]: Buenas tardes
+        - generic [ref=e62]: 16:55:26
+      - separator [ref=e63]
+      - generic [ref=e64]:
+        - button [ref=e66] [cursor=pointer]:
+          - img [ref=e68]
+        - button [ref=e72] [cursor=pointer]:
+          - img [ref=e74]
+        - button [ref=e78] [cursor=pointer]:
+          - img [ref=e80]
+        - generic [ref=e85]:
+          - img [ref=e87]
+          - status [ref=e90]: "5"
+        - separator [ref=e91]
+        - generic [ref=e93] [cursor=pointer]:
+          - img [ref=e95]:
+            - generic [ref=e96]: SI
+          - paragraph [ref=e98]: sistema
+          - generic [ref=e101]: Plataforma
+          - img [ref=e102]
+  - complementary [ref=e105]:
+    - generic [ref=e106]:
+      - generic [ref=e107]:
+        - img [ref=e108]:
+          - paragraph [ref=e109]: SI
+        - generic [ref=e110]:
+          - paragraph [ref=e111]: sistema
+          - text: Administrador
+      - separator [ref=e112]
+      - navigation [ref=e113]:
+        - link "Panel Principal" [ref=e115] [cursor=pointer]:
+          - /url: /
+          - img [ref=e116]
+          - generic [ref=e119]: Panel Principal
+        - generic [ref=e120]: CATÁLOGOS
+        - navigation "Gestión" [ref=e121]:
+          - button "Toggle Gestión" [expanded]:
+            - img
+            - generic: Gestión
+            - img [ref=e122] [cursor=pointer]
+          - navigation [ref=e128]:
+            - link "Tenants" [ref=e130] [cursor=pointer]:
+              - /url: /tenants
+              - img [ref=e131]
+              - generic [ref=e134]: Tenants
+            - link "Apps" [ref=e136] [cursor=pointer]:
+              - /url: /apps
+              - img [ref=e137]
+              - generic [ref=e140]: Apps
+            - link "Roles y Permisos" [ref=e142] [cursor=pointer]:
+              - /url: /admin/roles
+              - img [ref=e143]
+              - generic [ref=e150]: Roles y Permisos
+            - link "Políticas de Contraseña" [ref=e152] [cursor=pointer]:
+              - /url: /politicas-pwd
+              - img [ref=e153]
+              - generic [ref=e156]: Políticas de Contraseña
+            - link "Config App" [ref=e158] [cursor=pointer]:
+              - /url: /config-app
+              - img [ref=e159]
+              - generic [ref=e163]: Config App
+        - generic [ref=e164]: SEGURIDAD
+        - navigation "Control" [ref=e165]:
+          - button "Toggle Control" [expanded]:
+            - img
+            - generic: Control
+            - img [ref=e166] [cursor=pointer]
+          - navigation [ref=e172]:
+            - link "Usuarios" [ref=e174] [cursor=pointer]:
+              - /url: /usuarios
+              - img [ref=e175]
+              - generic [ref=e178]: Usuarios
+            - link "Accesos" [ref=e180] [cursor=pointer]:
+              - /url: /accesos
+              - img [ref=e181]
+              - generic [ref=e186]: Accesos
+        - generic [ref=e187]: IAM
+        - navigation "Permisos" [ref=e188]:
+          - button "Toggle Permisos" [expanded]:
+            - img
+            - generic: Permisos
+            - img [ref=e189] [cursor=pointer]
+          - navigation [ref=e1435]:
+            - link "Roles" [ref=e1437] [cursor=pointer]:
+              - /url: /admin/roles
+              - img [ref=e1438]
+              - generic [ref=e1443]: Roles
+            - link "Permisos" [ref=e1445] [cursor=pointer]:
+              - /url: /admin/permisos
+              - img [ref=e1446]
+              - generic [ref=e1449]: Permisos
+            - link "Grupos" [ref=e1451] [cursor=pointer]:
+              - /url: /admin/grupos
+              - img [ref=e1452]
+              - generic [ref=e1455]: Grupos
+            - link "Permisos Directos" [ref=e1457] [cursor=pointer]:
+              - /url: /admin/roles-permisos
+              - img [ref=e1458]
+              - generic [ref=e1466]: Permisos Directos
+            - link "Matriz de Permisos" [ref=e1468] [cursor=pointer]:
+              - /url: /admin/matriz-permisos
+              - img [ref=e1469]
+              - generic [ref=e1472]: Matriz de Permisos
+        - generic [ref=e192]: MONITOREO
+        - navigation "Registros" [ref=e193]:
+          - button "Toggle Registros" [expanded]:
+            - img
+            - generic: Registros
+            - img [ref=e194] [cursor=pointer]
+          - navigation [ref=e2924]:
+            - link "Auditoría" [ref=e2926] [cursor=pointer]:
+              - /url: /auditoria
+              - img [ref=e2927]
+              - generic [ref=e2930]: Auditoría
+            - link "Historial de Contraseñas" [ref=e2932] [cursor=pointer]:
+              - /url: /historial-pwd
+              - img [ref=e2933]
+              - generic [ref=e2939]: Historial de Contraseñas
+            - link "Intentos Acceso" [ref=e2941] [cursor=pointer]:
+              - /url: /intentos-acceso
+              - img [ref=e2942]
+              - generic [ref=e2945]: Intentos Acceso
+            - link "Notificaciones" [ref=e2947] [cursor=pointer]:
+              - /url: /notificaciones
+              - img [ref=e2948]
+              - generic [ref=e2950]: Notificaciones
+            - link "Mantenimiento" [ref=e2952] [cursor=pointer]:
+              - /url: /mantenimiento
+              - img [ref=e2953]
+              - generic [ref=e2958]: Mantenimiento
+        - generic [ref=e197]: COMUNICACIONES
+        - navigation "Email" [ref=e198]:
+          - button "Toggle Email" [expanded]:
+            - img
+            - generic: Email
+            - img [ref=e199] [cursor=pointer]
+          - navigation [ref=e205]:
+            - link "Providers" [active] [ref=e207] [cursor=pointer]:
+              - /url: /email/providers
+              - img [ref=e208]
+              - generic [ref=e211]: Providers
+            - link "Cuentas de Correo" [ref=e213] [cursor=pointer]:
+              - /url: /email/accounts
+              - img [ref=e214]
+              - generic [ref=e217]: Cuentas de Correo
+            - link "Cuentas x Tenant" [ref=e219] [cursor=pointer]:
+              - /url: /email/tenant-accounts
+              - img [ref=e220]
+              - generic [ref=e223]: Cuentas x Tenant
+            - link "Cuentas x App" [ref=e225] [cursor=pointer]:
+              - /url: /email/app-accounts
+              - img [ref=e226]
+              - generic [ref=e229]: Cuentas x App
+            - link "Plantillas de Email" [ref=e231] [cursor=pointer]:
+              - /url: /email-templates
+              - img [ref=e232]
+              - generic [ref=e235]: Plantillas de Email
+      - generic [ref=e236]:
+        - separator [ref=e237]
+        - generic [ref=e238]: AccessPlat v1.0.0
+  - generic [ref=e239]:
+    - generic [ref=e3646]:
+      - generic [ref=e3647]:
+        - generic [ref=e3648]:
+          - heading "Providers de Correo" [level=5] [ref=e3649]
+          - paragraph [ref=e3650]: Configura y administra los proveedores de envío disponibles en la plataforma.
+        - button [ref=e3651] [cursor=pointer]:
+          - img [ref=e3653]
+        - button "Nuevo Provider" [ref=e3656] [cursor=pointer]:
+          - generic [ref=e3657]:
+            - img [ref=e3659]
+            - text: Nuevo Provider
+      - table [ref=e3664]:
+        - rowgroup [ref=e3671]:
+          - row "Provider Descripción Cuentas Estado" [ref=e3672]:
+            - columnheader "Provider" [ref=e3673]
+            - columnheader "Descripción" [ref=e3674]
+            - columnheader "Cuentas" [ref=e3675]
+            - columnheader "Estado" [ref=e3676]
+            - columnheader [ref=e3677]
+        - rowgroup [ref=e3678]:
+          - row "SMTP Protocolo estándar de correo — conexión directa a servidores SMTP. 3 Activo" [ref=e3679]:
+            - cell "SMTP" [ref=e3680]:
+              - generic [ref=e3681]:
+                - img [ref=e3682]
+                - paragraph [ref=e3685]: SMTP
+            - cell "Protocolo estándar de correo — conexión directa a servidores SMTP." [ref=e3686]:
+              - paragraph [ref=e3687]: Protocolo estándar de correo — conexión directa a servidores SMTP.
+            - cell "3" [ref=e3688]:
+              - paragraph [ref=e3689]: "3"
+            - cell "Activo" [ref=e3690]:
+              - generic [ref=e3693]: Activo
+            - cell [ref=e3694]:
+              - button [ref=e3695] [cursor=pointer]:
+                - img [ref=e3697]
+          - row "SendGrid API RESTful de Twilio para envío transaccional y marketing. 2 Activo" [ref=e3700]:
+            - cell "SendGrid" [ref=e3701]:
+              - generic [ref=e3702]:
+                - img [ref=e3703]
+                - paragraph [ref=e3706]: SendGrid
+            - cell "API RESTful de Twilio para envío transaccional y marketing." [ref=e3707]:
+              - paragraph [ref=e3708]: API RESTful de Twilio para envío transaccional y marketing.
+            - cell "2" [ref=e3709]:
+              - paragraph [ref=e3710]: "2"
+            - cell "Activo" [ref=e3711]:
+              - generic [ref=e3714]: Activo
+            - cell [ref=e3715]:
+              - button [ref=e3716] [cursor=pointer]:
+                - img [ref=e3718]
+          - row "Amazon SES Servicio de correo de AWS — escalable, de bajo costo, ideal para producción. 1 Activo" [ref=e3721]:
+            - cell "Amazon SES" [ref=e3722]:
+              - generic [ref=e3723]:
+                - img [ref=e3724]
+                - paragraph [ref=e3727]: Amazon SES
+            - cell "Servicio de correo de AWS — escalable, de bajo costo, ideal para producción." [ref=e3728]:
+              - paragraph [ref=e3729]: Servicio de correo de AWS — escalable, de bajo costo, ideal para producción.
+            - cell "1" [ref=e3730]:
+              - paragraph [ref=e3731]: "1"
+            - cell "Activo" [ref=e3732]:
+              - generic [ref=e3735]: Activo
+            - cell [ref=e3736]:
+              - button [ref=e3737] [cursor=pointer]:
+                - img [ref=e3739]
+          - row "Microsoft Graph API de Microsoft 365 / Exchange Online — integración con ecosistema Microsoft. 1 Activo" [ref=e3742]:
+            - cell "Microsoft Graph" [ref=e3743]:
+              - generic [ref=e3744]:
+                - img [ref=e3745]
+                - paragraph [ref=e3750]: Microsoft Graph
+            - cell "API de Microsoft 365 / Exchange Online — integración con ecosistema Microsoft." [ref=e3751]:
+              - paragraph [ref=e3752]: API de Microsoft 365 / Exchange Online — integración con ecosistema Microsoft.
+            - cell "1" [ref=e3753]:
+              - paragraph [ref=e3754]: "1"
+            - cell "Activo" [ref=e3755]:
+              - generic [ref=e3758]: Activo
+            - cell [ref=e3759]:
+              - button [ref=e3760] [cursor=pointer]:
+                - img [ref=e3762]
+          - row "Mailgun API de correo enfocada en desarrolladores — tracking, webhooks y analytics. 1 Activo" [ref=e3765]:
+            - cell "Mailgun" [ref=e3766]:
+              - generic [ref=e3767]:
+                - img [ref=e3768]
+                - paragraph [ref=e3771]: Mailgun
+            - cell "API de correo enfocada en desarrolladores — tracking, webhooks y analytics." [ref=e3772]:
+              - paragraph [ref=e3773]: API de correo enfocada en desarrolladores — tracking, webhooks y analytics.
+            - cell "1" [ref=e3774]:
+              - paragraph [ref=e3775]: "1"
+            - cell "Activo" [ref=e3776]:
+              - generic [ref=e3779]: Activo
+            - cell [ref=e3780]:
+              - button [ref=e3781] [cursor=pointer]:
+                - img [ref=e3783]
+    - generic [ref=e431]:
+      - generic [ref=e432]:
+        - generic [ref=e433]: © 2026 Plataforma de Acceso
+        - generic [ref=e436]:
+          - img [ref=e437]
+          - text: Producción
+      - generic [ref=e440]:
+        - button [ref=e442] [cursor=pointer]:
+          - img [ref=e444]
+        - button [ref=e455] [cursor=pointer]:
+          - img [ref=e457]
+        - separator [ref=e460]
+        - generic [ref=e461]: v1.0.0

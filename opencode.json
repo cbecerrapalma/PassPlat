@@ -1,0 +1,41 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "sharplens": {
+      "type": "local",
+      "command": ["sharplens"],
+      "enabled": true,
+      "environment": {
+        "DOTNET_SOLUTION_PATH": "D:\\CODIGOS\\PassPlat\\PassPlat.slnx"
+      },
+      "timeout": 30000
+    },
+    "filesystem": {
+      "type": "local",
+      "command": ["npx", "-y", "@modelcontextprotocol/server-filesystem", "D:\\CODIGOS\\PassPlat", "D:\\CODIGOS\\BBDD", "D:\\CODIGOS\\CBP"],
+      "enabled": true
+    },
+    "playwright": {
+      "type": "local",
+      "command": ["npx", "-y", "@playwright/mcp@latest", "--extension"],
+      "enabled": true,
+      "env": {
+        "BROWSER": "chromium",
+        "PLAYWRIGHT_MCP_EXTENSION_TOKEN": "n01pUTDuO_xBED7JoA64n7jpN5KpKSaWKiG6bpeZrno"
+      }
+    },
+    "chrome-devtools": {
+      "type": "local",
+      "command": ["npx", "-y", "chrome-devtools-mcp@latest", "--headless", "--no-usage-statistics"],
+      "enabled": true
+    },
+    "github": {
+      "type": "local",
+      "command": ["npx", "-y", "@modelcontextprotocol/server-github"],
+      "enabled": true,
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+      }
+    }
+  }
+}

@@ -1,0 +1,444 @@
+@page "/accesos"
+@inject ApiClient Api
+@inject AuthService Auth
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@inject NavigationManager Navigation
+@using PassPlat.Web.Models
+@using PassPlat.Web.Shared
+
+@if (!Auth.TienePermiso("ACCESOS_VER"))
+{
+    <SinPermiso PermisoRequerido="ACCESOS_VER" />
+}
+else
+{
+<div class="iam-page">
+    <MudBreadcrumbs Class="mb-3">
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/usuarios"))">Seguridad</MudBreadcrumbItem>
+        <MudBreadcrumbItem>Accesos</MudBreadcrumbItem>
+    </MudBreadcrumbs>
+
+    <div class="page-header">
+        <div class="page-title-row">
+            <div>
+                <h1 class="page-title">Accesos</h1>
+                <p class="page-subtitle">Administra los accesos efectivos asignados a los usuarios.</p>
+            </div>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AbrirCrearAcceso" StartIcon="@Icons.Material.Filled.Add">
+                Asignar Acceso
+            </MudButton>
+        </div>
+    </div>
+
+    <div class="kpi-row mb-4">
+        <IamKpiCard Valor="@_items.Count.ToString()" Label="Total Accesos" Subtexto="@($"{_items.Count} total")" Icon="@Icons.Material.Filled.Assignment" ColorClass="primary" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_items.Count(a => a.Activo).ToString()" Label="Activos" Subtexto="@($"{_items.Count(a => a.Activo)} activos")" Icon="@Icons.Material.Filled.CheckCircle" ColorClass="success" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_items.Select(a => a.IdRol).Distinct().Count().ToString()" Label="Roles Asignados" Subtexto="@($"{_items.Select(a => a.IdRol).Distinct().Count()} roles")" Icon="@Icons.Material.Filled.Security" ColorClass="warning" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_items.Select(a => a.AppNombre).Distinct().Count().ToString()" Label="Apps Integradas" Subtexto="@($"{_items.Select(a => a.AppNombre).Distinct().Count()} apps")" Icon="@Icons.Material.Filled.Apps" ColorClass="info" Xs="12" Sm="6" Md="3" />
+    </div>
+
+    <div class="content-body">
+        <div class="table-panel">
+            <CrudToolbar Title="Accesos" ShowCreate="true" CreateButtonText="Nuevo Acceso"
+                OnCreate="@AbrirCrearAcceso" OnRefresh="@RefrescarTodo"
+                SearchString="@_searchString" SearchStringChanged="@OnSearchChanged">
+            </CrudToolbar>
+            <div class="table-wrap">
+                <MudTable T="AccesoDto" Items="@_itemsFiltrados" Hover="true" Breakpoint="Breakpoint.Sm"
+                    SelectedItem="_selectedItem" SelectedItemChanged="@OnSelectedItemChanged" RowStyle="cursor: pointer;">
+                    <ColGroup>
+                        <col style="width:80px;" /><col /><col /><col /><col style="width:100px;" /><col style="width:100px;" /><col style="width:90px;" />
+                    </ColGroup>
+                    <HeaderContent>
+                        <MudTh>Usuario</MudTh><MudTh>Tenant</MudTh><MudTh>App</MudTh><MudTh>Rol</MudTh><MudTh>Inicio</MudTh><MudTh>Fin</MudTh><MudTh>Estado</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Usuario"><MudText Typo="Typo.body2" Class="font-weight-medium">@context.UsuarioNombre</MudText></MudTd>
+                        <MudTd DataLabel="Tenant"><span class="badge badge-default">@context.TenantNombre</span></MudTd>
+                        <MudTd DataLabel="App"><span class="col-name">@context.AppNombre</span></MudTd>
+                        <MudTd DataLabel="Rol"><span class="assign-chip sys">@context.RolNombre</span></MudTd>
+                        <MudTd DataLabel="Inicio" style="color:var(--text-muted);font-size:11px;">@context.FecAsignacion.ToLocalTime().ToString("dd/MM/yyyy")</MudTd>
+                        <MudTd DataLabel="Fin" style="color:var(--text-muted);font-size:11px;">—</MudTd>
+                        <MudTd DataLabel="Estado">
+                            <span class="badge @(context.Activo ? "badge-active" : "badge-inactive")">
+                                <span class="badge-dot"></span>@(context.Activo ? "Activo" : "Inactivo")
+                            </span>
+                        </MudTd>
+                    </RowTemplate>
+                    <PagerContent>
+                        <MudTablePager PageSizeOptions="new int[]{10,25,50}" />
+                    </PagerContent>
+                    <NoRecordsContent>
+                        <MudText Align="Align.Center" Class="py-6">
+                            <MudIcon Icon="@Icons.Material.Filled.SearchOff" Class="mr-2" />
+                            No hay registros
+                        </MudText>
+                    </NoRecordsContent>
+                </MudTable>
+            </div>
+        </div>
+
+        @if (_selectedItem is not null)
+        {
+            <div class="iam-inspector" style="width:380px;min-width:380px;position:sticky;top:16px;align-self:flex-start;">
+                <div class="inspector-header">
+                    <div class="inspector-title-row">
+                        <div class="inspector-title">@_selectedItem.UsuarioNombre</div>
+                        <span class="badge @(_selectedItem.Activo ? "badge-active" : "badge-inactive")">
+                            <span class="badge-dot"></span>@(_selectedItem.Activo ? "Activo" : "Inactivo")
+                        </span>
+                    </div>
+                    <div class="inspector-tabs" role="tablist">
+                        <MudButton Variant="Variant.Text" Color="@(_inspectorTab == 0 ? Color.Primary : Color.Default)" @onclick="() => SwitchInspectorTab(0)" Size="Size.Small">Información</MudButton>
+                        <MudButton Variant="Variant.Text" Color="@(_inspectorTab == 1 ? Color.Primary : Color.Default)" @onclick="() => SwitchInspectorTab(1)" Size="Size.Small">Usuario</MudButton>
+                        <MudButton Variant="Variant.Text" Color="@(_inspectorTab == 2 ? Color.Primary : Color.Default)" @onclick="() => SwitchInspectorTab(2)" Size="Size.Small">Aplicación</MudButton>
+                        <MudButton Variant="Variant.Text" Color="@(_inspectorTab == 3 ? Color.Primary : Color.Default)" @onclick="() => SwitchInspectorTab(3)" Size="Size.Small">Tenant</MudButton>
+                        <MudButton Variant="Variant.Text" Color="@(_inspectorTab == 4 ? Color.Primary : Color.Default)" @onclick="() => SwitchInspectorTab(4)" Size="Size.Small">Rol</MudButton>
+                        <MudButton Variant="Variant.Text" Color="@(_inspectorTab == 5 ? Color.Primary : Color.Default)" @onclick="() => SwitchInspectorTab(5)" Size="Size.Small">Auditoría</MudButton>
+                    </div>
+                </div>
+                <div class="inspector-body">
+                    @if (_inspectorTab == 0)
+                    {
+                        <div class="insp-section">
+                            <div class="insp-section-title">Detalles del Acceso</div>
+                            <div class="field-row"><div class="field-label">Usuario</div><div class="field-value mono">@_selectedItem.UsuarioNombre</div></div>
+                            <div class="field-row"><div class="field-label">Tenant</div><div class="field-value"><span class="badge badge-default">@_selectedItem.TenantNombre</span></div></div>
+                            <div class="field-row"><div class="field-label">Aplicación</div><div class="field-value"><span class="assign-chip sys">@_selectedItem.AppNombre</span></div></div>
+                            <div class="field-row"><div class="field-label">Rol</div><div class="field-value">@_selectedItem.RolNombre</div></div>
+                            <div class="field-row"><div class="field-label">Inicio</div><div class="field-value" style="font-family:'JetBrains Mono',monospace;font-size:12px;">@_selectedItem.FecAsignacion.ToLocalTime().ToString("dd/MM/yyyy")</div></div>
+                            <div class="field-row"><div class="field-label">Fin</div><div class="field-value" style="color:var(--text-muted);font-size:12px;">—</div></div>
+                            <div class="field-row"><div class="field-label">Creado</div><div class="field-value" style="font-size:12px;">@_selectedItem.FecAsignacion.ToLocalTime().ToString("dd MMM yyyy")</div></div>
+                        </div>
+                    }
+                    else if (_inspectorTab == 1)
+                    {
+                        <div class="insp-section">
+                            <div class="insp-section-title">Información del Usuario</div>
+                            @if (_selectedUser is null && _loadingUser)
+                            {
+                                <div style="padding:12px;text-align:center;"><span style="color:var(--text-muted);font-size:12px;">Cargando usuario…</span></div>
+                            }
+                            else if (_selectedUser is null)
+                            {
+                                <div class="field-row"><div class="field-label">Usuario</div><div class="field-value mono">@_selectedItem.UsuarioNombre</div></div>
+                            }
+                            else
+                            {
+                                <div class="field-row"><div class="field-label">Usuario</div><div class="field-value mono">@_selectedUser.NomUsuario</div></div>
+                                <div class="field-row"><div class="field-label">Nombre</div><div class="field-value">@_selectedUser.Nombre @_selectedUser.Apellido</div></div>
+                                <div class="field-row"><div class="field-label">Email</div><div class="field-value mono" style="font-size:11px;">@_selectedUser.Email</div></div>
+                                <div class="field-row">
+                                    <div class="field-label">Estado</div>
+                                    <div class="field-value">
+                                        <span class="badge @(_selectedUser.Eliminado ? "badge-inactive" : "badge-active")">
+                                            <span class="badge-dot"></span>@(_selectedUser.Eliminado ? "Inactivo" : "Activo")
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="field-row"><div class="field-label">Email Verif.</div><div class="field-value"><span class="badge @(_selectedUser.EmailVerificado ? "badge-active" : "badge-default")">@(_selectedUser.EmailVerificado ? "Verificado" : "Pendiente")</span></div></div>
+                                <div class="field-row"><div class="field-label">Creado</div><div class="field-value">@(_selectedUser.FecCrea?.ToLocalTime().ToString("dd MMM yyyy") ?? "—")</div></div>
+                            }
+                        </div>
+                    }
+                    else if (_inspectorTab == 2)
+                    {
+                        <div class="insp-section">
+                            <div class="insp-section-title">Información de la Aplicación</div>
+                            @if (_appDetail is null && _loadingApp)
+                            {
+                                <div style="padding:12px;text-align:center;"><span style="color:var(--text-muted);font-size:12px;">Cargando aplicación…</span></div>
+                            }
+                            else if (_appDetail is null)
+                            {
+                                <div class="field-row"><div class="field-label">Nombre</div><div class="field-value">@_selectedItem.AppNombre</div></div>
+                            }
+                            else
+                            {
+                                <div class="field-row"><div class="field-label">Nombre</div><div class="field-value">@_appDetail.Nombre</div></div>
+                                <div class="field-row"><div class="field-label">Código</div><div class="field-value mono">@_appDetail.Codigo</div></div>
+                                <div class="field-row"><div class="field-label">URL Base</div><div class="field-value" style="font-size:11px;font-family:'JetBrains Mono',monospace;word-break:break-all;">@_appDetail.UrlBase</div></div>
+                                <div class="field-row">
+                                    <div class="field-label">Estado</div>
+                                    <div class="field-value">
+                                        <span class="badge @(_appDetail.Activa ? "badge-active" : "badge-inactive")">
+                                            <span class="badge-dot"></span>@(_appDetail.Activa ? "Activa" : "Inactiva")
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="field-row"><div class="field-label">Creado</div><div class="field-value">@_appDetail.FecCrea.ToLocalTime().ToString("dd MMM yyyy")</div></div>
+                            }
+                        </div>
+                    }
+                    else if (_inspectorTab == 3)
+                    {
+                        <div class="insp-section">
+                            <div class="insp-section-title">Información del Tenant</div>
+                            @if (_tenantDetail is null && _loadingTenant)
+                            {
+                                <div style="padding:12px;text-align:center;"><span style="color:var(--text-muted);font-size:12px;">Cargando tenant…</span></div>
+                            }
+                            else if (_tenantDetail is null)
+                            {
+                                <div class="field-row"><div class="field-label">Nombre</div><div class="field-value">@_selectedItem.TenantNombre</div></div>
+                            }
+                            else
+                            {
+                                <div class="field-row"><div class="field-label">Nombre</div><div class="field-value">@_tenantDetail.Nombre</div></div>
+                                <div class="field-row"><div class="field-label">Código</div><div class="field-value mono">@_tenantDetail.Codigo</div></div>
+                                <div class="field-row">
+                                    <div class="field-label">Estado</div>
+                                    <div class="field-value">
+                                        <span class="badge @(_tenantDetail.Activo ? "badge-active" : "badge-inactive")">
+                                            <span class="badge-dot"></span>@(_tenantDetail.Activo ? "Activo" : "Inactivo")
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="field-row"><div class="field-label">Sistema</div><div class="field-value"><span class="badge @(_tenantDetail.EsSistema ? "badge-active" : "badge-default")">@(_tenantDetail.EsSistema ? "Sí" : "No")</span></div></div>
+                                <div class="field-row"><div class="field-label">Creado</div><div class="field-value">@_tenantDetail.FecCrea.ToLocalTime().ToString("dd MMM yyyy")</div></div>
+                            }
+                        </div>
+                    }
+                    else if (_inspectorTab == 4)
+                    {
+                        <div class="insp-section">
+                            <div class="insp-section-title">Información del Rol</div>
+                            @if (_rolDetail is null && _loadingRol)
+                            {
+                                <div style="padding:12px;text-align:center;"><span style="color:var(--text-muted);font-size:12px;">Cargando rol…</span></div>
+                            }
+                            else if (_rolDetail is null)
+                            {
+                                <div class="field-row"><div class="field-label">Nombre</div><div class="field-value">@_selectedItem.RolNombre</div></div>
+                            }
+                            else
+                            {
+                                <div class="field-row"><div class="field-label">Nombre</div><div class="field-value">@_rolDetail.Nombre</div></div>
+                                <div class="field-row"><div class="field-label">Código</div><div class="field-value mono">@_rolDetail.Codigo</div></div>
+                                <div class="field-row"><div class="field-label">Descripción</div><div class="field-value" style="font-size:12px;">@_rolDetail.Descripcion</div></div>
+                                <div class="field-row"><div class="field-label">Tenant</div><div class="field-value">@_rolDetail.TenantNombre</div></div>
+                                <div class="field-row">
+                                    <div class="field-label">Estado</div>
+                                    <div class="field-value">
+                                        <span class="badge @(_rolDetail.Activo ? "badge-active" : "badge-inactive")">
+                                            <span class="badge-dot"></span>@(_rolDetail.Activo ? "Activo" : "Inactivo")
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="field-row"><div class="field-label">Creado</div><div class="field-value">@_rolDetail.FecCrea.ToLocalTime().ToString("dd MMM yyyy")</div></div>
+                            }
+                        </div>
+                    }
+                    else if (_inspectorTab == 5)
+                    {
+                        <div class="insp-section">
+                            <div class="insp-section-title">Auditoría del Acceso</div>
+                            <div class="audit-entry">
+                                <div class="audit-icon" style="background:rgba(99,102,241,.12);color:#818cf8;">
+                                    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="6" r="4"/><path d="M6 4v2l1.5 1"/></svg>
+                                </div>
+                                <div class="audit-content">
+                                    <div class="audit-text">Acceso creado</div>
+                                    <div class="audit-action">@_selectedItem.RolNombre · @_selectedItem.AppNombre</div>
+                                    <div class="audit-meta">@_selectedItem.FecAsignacion.ToLocalTime().ToString("dd MMM yyyy HH:mm")</div>
+                                </div>
+                            </div>
+                            <div class="field-row" style="margin-top:14px;">
+                                <div class="field-label">Estado actual</div>
+                                <div class="field-value">
+                                    <span class="badge @(_selectedItem.Activo ? "badge-active" : "badge-inactive")">
+                                        <span class="badge-dot"></span>@(_selectedItem.Activo ? "Activo" : "Inactivo")
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+                <div class="inspector-footer">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true" OnClick="AbrirCrearAcceso" StartIcon="@Icons.Material.Filled.Add">Reasignar</MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Error" FullWidth="true" OnClick="@(() => RevocarAcceso(_selectedItem))" Disabled="@_revocando" StartIcon="@Icons.Material.Filled.Block">Revocar</MudButton>
+                </div>
+            </div>
+        }
+
+    </div>
+
+    <MudOverlay Visible="@_loading" />
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" Class="mt-4" />
+    }
+</div>
+}
+
+@code {
+    private List<AccesoDto> _items = [];
+    private List<AccesoDto> _itemsFiltrados => _items;
+    private bool _loading;
+    private int _idUsuario;
+    private List<UsuarioDto> _usuarios = [];
+    private UsuarioDto? _usuarioSelected;
+    private AccesoDto? _selectedItem;
+    private int _inspectorTab;
+    private string _searchString = "";
+    private bool _showUserFilter;
+    private bool _showEstadoFilter;
+    private bool _revocando;
+
+    // Inspector detail data
+    private UsuarioDto? _selectedUser;
+    private bool _loadingUser;
+    private AppDto? _appDetail;
+    private bool _loadingApp;
+    private TenantDto? _tenantDetail;
+    private bool _loadingTenant;
+    private RolDto? _rolDetail;
+    private bool _loadingRol;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.TienePermiso("ACCESOS_VER")) return;
+        _usuarios = await Api.GetAsync<List<UsuarioDto>>("api/usuarios") ?? [];
+        _idUsuario = Auth.IdUsuario ?? 0;
+        _usuarioSelected = _usuarios.FirstOrDefault(u => u.Id == _idUsuario);
+        await RefrescarTodo();
+    }
+
+    private void OnSearchChanged(string value)
+    {
+        _searchString = value;
+        StateHasChanged();
+    }
+
+    private async Task RefrescarTodo()
+    {
+        _loading = true;
+        try
+        {
+            _idUsuario = _usuarioSelected?.Id ?? 0;
+            var data = await Api.GetAsync<List<AccesoDto>>($"api/accesos/usuario/{_idUsuario}");
+            _items = data ?? [];
+        }
+        catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error al cargar: {ex.Message}", Severity.Error); }
+        finally { _loading = false; }
+    }
+
+    private void OnSelectedItemChanged(AccesoDto? item)
+    {
+        _selectedItem = item;
+        _inspectorTab = 0;
+        _selectedUser = null;
+        _appDetail = null;
+        _tenantDetail = null;
+        _rolDetail = null;
+    }
+
+    private async Task SwitchInspectorTab(int tab)
+    {
+        _inspectorTab = tab;
+        if (_selectedItem is null) return;
+
+        if (tab == 1 && _selectedUser is null && !_loadingUser)
+            await CargarUsuario();
+        else if (tab == 2 && _appDetail is null && !_loadingApp)
+            await CargarApp();
+        else if (tab == 3 && _tenantDetail is null && !_loadingTenant)
+            await CargarTenant();
+        else if (tab == 4 && _rolDetail is null && !_loadingRol)
+            await CargarRol();
+    }
+
+    private Task CargarUsuario()
+    {
+        _loadingUser = true;
+        try
+        {
+            _selectedUser = _usuarios.FirstOrDefault(u => u.Id == _selectedItem!.IdUsuario);
+        }
+        finally { _loadingUser = false; }
+        return Task.CompletedTask;
+    }
+
+    private async Task CargarApp()
+    {
+        _loadingApp = true;
+        try
+        {
+            _appDetail = await Api.GetAsync<AppDto>($"api/apps/{_selectedItem!.IdApp}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar app: {ex.Message}", Severity.Error);
+        }
+        finally { _loadingApp = false; }
+    }
+
+    private async Task CargarTenant()
+    {
+        _loadingTenant = true;
+        try
+        {
+            _tenantDetail = await Api.GetAsync<TenantDto>($"api/tenants/{_selectedItem!.IdTenant}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar tenant: {ex.Message}", Severity.Error);
+        }
+        finally { _loadingTenant = false; }
+    }
+
+    private async Task CargarRol()
+    {
+        _loadingRol = true;
+        try
+        {
+            _rolDetail = await Api.GetAsync<RolDto>($"api/roles/{_selectedItem!.IdRol}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar rol: {ex.Message}", Severity.Error);
+        }
+        finally { _loadingRol = false; }
+    }
+
+    private async Task RevocarAcceso(AccesoDto? acceso)
+    {
+        if (acceso is null) return;
+        var parameters = new DialogParameters
+        {
+            ["Title"] = "Confirmar",
+            ["Message"] = $"Revocar acceso de {acceso.UsuarioNombre} en {acceso.AppNombre} ({acceso.RolNombre})?",
+            ["ConfirmText"] = "Si",
+            ["CancelText"] = "Cancelar",
+            ["ConfirmColor"] = Color.Error
+        };
+        var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parameters);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            _revocando = true;
+            try
+            {
+                var ok = await Api.PostAsync<object>($"api/accesos/revocar/{acceso.IdUsuario}/{acceso.IdApp}", new { });
+                if (ok is not null)
+                {
+                    Snackbar.Add("Acceso revocado", Severity.Success);
+                    _selectedItem = null;
+                    await RefrescarTodo();
+                }
+                else Snackbar.Add(Api.LastError ?? "Error al revocar acceso", Severity.Error);
+            }
+            catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error); }
+            finally { _revocando = false; }
+        }
+    }
+
+    private async Task AbrirCrearAcceso()
+    {
+        var dialog = await Dialog.ShowAsync<AccesoDialog>("Asignar Acceso");
+        var result = await dialog.Result;
+        if (!result.Canceled) await RefrescarTodo();
+    }
+}

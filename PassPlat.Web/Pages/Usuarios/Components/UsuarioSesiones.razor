@@ -1,0 +1,83 @@
+@using PassPlat.Aplicacion.Dtos.Core
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+
+@if (_loading)
+{
+    <MudSkeleton Width="100%" Height="200px" />
+}
+else if (_items.Count == 0)
+{
+    <MudContainer Class="mt-4">
+        <MudText Typo="Typo.subtitle2" Class="mb-3" Style="color:var(--mud-palette-text-secondary);">
+            Dispositivos con sesión activa.
+        </MudText>
+        <MudText Align="Align.Center" Class="py-8">
+            <MudIcon Icon="@Icons.Material.Filled.Devices" Class="mb-2" /><br />No hay sesiones activas
+        </MudText>
+    </MudContainer>
+}
+else
+{
+    <MudContainer Class="mt-4">
+        <MudText Typo="Typo.subtitle2" Class="mb-3" Style="color:var(--mud-palette-text-secondary);">
+            Dispositivos con sesión activa.
+        </MudText>
+        <MudTable T="SesionDto" Items="@_items" Hover="true" Breakpoint="Breakpoint.Sm">
+            <ColGroup>
+                <col style="width:200px;" /><col /><col /><col style="width:140px;" />
+            </ColGroup>
+            <HeaderContent>
+                <MudTh>Id</MudTh><MudTh>Dispositivo</MudTh><MudTh>IP</MudTh><MudTh>Inicio</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Id">@context.Id.ToString()[..Math.Min(8, context.Id.ToString().Length)]...</MudTd>
+                <MudTd DataLabel="Dispositivo">@context.DispModelo</MudTd>
+                <MudTd DataLabel="IP">@context.IPDireccion</MudTd>
+                <MudTd DataLabel="Inicio">@context.FecInicio.ToLocalTime().ToString("g")</MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                <MudText Align="Align.Center" Class="py-8">
+                    <MudIcon Icon="@Icons.Material.Filled.Devices" Class="mb-2" /><br />No hay sesiones activas
+                </MudText>
+            </NoRecordsContent>
+        </MudTable>
+    </MudContainer>
+}
+
+@code {
+    [Parameter] public int UserId { get; set; }
+    [Parameter] public bool IsActive { get; set; }
+    [Parameter] public EventCallback<int> CountChanged { get; set; }
+
+    private List<SesionDto> _items = [];
+    private bool _loading = true;
+    private bool _loaded;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsActive && !_loaded)
+        {
+            _loaded = true;
+            await LoadData();
+        }
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        try
+        {
+            _items = await Api.GetAsync<List<SesionDto>>($"api/sesiones/activas/{UserId}") ?? [];
+            await CountChanged.InvokeAsync(_items.Count);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

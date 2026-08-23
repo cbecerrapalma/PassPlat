@@ -1,0 +1,195 @@
+@page "/config-app"
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@inject NavigationManager Navigation
+@inject AuthService Auth
+@using PassPlat.Web.Models
+@using PassPlat.Web.Shared
+
+@if (!Auth.TienePermiso("CONFIG_APP_VER"))
+{
+    <SinPermiso PermisoRequerido="CONFIG_APP_VER" />
+}
+else
+{
+<MudContainer>
+    <MudBreadcrumbs Class="mb-3">
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
+        <MudBreadcrumbItem>Configuración</MudBreadcrumbItem>
+        <MudBreadcrumbItem>Config App</MudBreadcrumbItem>
+    </MudBreadcrumbs>
+    <MudPaper Class="pa-4 mb-4 d-flex flex-wrap align-center gap-4" Elevation="0" Outlined="true">
+        <MudText Typo="Typo.h5" Class="flex-grow-1 mb-0">Config App</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium"
+            OnClick="@(async () => { if (_table is not null) await _table.ReloadServerData(); })" Class="mr-2" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@OpenCreateDialog"
+            StartIcon="@Icons.Material.Filled.Add" Size="Size.Medium">
+            Nueva Configuración
+        </MudButton>
+    </MudPaper>
+    <MudGrid Class="mb-4">
+        <MudItem xs="12" sm="6" md="4">
+            <MudTextField Value="@_searchString" ValueChanged="@(EventCallback.Factory.Create<string>(this, async (string value) => { _searchString = value; if (_table is not null) await _table.ReloadServerData(); }))" Label="Buscar..." Variant="Variant.Outlined"
+                Immediate="true" Clearable="true" FullWidth="true" />
+        </MudItem>
+    </MudGrid>
+
+    <MudTable @ref="_table" T="ConfigAppDto" ServerData="@_serverReload" Items="@_items" Hover="true" Breakpoint="Breakpoint.Sm" Class="mt-2">
+        <ColGroup>
+            <col style="width: 80px;" />
+            <col />
+            <col />
+            <col />
+            <col />
+            <col />
+            <col style="width: 120px;" />
+            <col style="width: 100px;" />
+            <col style="width: 140px;" />
+        </ColGroup>
+        <HeaderContent>
+            <MudTh>Id</MudTh>
+            <MudTh>Grupo</MudTh>
+            <MudTh>Clave</MudTh>
+            <MudTh>Valor</MudTh>
+            <MudTh>Tipo</MudTh>
+            <MudTh>Descripción</MudTh>
+            <MudTh>Encriptado</MudTh>
+            <MudTh>Activo</MudTh>
+            <MudTh>Acciones</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Id">@context.Id</MudTd>
+            <MudTd DataLabel="Grupo">@context.Grupo</MudTd>
+            <MudTd DataLabel="Clave">@context.Clave</MudTd>
+            <MudTd DataLabel="Valor">
+                @if (context.EsEncriptado)
+                {
+                    <span class="d-inline-flex align-center gap-2">
+                        <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" Color="Color.Warning" />
+                        <code>••••••••</code>
+                    </span>
+                }
+                else
+                {
+                    @context.Valor
+                }
+            </MudTd>
+            <MudTd DataLabel="Tipo">
+                <MudChip T="string" Size="Size.Small" Color="Color.Info">@context.Tipo</MudChip>
+            </MudTd>
+            <MudTd DataLabel="Descripción">@context.Descripcion</MudTd>
+            <MudTd DataLabel="Encriptado">
+                <MudChip T="string" Size="Size.Small" Color="@(context.EsEncriptado ? Color.Warning : Color.Default)">
+                    @(context.EsEncriptado ? "Sí" : "No")
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Activo">
+                <MudChip T="string" Size="Size.Small" Color="@(context.Activo ? Color.Success : Color.Error)">
+                    @(context.Activo ? "Sí" : "No")
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Acciones">
+                <MudTooltip Text="Editar">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => OpenEditDialog(context))" />
+                </MudTooltip>
+                <MudTooltip Text="Eliminar">
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => ConfirmDeactivate(context))" />
+                </MudTooltip>
+            </MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new int[]{10, 25, 50}" />
+        </PagerContent>
+        <NoRecordsContent>
+            <MudText Align="Align.Center" Class="py-6">
+                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Class="mr-2" />
+                No hay registros
+            </MudText>
+        </NoRecordsContent>
+    </MudTable>
+</MudContainer>
+}
+
+@code {
+    private MudTable<ConfigAppDto>? _table;
+    private IEnumerable<ConfigAppDto> _items = [];
+    private bool _loading;
+    private string _searchString = "";
+
+    private async Task<TableData<ConfigAppDto>> _serverReload(TableState state, CancellationToken ct)
+    {
+        _loading = true;
+        try
+        {
+            var searchParam = string.IsNullOrEmpty(_searchString) ? "" : _searchString;
+            var idTenant = Auth.IdTenant ?? 0;
+            var tenantParam = idTenant > 0 ? $"&idTenant={idTenant}" : "";
+            var response = await Api.GetAsync<PagedResponse<ConfigAppDto>>(
+                $"api/configapp/page?pageNumber={state.Page + 1}&pageSize={state.PageSize}&search={Uri.EscapeDataString(searchParam)}{tenantParam}");
+            if (response != null)
+            {
+                _items = response.Items;
+                return new TableData<ConfigAppDto> { Items = response.Items, TotalItems = response.TotalCount };
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+        return new TableData<ConfigAppDto> { Items = [], TotalItems = 0 };
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var parameters = new DialogParameters { ["IsEdit"] = false };
+        var dialog = await Dialog.ShowAsync<ConfigAppDialog>("Nueva Configuración", parameters, _dialogOptions);
+        var result = await dialog.Result;
+        if (!result.Canceled && _table != null)
+            await _table.ReloadServerData();
+    }
+
+    private async Task OpenEditDialog(ConfigAppDto item)
+    {
+        var parameters = new DialogParameters
+        {
+            ["IsEdit"] = true,
+            ["ConfigApp"] = item
+        };
+        var dialog = await Dialog.ShowAsync<ConfigAppDialog>("Editar Configuración", parameters, _dialogOptions);
+        var result = await dialog.Result;
+        if (!result.Canceled && _table != null)
+            await _table.ReloadServerData();
+    }
+
+    private async Task ConfirmDeactivate(ConfigAppDto item)
+    {
+        var parameters = new DialogParameters
+        {
+            ["Title"] = "Confirmar",
+            ["Message"] = $"¿Desactivar configuración '{item.Clave}'?",
+            ["ConfirmText"] = "Sí",
+            ["CancelText"] = "Cancelar"
+        };
+        var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parameters);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            var ok = await Api.DeleteAsync($"api/configapp/{item.Id}");
+            if (ok)
+            {
+                Snackbar.Add("Configuración desactivada", Severity.Success);
+                if (_table != null)
+                    await _table.ReloadServerData();
+            }
+            else
+                Snackbar.Add(Api.LastError ?? "Error al desactivar", Severity.Error);
+        }
+    }
+
+    private static readonly DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Large, FullWidth = true, CloseButton = true };
+}

@@ -1,0 +1,608 @@
+﻿@implements IDisposable
+@inherits LayoutComponentBase
+@inject AuthService Auth
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<MudThemeProvider Theme="_theme" @ref="_themeProvider" IsDarkMode="_isDarkMode" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="1" Class="appbar" Fixed="true">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" OnClick="@((e) => DrawerToggle())" />
+        <span class="appbar-brand">
+            <span class="appbar-brand-dot"></span>
+            <span class="appbar-brand-text d-none d-sm-inline">AccessPlat</span>
+        </span>
+        <span class="appbar-brand-divider d-none d-sm-inline"></span>
+        <div class="appbar-title-area">
+            <MudText Typo="Typo.h6" Class="appbar-title">@_pageTitle</MudText>
+            <MudText Typo="Typo.caption" Class="appbar-subtitle d-none d-lg-flex">@_pageSubtitle</MudText>
+        </div>
+        <MudSpacer />
+        @if (Auth.IsAuthenticated)
+        {
+            <div class="appbar-clock d-none d-md-flex">
+                <MudText Typo="Typo.caption" Class="appbar-greeting">@_greeting</MudText>
+                <div class="appbar-clock-sep"></div>
+                <MudText Typo="Typo.caption" Class="appbar-time">@_currentTime</MudText>
+            </div>
+            <MudDivider Vertical="true" Class="appbar-divider mx-3 d-none d-md-flex" />
+        }
+        @if (Auth.IsAuthenticated)
+        {
+            <div class="d-flex align-center appbar-actions">
+                <MudTooltip Text="Buscar (Ctrl+K)">
+                    <MudIconButton Icon="@Icons.Material.Filled.Search" Color="Color.Inherit" OnClick="@ToggleSearch" Class="appbar-action-icon" />
+                </MudTooltip>
+                <MudTooltip Text='@(_isDarkMode ? "Modo claro" : "Modo oscuro")'>
+                    <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Outlined.LightMode : Icons.Material.Outlined.DarkMode)" Color="Color.Inherit" OnClick="@ToggleDarkMode" Class="appbar-action-icon dark-mode-toggle" />
+                </MudTooltip>
+                <MudTooltip Text="Pantalla completa">
+                    <MudIconButton Icon="@Icons.Material.Filled.Fullscreen" Color="Color.Inherit" OnClick="@ToggleFullScreen" Class="appbar-action-icon" />
+                </MudTooltip>
+                <div class="appbar-notif-menu">
+                    <div class="d-flex align-center appbar-action-icon" @onclick="@ToggleNotifMenu" @onclick:stopPropagation="true">
+                        <MudBadge Content="_notifCount" Color="Color.Error" Class="appbar-badge" Max="99">
+                            <MudTooltip Text="Notificaciones">
+                                <MudIcon Icon="@Icons.Material.Filled.NotificationsNone" Color="Color.Inherit" />
+                            </MudTooltip>
+                        </MudBadge>
+                    </div>
+                    @if (_notifMenuOpen)
+                    {
+                        <div class="appbar-notif-dropdown">
+                            <div class="notif-header">
+                                <div class="d-flex align-center justify-space-between">
+                                    <MudText Typo="Typo.subtitle2" Class="notif-title">Notificaciones</MudText>
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Filled" Class="notif-badge">
+                                        @_notifCount
+                                    </MudChip>
+                                </div>
+                                <MudText Typo="Typo.caption" Class="text-secondary">@_notifCount sin leer de 12</MudText>
+                            </div>
+                            <MudDivider Class="my-1" />
+                            <div class="notif-scroll">
+                                <div class="notif-item notif-unread">
+                                    <div class="d-flex align-start" style="gap:10px;">
+                                        <MudAvatar Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">
+                                            <MudIcon Icon="@Icons.Material.Filled.LockOpen" Size="Size.Small" />
+                                        </MudAvatar>
+                                        <div class="flex-grow-1">
+                                            <MudText Typo="Typo.body2" Class="font-weight-bold">Nuevo acceso detectado</MudText>
+                                            <MudText Typo="Typo.caption" Class="text-secondary">IP 192.168.1.1 - Chrome/Windows</MudText>
+                                            <MudText Typo="Typo.caption" Class="text-secondary notif-time-inline">Hace 2 min</MudText>
+                                        </div>
+                                        <span class="notif-dot-unread"></span>
+                                    </div>
+                                </div>
+                                <MudDivider Class="my-0" />
+                                <div class="notif-item notif-unread">
+                                    <div class="d-flex align-start" style="gap:10px;">
+                                        <MudAvatar Size="Size.Small" Color="Color.Error" Variant="Variant.Filled">
+                                            <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Small" />
+                                        </MudAvatar>
+                                        <div class="flex-grow-1">
+                                            <MudText Typo="Typo.body2" Class="font-weight-bold">Intento de acceso fallido</MudText>
+                                            <MudText Typo="Typo.caption" Class="text-secondary">Usuario: admin - 3 intentos</MudText>
+                                            <MudText Typo="Typo.caption" Class="text-secondary notif-time-inline">Hace 15 min</MudText>
+                                        </div>
+                                        <span class="notif-dot-unread"></span>
+                                    </div>
+                                </div>
+                                <MudDivider Class="my-0" />
+                                <div class="notif-item">
+                                    <div class="d-flex align-start" style="gap:10px;">
+                                        <MudAvatar Size="Size.Small" Color="Color.Warning" Variant="Variant.Filled">
+                                            <MudIcon Icon="@Icons.Material.Filled.Password" Size="Size.Small" />
+                                        </MudAvatar>
+                                        <div class="flex-grow-1">
+                                            <MudText Typo="Typo.body2">Contraseña expirará pronto</MudText>
+                                            <MudText Typo="Typo.caption" Class="text-secondary">Vence en 3 días</MudText>
+                                            <MudText Typo="Typo.caption" Class="text-secondary notif-time-inline">Hace 1 hora</MudText>
+                                        </div>
+                                    </div>
+                                </div>
+                                <MudDivider Class="my-0" />
+                                <div class="notif-item">
+                                    <div class="d-flex align-start" style="gap:10px;">
+                                        <MudAvatar Size="Size.Small" Color="Color.Info" Variant="Variant.Filled">
+                                            <MudIcon Icon="@Icons.Material.Filled.Fingerprint" Size="Size.Small" />
+                                        </MudAvatar>
+                                        <div class="flex-grow-1">
+                                            <MudText Typo="Typo.body2">MFA registrado exitosamente</MudText>
+                                            <MudText Typo="Typo.caption" Class="text-secondary">Dispositivo: iPhone 15</MudText>
+                                            <MudText Typo="Typo.caption" Class="text-secondary notif-time-inline">Hace 3 horas</MudText>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <MudDivider Class="my-1" />
+                            <button type="button" class="notif-view-all" @onclick="@(() => { CloseAllMenus(); GoToNotificaciones(); })">
+                                <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Class="mr-2" />
+                                <MudText Typo="Typo.button">Ver todas las notificaciones</MudText>
+                            </button>
+                        </div>
+                    }
+                </div>
+                <MudDivider Vertical="true" Class="appbar-divider mx-3" />
+                <div class="appbar-menu">
+                    <div class="d-flex align-center appbar-user" @onclick="@ToggleUserMenu" @onclick:stopPropagation="true">
+                        <span class="appbar-avatar-wrap">
+                            <MudAvatar Size="Size.Small" Color="Color.Primary" Class="appbar-avatar">
+                                <MudText Typo="Typo.button">@_userInitials</MudText>
+                            </MudAvatar>
+                            <span class="appbar-online-dot"></span>
+                        </span>
+                        <MudText Typo="Typo.body2" Class="ml-2 mr-1 d-none d-sm-flex appbar-username">@Auth.NomUsuario</MudText>
+                        <TenantSwitcher />
+                        <MudIcon Icon="@Icons.Material.Filled.ExpandMore" Size="Size.Small" Class="appbar-chevron d-none d-sm-flex" />
+                    </div>
+                    @if (_userMenuOpen)
+                    {
+                        <div class="appbar-menu-dropdown">
+                            <div class="pa-3 pb-2">
+                                <div class="d-flex align-center mb-2">
+                                    <MudAvatar Size="Size.Medium" Color="Color.Primary" Class="mr-3">
+                                        <MudText Typo="Typo.body1">@_userInitials</MudText>
+                                    </MudAvatar>
+                                    <div>
+                                        <MudText Typo="Typo.subtitle2" Class="font-weight-bold">@Auth.NomUsuario</MudText>
+                                        <MudText Typo="Typo.caption" Class="text-secondary">
+                                            @(Auth.EsPlatform ? "Plataforma" : Auth.NombreTenant ?? "Sin tenant")
+                                        </MudText>
+                                    </div>
+                                </div>
+                            </div>
+                            <MudDivider Class="my-1" />
+                            <button type="button" class="appbar-menu-item" @onclick="@(() => { CloseAllMenus(); GoToMiPerfil(); })">
+                                <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Class="mr-2" />
+                                <MudText Typo="Typo.body2">Mi Perfil</MudText>
+                            </button>
+                            <MudDivider Class="my-1" />
+                            <button type="button" class="appbar-menu-item appbar-menu-logout" @onclick="@(async () => { CloseAllMenus(); await Logout(); })">
+                                <MudIcon Icon="@Icons.Material.Filled.Logout" Size="Size.Small" Class="mr-2" Color="Color.Error" />
+                                <MudText Typo="Typo.body2" Color="Color.Error">Cerrar sesión</MudText>
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </MudAppBar>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="page-loader" Size="Size.Small" />
+    }
+
+    @if (_searchOpen)
+    {
+        <div class="search-overlay" @onclick="@CloseSearch">
+            <div class="search-overlay-container" @onclick:stopPropagation="true">
+                <div class="search-overlay-input-wrap">
+                    <MudIcon Icon="@Icons.Material.Filled.Search" Class="search-overlay-icon" />
+                    <input @ref="_searchInput" type="text" class="search-overlay-input" placeholder="Buscar en AccessPlat..." @bind="_searchQuery" @oninput="@OnSearchInput" @onkeydown="@HandleSearchKeydown" />
+                    <MudTooltip Text="Cerrar (Esc)">
+                        <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" OnClick="@CloseSearch" Class="search-overlay-close" />
+                    </MudTooltip>
+                </div>
+                @if (_searchResults.Count > 0)
+                {
+                    <div class="search-results">
+                        @for (var i = 0; i < _searchResults.Count; i++)
+                        {
+                            var result = _searchResults[i];
+                            var idx = i;
+                            <div class="search-result-item @(idx == _searchSelectedIndex ? "selected" : "")"
+                                 @onclick="@(() => NavigateToSearchResult(result))"
+                                 @onmouseenter="@(() => _searchSelectedIndex = idx)">
+                                <MudIcon Icon="@result.Icon" Size="Size.Small" Class="mr-3" Color="Color.Primary" />
+                                <div>
+                                    <MudText Typo="Typo.body2" Class="font-weight-bold">@result.Title</MudText>
+                                    <MudText Typo="Typo.caption" Class="text-secondary">@result.Subtitle</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" Class="ml-auto" />
+                            </div>
+                        }
+                    </div>
+                }
+                else if (!string.IsNullOrWhiteSpace(_searchQuery) && _searchQuery.Length >= 2)
+                {
+                    <div class="search-results">
+                        <div class="search-result-empty">
+                            <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Small" Class="mr-2" />
+                            <MudText Typo="Typo.body2" Class="text-secondary">Sin resultados para "@_searchQuery"</MudText>
+                        </div>
+                    </div>
+                }
+                <div class="search-overlay-hints d-none d-md-flex">
+                    <span class="search-hint"><kbd>↑</kbd><kbd>↓</kbd> Navegar</span>
+                    <span class="search-hint"><kbd>↵</kbd> Abrir</span>
+                    <span class="search-hint"><kbd>Esc</kbd> Cerrar</span>
+                </div>
+            </div>
+        </div>
+    }
+
+    <MudDrawer @bind-Open="_drawerOpen" Variant="@DrawerVariant.Responsive" ClipMode="DrawerClipMode.Always">
+        <div class="drawer-user-card">
+            <MudAvatar Size="Size.Medium" Color="Color.Primary" Class="drawer-user-avatar">
+                <MudText Typo="Typo.body2">@_userInitials</MudText>
+            </MudAvatar>
+            <div class="drawer-user-info">
+                <MudText Typo="Typo.subtitle2" Class="drawer-user-name">@Auth.NomUsuario</MudText>
+                <MudText Typo="Typo.caption" Class="drawer-user-role">Administrador</MudText>
+            </div>
+        </div>
+        <MudDivider Class="drawer-divider" />
+        <NavMenu />
+        <div class="drawer-footer">
+            <MudDivider Class="drawer-divider" />
+            <MudText Typo="Typo.caption" Class="drawer-footer-text">AccessPlat v1.0.0</MudText>
+        </div>
+    </MudDrawer>
+
+    <MudMainContent Class="px-6 pb-4" Style="min-height: calc(100vh - 64px); display: flex; flex-direction: column; padding-top: 64px !important;">
+        <Microsoft.AspNetCore.Components.Web.ErrorBoundary>
+            <ChildContent>
+                <div @key="@_pageTitle" class="page-content" style="flex: 1;">
+                    @Body
+                </div>
+            </ChildContent>
+            <ErrorContent>
+                <div class="error-boundary-wrapper">
+                    <MudPaper Class="error-boundary-card pa-6" Elevation="0" Outlined="true">
+                        <div class="d-flex flex-column align-center text-center">
+                            <MudAvatar Size="Size.Large" Color="Color.Error" Variant="Variant.Filled" Class="mb-4">
+                                <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Large" />
+                            </MudAvatar>
+                            <MudText Typo="Typo.h6" Class="font-weight-bold mb-1">Algo salió mal</MudText>
+                            <MudText Typo="Typo.body2" Class="text-secondary mb-4" Style="max-width:420px;">
+                                Ha ocurrido un error inesperado. Puede intentar recargar la página o volver al dashboard.
+                            </MudText>
+                            <div class="d-flex gap-2">
+                                <MudButton Variant="Variant.Outlined" Color="Color.Default"
+                                    OnClick="@(() => Nav.NavigateTo(Nav.Uri, forceLoad: true))"
+                                    StartIcon="@Icons.Material.Filled.Refresh">
+                                    Recargar
+                                </MudButton>
+                                <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary"
+                                    StartIcon="@Icons.Material.Filled.Home">
+                                    Dashboard
+                                </MudButton>
+                            </div>
+                        </div>
+                    </MudPaper>
+                </div>
+            </ErrorContent>
+        </Microsoft.AspNetCore.Components.Web.ErrorBoundary>
+        <div class="footer-area d-flex align-center justify-space-between mt-4 pt-3">
+            <div class="d-flex align-center gap-3">
+                <MudText Typo="Typo.caption" Class="footer-copy">
+                    &copy; @DateTime.Now.Year Plataforma de Acceso
+                </MudText>
+                <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined" Class="footer-env">
+                    <MudIcon Icon="@Icons.Material.Filled.Circle" Size="Size.Small" Class="mr-1" />
+                    Producción
+                </MudChip>
+            </div>
+            <div class="d-flex align-center gap-2">
+                <MudTooltip Text="Documentación">
+                    <MudIconButton Icon="@Icons.Material.Filled.MenuBook" Size="Size.Small" Class="footer-action" />
+                </MudTooltip>
+                <MudTooltip Text="Soporte">
+                    <MudIconButton Icon="@Icons.Material.Filled.HelpOutline" Size="Size.Small" Class="footer-action" />
+                </MudTooltip>
+                <MudDivider Vertical="true" Class="footer-divider" />
+                <MudText Typo="Typo.caption" Class="footer-version">
+                    v1.0.0
+                </MudText>
+            </div>
+        </div>
+    </MudMainContent>
+
+    @if (_userMenuOpen || _notifMenuOpen)
+    {
+        <div class="dropdown-backdrop" @onclick="@CloseAllMenus"></div>
+    }
+</MudLayout>
+
+@code {
+    private MudThemeProvider _themeProvider = null!;
+    private bool _drawerOpen = true;
+    private bool _isDarkMode;
+    private string _pageTitle = "";
+    private string _pageSubtitle = "";
+    private string _pageIcon = Icons.Material.Filled.Circle;
+    private string _userInitials = "";
+    private bool _searchOpen;
+    private string _searchQuery = "";
+    private List<SearchResult> _searchResults = [];
+    private int _searchSelectedIndex = -1;
+    private ElementReference _searchInput;
+    private bool _isLoading;
+    private bool _focusPending;
+    private bool _userMenuOpen;
+    private bool _notifMenuOpen;
+    private readonly int _notifCount = 5;
+
+    private static readonly List<SearchResult> _allRoutes =
+    [
+        new("/","Dashboard","Panel Principal",Icons.Material.Filled.Dashboard),
+        new("/tenants","Tenants","Gestión de inquilinos",Icons.Material.Filled.Business),
+        new("/apps","Apps","Aplicaciones del sistema",Icons.Material.Filled.Apps),
+        new("/admin/roles","Roles y Permisos","Administración de roles",Icons.Material.Filled.AdminPanelSettings),
+        new("/admin/permisos","Permisos","Gestión de permisos",Icons.Material.Filled.Security),
+        new("/admin/roles-permisos","Permisos Directos","Asignación directa de permisos",Icons.Material.Filled.ManageAccounts),
+        new("/admin/grupos","Grupos","Gestión de grupos",Icons.Material.Filled.Group),
+        new("/admin/matriz-permisos","Matriz de Permisos","Visualización de permisos por rol",Icons.Material.Filled.TableChart),
+        new("/politicas-pwd","Políticas Pwd","Reglas de contraseñas",Icons.Material.Filled.Security),
+        new("/usuarios","Usuarios","Gestión de usuarios",Icons.Material.Filled.People),
+        new("/accesos","Accesos","Control de accesos",Icons.Material.Filled.Key),
+        new("/auditoria","Auditoría","Registro de eventos",Icons.Material.Filled.History),
+        new("/notificaciones","Notificaciones","Centro de notificaciones",Icons.Material.Filled.Notifications),
+        new("/mantenimiento","Mantenimiento","Limpieza de datos",Icons.Material.Filled.CleaningServices),
+        new("/federacion/providen","Proveedores ID","Proveedores de identidad externa",Icons.Material.Filled.Dns),
+        new("/federacion/confproviden","Config Proveedores","Configuración de proveedores externos",Icons.Material.Filled.Settings),
+        new("/federacion/iden-ext","Identidades Externas","Vinculación con proveedores externos",Icons.Material.Filled.Link),
+    ];
+    private string _currentTime = DateTime.Now.ToString("HH:mm:ss");
+    private string _greeting = "";
+    private Timer? _clockTimer;
+
+    private static readonly MudTheme _theme = new()
+    {
+        PaletteLight = new PaletteLight
+        {
+            Primary = "#1e88e5",
+            Secondary = "#26a69a",
+            Error = "#ef5350",
+            Success = "#66bb6a",
+            Warning = "#ffa726",
+            Info = "#42a5f5",
+            AppbarBackground = "#1e293b",
+            DrawerBackground = "#ffffff",
+        },
+        PaletteDark = new PaletteDark
+        {
+            Primary = "#64b5f6",
+            Secondary = "#80cbc4",
+            Error = "#ef9a9a",
+            Success = "#a5d6a7",
+            Warning = "#ffcc80",
+            Info = "#90caf9",
+            AppbarBackground = "#0f172a",
+            DrawerBackground = "#1e293b",
+            Surface = "#1e293b",
+            Background = "#0f172a",
+            Dark = "#0b1121",
+            DrawerText = "#cbd5e1",
+            AppbarText = "#ffffff",
+            TextPrimary = "#f1f5f9",
+            TextSecondary = "#94a3b8",
+        }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.IsAuthenticated)
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+
+        try
+        {
+            _isDarkMode = await JS.InvokeAsync<bool>("eval", "localStorage.getItem('dark_mode') === 'true'");
+        }
+        catch { _isDarkMode = false; }
+
+        Nav.LocationChanged += OnLocationChanged;
+        UpdatePageInfo(Nav.Uri);
+        UpdateUserInitials();
+        UpdateClock();
+        _clockTimer = new Timer(_ =>
+        {
+            InvokeAsync(() =>
+            {
+                UpdateClock();
+                StateHasChanged();
+            });
+        }, null, 1000, 1000);
+    }
+
+    private void UpdateClock()
+    {
+        var now = DateTime.Now;
+        _currentTime = now.ToString("HH:mm:ss");
+        _greeting = now.Hour switch
+        {
+            < 12 => "Buenos días",
+            < 18 => "Buenas tardes",
+            _ => "Buenas noches"
+        };
+    }
+
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        _isLoading = true;
+        UpdatePageInfo(e.Location);
+
+        // Auto-close drawer on mobile
+        var isMobile = await JS.InvokeAsync<bool>("eval", "window.innerWidth < 960");
+        if (isMobile && _drawerOpen)
+            _drawerOpen = false;
+
+        await InvokeAsync(StateHasChanged);
+        await Task.Delay(200);
+        _isLoading = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void UpdatePageInfo(string uri)
+    {
+        var path = new Uri(uri).AbsolutePath.Trim('/');
+        (_pageTitle, _pageIcon, _pageSubtitle) = path switch
+        {
+            "" => ("Dashboard", Icons.Material.Filled.Dashboard, "Resumen del sistema"),
+            "tenants" => ("Tenants", Icons.Material.Filled.Business, "Gestión de inquilinos"),
+            "apps" => ("Apps", Icons.Material.Filled.Apps, "Aplicaciones del sistema"),
+            "dominios-tenant" => ("Dominios Tenant", Icons.Material.Filled.Language, "Dominios por inquilino"),
+            "config-tenants" => ("Config Tenants", Icons.Material.Filled.Settings, "Configuración de inquilinos"),
+            "roles" => ("Roles", Icons.Material.Filled.Badge, "Roles de acceso"),
+            "politicas-pwd" => ("Políticas Pwd", Icons.Material.Filled.Security, "Reglas de contraseñas"),
+            "roles-politicas" => ("Roles Políticas", Icons.Material.Filled.Rule, "Asignación de políticas"),
+            "usuarios" => ("Usuarios", Icons.Material.Filled.People, "Gestión de usuarios"),
+            "accesos" => ("Accesos", Icons.Material.Filled.Key, "Control de accesos"),
+            "sesiones" => ("Sesiones", Icons.Material.Filled.DevicesOther, "Sesiones activas"),
+            "bloqueos" => ("Bloqueos", Icons.Material.Filled.Block, "Cuentas bloqueadas"),
+            "mfa" => ("MFA", Icons.Material.Filled.Fingerprint, "Autenticación multifactor"),
+            "auditoria" => ("Auditoría", Icons.Material.Filled.History, "Registro de eventos"),
+            "historial-pwd" => ("Historial Pwd", Icons.Material.Filled.Password, "Cambios de contraseña"),
+            "intentos-acceso" => ("Intentos Acceso", Icons.Material.Filled.Warning, "Intentos fallidos"),
+            "notificaciones" => ("Notificaciones", Icons.Material.Filled.Notifications, "Centro de notificaciones"),
+            "password" => ("Cambiar Password", Icons.Material.Filled.Password, "Actualizar contraseña"),
+            "password-seguridad" => ("Validar Password", Icons.Material.Filled.Security, "Evaluar seguridad"),
+            "tokens-rest" => ("Tokens Rest", Icons.Material.Filled.Token, "Tokens de recuperación"),
+            "dispositivos" => ("Dispositivos", Icons.Material.Filled.DevicesOther, "Gestión completa de dispositivos"),
+            "disp-confiables" => ("Disp. Confiables", Icons.Material.Filled.Devices, "Dispositivos autorizados"),
+            "mantenimiento" => ("Mantenimiento", Icons.Material.Filled.CleaningServices, "Limpieza de datos"),
+            "admin/roles" => ("Roles y Permisos", Icons.Material.Filled.AdminPanelSettings, "Administración de roles"),
+            "admin/permisos" => ("Permisos", Icons.Material.Filled.Security, "Gestión de permisos"),
+            "admin/roles-permisos" => ("Permisos Directos", Icons.Material.Filled.ManageAccounts, "Asignación directa de permisos"),
+            "admin/grupos" => ("Grupos", Icons.Material.Filled.Group, "Gestión de grupos"),
+            "admin/matriz-permisos" => ("Matriz de Permisos", Icons.Material.Filled.TableChart, "Visualización de permisos por rol"),
+            _ => (string.Join(" ", path.Split('-').Select(p => char.ToUpper(p[0]) + p[1..])),
+                  Icons.Material.Filled.Description, "")
+        };
+    }
+
+    private void UpdateUserInitials()
+    {
+        _userInitials = !string.IsNullOrEmpty(Auth.NomUsuario)
+            ? (Auth.NomUsuario.Length >= 2
+                ? Auth.NomUsuario[..2].ToUpper()
+                : Auth.NomUsuario.ToUpper())
+            : "?";
+    }
+
+    private async Task ToggleDarkMode()
+    {
+        _isDarkMode = !_isDarkMode;
+        try { await JS.InvokeVoidAsync("localStorage.setItem", "dark_mode", _isDarkMode ? "true" : "false"); } catch { }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_focusPending)
+        {
+            _focusPending = false;
+            await _searchInput.FocusAsync();
+        }
+    }
+
+    private void ToggleSearch()
+    {
+        _searchOpen = !_searchOpen;
+        if (_searchOpen)
+        {
+            _searchQuery = "";
+            _searchResults = [];
+            _searchSelectedIndex = -1;
+            _focusPending = true;
+        }
+    }
+
+    private void CloseSearch()
+    {
+        _searchOpen = false;
+        _searchQuery = "";
+        _searchResults = [];
+        _searchSelectedIndex = -1;
+    }
+
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        _searchQuery = e.Value?.ToString() ?? "";
+        _searchSelectedIndex = -1;
+        if (_searchQuery.Length >= 2)
+        {
+            _searchResults = _allRoutes
+                .Where(r => r.Title.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                           r.Subtitle.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase))
+                .Take(8)
+                .ToList();
+        }
+        else
+            _searchResults = [];
+    }
+
+    private void HandleSearchKeydown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+            CloseSearch();
+        else if (e.Key == "ArrowDown")
+        {
+            if (_searchResults.Count > 0)
+                _searchSelectedIndex = Math.Min(_searchSelectedIndex + 1, _searchResults.Count - 1);
+        }
+        else if (e.Key == "ArrowUp")
+        {
+            _searchSelectedIndex = Math.Max(_searchSelectedIndex - 1, -1);
+        }
+        else if (e.Key == "Enter")
+        {
+            if (_searchSelectedIndex >= 0 && _searchSelectedIndex < _searchResults.Count)
+                NavigateToSearchResult(_searchResults[_searchSelectedIndex]);
+            else if (_searchResults.Count > 0)
+                NavigateToSearchResult(_searchResults[0]);
+        }
+    }
+
+    private void NavigateToSearchResult(SearchResult result)
+    {
+        Nav.NavigateTo(result.Route);
+        CloseSearch();
+    }
+
+    private sealed record SearchResult(string Route, string Title, string Subtitle, string Icon);
+
+    private async Task ToggleFullScreen()
+    {
+        try { await JS.InvokeVoidAsync("eval", "if(document.fullscreenElement){document.exitFullscreen()}else{document.documentElement.requestFullscreen()}"); }
+        catch { }
+    }
+
+    private void DrawerToggle() => _drawerOpen = !_drawerOpen;
+    private void ToggleUserMenu()
+    {
+        _userMenuOpen = !_userMenuOpen;
+        if (_userMenuOpen) _notifMenuOpen = false;
+    }
+    private void ToggleNotifMenu()
+    {
+        _notifMenuOpen = !_notifMenuOpen;
+        if (_notifMenuOpen) _userMenuOpen = false;
+    }
+    private void CloseAllMenus()
+    {
+        _userMenuOpen = false;
+        _notifMenuOpen = false;
+    }
+    private void GoToMiPerfil()
+    {
+        if (Auth.IdUsuario.HasValue)
+            Nav.NavigateTo($"/usuario/{Auth.IdUsuario.Value}");
+    }
+    private void GoToNotificaciones() => Nav.NavigateTo("/notificaciones");
+    private async Task Logout() => await Auth.LogoutAsync();
+
+    public void Dispose()
+    {
+        _clockTimer?.Dispose();
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+}

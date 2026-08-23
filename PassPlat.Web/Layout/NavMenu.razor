@@ -1,0 +1,56 @@
+@inject AuthService Auth
+
+<MudNavMenu>
+        <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">Panel Principal</MudNavLink>
+
+    <div class="nav-section-label">CATÁLOGOS</div>
+    <MudNavGroup Title="Gestión" Icon="@Icons.Material.Filled.Storage" Expanded="true">
+        @if (Auth.TienePermiso("TENANTS_VER")) { <MudNavLink Href="/tenants" Icon="@Icons.Material.Filled.Business">Tenants</MudNavLink> }
+        @if (Auth.TienePermiso("APPS_VER")) { <MudNavLink Href="/apps" Icon="@Icons.Material.Filled.Apps">Apps</MudNavLink> }
+        @if (Auth.TienePermiso("ROLES_DETAIL_VER") || Auth.TienePermiso("ROLES_VER")) { <MudNavLink Href="/admin/roles" Icon="@Icons.Material.Filled.AdminPanelSettings">Roles y Permisos</MudNavLink> }
+        @if (Auth.TienePermiso("POLITICAS_PWD_VER")) { <MudNavLink Href="/politicas-pwd" Icon="@Icons.Material.Filled.Security">Políticas de Contraseña</MudNavLink> }
+        @if (Auth.TienePermiso("CONFIG_APP_VER")) { <MudNavLink Href="/config-app" Icon="@Icons.Material.Filled.Settings">Config App</MudNavLink> }
+    </MudNavGroup>
+
+    <div class="nav-section-label">SEGURIDAD</div>
+    <MudNavGroup Title="Control" Icon="@Icons.Material.Filled.Key" Expanded="true">
+        @if (Auth.TienePermiso("USUARIOS_VER")) { <MudNavLink Href="/usuarios" Icon="@Icons.Material.Filled.People">Usuarios</MudNavLink> }
+        @if (Auth.TienePermiso("ACCESOS_VER")) { <MudNavLink Href="/accesos" Icon="@Icons.Material.Filled.Key">Accesos</MudNavLink> }
+    </MudNavGroup>
+
+    <div class="nav-section-label">IAM</div>
+    <MudNavGroup Title="Permisos" Icon="@Icons.Material.Filled.AdminPanelSettings" Expanded="false">
+        @if (Auth.TienePermiso("PERMISOS_DETAIL_VER")) { <MudNavLink Href="/admin/permisos" Icon="@Icons.Material.Filled.Security">Permisos</MudNavLink> }
+        @if (Auth.TienePermiso("GRUPOS_VER")) { <MudNavLink Href="/admin/grupos" Icon="@Icons.Material.Filled.Group">Grupos</MudNavLink> }
+        @if (Auth.TienePermiso("ROLES_VER")) { <MudNavLink Href="/admin/roles-permisos" Icon="@Icons.Material.Filled.ManageAccounts">Permisos Directos</MudNavLink> }
+        @if (Auth.TienePermiso("MATRIZ_PERMISOS_VER")) { <MudNavLink Href="/admin/matriz-permisos" Icon="@Icons.Material.Filled.TableChart">Matriz de Permisos</MudNavLink> }
+    </MudNavGroup>
+
+    <div class="nav-section-label">MONITOREO</div>
+    <MudNavGroup Title="Registros" Icon="@Icons.Material.Filled.History" Expanded="false">
+        @if (Auth.TienePermiso("AUDITORIA_VER")) { <MudNavLink Href="/auditoria" Icon="@Icons.Material.Filled.History">Auditoría</MudNavLink> }
+        @if (Auth.TienePermiso("USUARIOS_VER")) { <MudNavLink Href="/admin/dashboard-enterprise" Icon="@Icons.Material.Filled.Dashboard">Dashboard Enterprise</MudNavLink> }
+        @if (Auth.TienePermiso("USUARIOS_VER")) { <MudNavLink Href="/admin/iam-dashboard" Icon="@Icons.Material.Filled.AdminPanelSettings">IAM Dashboard</MudNavLink> }
+        @if (Auth.TienePermiso("USUARIOS_VER")) { <MudNavLink Href="/admin/dashboard-operacional" Icon="@Icons.Material.Filled.BarChart">Dashboard Operacional</MudNavLink> }
+        @if (Auth.TienePermiso("HISTORIAL_PWD_VER")) { <MudNavLink Href="/historial-pwd" Icon="@Icons.Material.Filled.Password">Historial de Contraseñas</MudNavLink> }
+        @if (Auth.TienePermiso("INTENTOS_ACCESO_VER")) { <MudNavLink Href="/intentos-acceso" Icon="@Icons.Material.Filled.Warning">Intentos Acceso</MudNavLink> }
+        @if (Auth.TienePermiso("NOTIFICACIONES_VER")) { <MudNavLink Href="/notificaciones" Icon="@Icons.Material.Filled.Notifications">Notificaciones</MudNavLink> }
+        @if (Auth.TienePermiso("MANTENIMIENTO_VER")) { <MudNavLink Href="/mantenimiento" Icon="@Icons.Material.Filled.CleaningServices">Mantenimiento</MudNavLink> }
+    </MudNavGroup>
+
+    <div class="nav-section-label">COMUNICACIONES</div>
+    <MudNavGroup Title="Email" Icon="@Icons.Material.Filled.Email" Expanded="true">
+        @if (Auth.TienePermiso("EMAIL_PROVIDERS_VER")) { <MudNavLink Href="/email/providers" Icon="@Icons.Material.Filled.Dns">Providers</MudNavLink> }
+        @if (Auth.TienePermiso("EMAIL_ACCOUNTS_VER")) { <MudNavLink Href="/email/accounts" Icon="@Icons.Material.Filled.MailOutline">Cuentas de Correo</MudNavLink> }
+        @if (Auth.TienePermiso("EMAIL_TENANT_ACCOUNTS_VER")) { <MudNavLink Href="/email/tenant-accounts" Icon="@Icons.Material.Filled.Business">Cuentas x Tenant</MudNavLink> }
+        @if (Auth.TienePermiso("EMAIL_APP_ACCOUNTS_VER")) { <MudNavLink Href="/email/app-accounts" Icon="@Icons.Material.Filled.Apps">Cuentas x App</MudNavLink> }
+        @if (Auth.TienePermiso("EMAIL_TEMPLATES_VER")) { <MudNavLink Href="/email-templates" Icon="@Icons.Material.Filled.Drafts">Plantillas de Email</MudNavLink> }
+    </MudNavGroup>
+
+    <div class="nav-section-label">FEDERACIÓN</div>
+    <MudNavGroup Title="Identidad" Icon="@Icons.Material.Filled.AccountTree" Expanded="true">
+        <MudNavLink Href="/federacion/providen" Icon="@Icons.Material.Filled.Dns">Proveedores</MudNavLink>
+        <MudNavLink Href="/federacion/confproviden" Icon="@Icons.Material.Filled.Settings">Config Proveedores</MudNavLink>
+        <MudNavLink Href="/federacion/iden-ext" Icon="@Icons.Material.Filled.Link">Identidades Externas</MudNavLink>
+    </MudNavGroup>
+</MudNavMenu>

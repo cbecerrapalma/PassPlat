@@ -1,0 +1,135 @@
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog Options="_dialogOptions">
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudAvatar Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled">
+                <MudIcon Icon="@Icons.Material.Filled.PersonAdd" Size="Size.Small" />
+            </MudAvatar>
+            <MudText Typo="Typo.h6">Asignar Usuario a Rol</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.caption" Class="text-secondary mb-2 d-block">
+            Asigne un usuario al rol <MudChip T="string" Size="Size.Small" Color="Color.Primary" Class="ml-1">@RolPreSeleccionado?.Nombre</MudChip>
+        </MudText>
+
+        <MudTextField @bind-Value="_busqueda" Label="Buscar usuario..." Variant="Variant.Outlined" Class="mb-3"
+            Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+            Immediate="true" Clearable="true" />
+
+        <MudSelect T="UsuarioDto" Label="Usuario" @bind-Value="_usuarioSeleccionado" Required="true"
+            Variant="Variant.Outlined" Class="mb-3" ToStringFunc="@(u => u?.NomUsuario ?? string.Empty)"
+            Error="@(_submitted && _usuarioSeleccionado is null)" ErrorText="Seleccioná un usuario"
+            Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Person">
+            @foreach (var u in _usuariosFiltrados)
+            {
+                <MudSelectItem @key="u.Id" Value="u">
+                    <div class="d-flex align-center" style="gap:8px;">
+                        <MudAvatar Size="Size.Small" Color="Color.Info">
+                            <MudText Typo="Typo.caption">@(u.Nombre[..Math.Min(2, u.Nombre.Length)])</MudText>
+                        </MudAvatar>
+                        <div>
+                            <MudText Typo="Typo.body2" Class="font-weight-bold">@u.Nombre @u.Apellido</MudText>
+                            <MudText Typo="Typo.caption" Class="text-secondary">@u.NomUsuario · @u.Email</MudText>
+                        </div>
+                    </div>
+                </MudSelectItem>
+            }
+        </MudSelect>
+
+        <MudSelect T="AppDto" Label="Aplicación" @bind-Value="_appSeleccionada" Required="true"
+            Variant="Variant.Outlined" Class="mb-3" ToStringFunc="@(a => a?.Nombre ?? string.Empty)"
+            Error="@(_submitted && _appSeleccionada is null)" ErrorText="Seleccioná una aplicación"
+            Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Launch">
+            @foreach (var app in _apps)
+            {
+                <MudSelectItem @key="app.Id" Value="app">@app.Nombre (@app.Codigo)</MudSelectItem>
+            }
+        </MudSelect>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@Save" Disabled="@(!CanSave() || _saving)">
+            @(_saving ? "Asignando..." : "Asignar")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private DialogOptions _dialogOptions = new() { FullWidth = true, CloseButton = true };
+
+    [Parameter] public RolDto? RolPreSeleccionado { get; set; }
+
+    private List<UsuarioDto> _usuarios = [];
+    private List<AppDto> _apps = [];
+    private UsuarioDto? _usuarioSeleccionado;
+    private AppDto? _appSeleccionada;
+    private string _busqueda = "";
+    private bool _saving;
+    private bool _submitted;
+
+    private List<UsuarioDto> _usuariosFiltrados =>
+        string.IsNullOrWhiteSpace(_busqueda)
+            ? _usuarios
+            : _usuarios.Where(u =>
+                u.Nombre.Contains(_busqueda, StringComparison.OrdinalIgnoreCase) ||
+                u.Apellido.Contains(_busqueda, StringComparison.OrdinalIgnoreCase) ||
+                u.NomUsuario.Contains(_busqueda, StringComparison.OrdinalIgnoreCase) ||
+                u.Email.Contains(_busqueda, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+    private bool CanSave() => _usuarioSeleccionado is not null && _appSeleccionada is not null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var tUsuarios = Api.GetAsync<List<UsuarioDto>>("api/usuarios");
+            var tApps = Api.GetAsync<List<AppDto>>("api/apps/activas");
+            await Task.WhenAll(tUsuarios, tApps);
+            _usuarios = tUsuarios.Result ?? [];
+            _apps = tApps.Result ?? [];
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar datos: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task Save()
+    {
+        _submitted = true;
+        if (!CanSave()) return;
+
+        _saving = true;
+        try
+        {
+            var dto = new AsignarAccesoDto
+            {
+                IdUsuario = _usuarioSeleccionado!.Id,
+                IdApp = _appSeleccionada!.Id,
+                IdRol = RolPreSeleccionado!.Id
+            };
+            var result = await Api.PostAsync<AccesoDto>("api/accesos/asignar", dto);
+            if (result is not null)
+            {
+                Snackbar.Add($"Acceso asignado a {_usuarioSeleccionado!.NomUsuario} en {_appSeleccionada!.Nombre}", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+                Snackbar.Add(Api.LastError ?? "Error al asignar acceso", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

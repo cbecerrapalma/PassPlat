@@ -1,0 +1,234 @@
+@page "/bloqueos"
+@inject ApiClient Api
+@inject AuthService Auth
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@inject NavigationManager Navigation
+@using PassPlat.Web.Models
+@using PassPlat.Web.Shared
+
+@if (!Auth.TienePermiso("BLOQUEOS_VER"))
+{
+    <SinPermiso PermisoRequerido="BLOQUEOS_VER" />
+}
+else
+{
+<MudContainer>
+    <MudBreadcrumbs Class="mb-3">
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/usuarios"))">Core</MudBreadcrumbItem>
+        <MudBreadcrumbItem>Bloqueos</MudBreadcrumbItem>
+    </MudBreadcrumbs>
+
+    <div class="mud-grid mud-grid-spacing-3 mb-4">
+        <IamKpiCard Valor="@_items.Count.ToString()" Label="Bloqueos" Subtexto="Registros en sistema" Icon="@Icons.Material.Filled.Block" ColorClass="primary" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_items.Count(b => b.Activo).ToString()" Label="Activos" Subtexto="Vigentes" Icon="@Icons.Material.Filled.GppBad" ColorClass="error" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_items.Count(b => !b.Activo).ToString()" Label="Inactivos" Subtexto="Desactivados" Icon="@Icons.Material.Filled.CheckCircle" ColorClass="success" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_items.Select(b => b.TipoBloqueoNombre).Distinct().Count().ToString()" Label="Tipos" Subtexto="Distintos" Icon="@Icons.Material.Filled.Category" ColorClass="info" Xs="12" Sm="6" Md="3" />
+    </div>
+
+    <MudPaper Class="pa-4 mb-4 d-flex flex-wrap align-center gap-4" Elevation="0" Outlined="true">
+        <MudText Typo="Typo.h5" Class="flex-grow-1 mb-0">Bloqueos</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium"
+            OnClick="@RefreshAll" Class="mr-2" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@OpenCreateDialog"
+            StartIcon="@Icons.Material.Filled.Add" Size="Size.Medium">
+            Nuevo Bloqueo
+        </MudButton>
+    </MudPaper>
+
+    <MudGrid Class="mb-3" AlignItems="AlignItems.Center">
+        <MudItem xs="12" sm="6" md="4">
+            <MudAutocomplete T="UsuarioDto" @bind-Value="_usuarioSelected" @bind-Value:after="@LoadData"
+                SearchFunc="@SearchUsuarios" ToStringFunc="@(u => u is null ? "" : $"{u.NomUsuario} ({u.Nombre} {u.Apellido})")"
+                Label="Usuario" Variant="Variant.Outlined" Clearable="true" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudAutocomplete T="TenantDto" @bind-Value="_tenantSelected" @bind-Value:after="@LoadData"
+                SearchFunc="@SearchTenants" ToStringFunc="@(t => t is null ? "" : $"{t.Nombre} ({t.Codigo})")"
+                Label="Tenant" Variant="Variant.Outlined" Clearable="true" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="2">
+            <MudSelect T="string" Label="Estado" @bind-Value="_filtroEstado" Variant="Variant.Outlined" FullWidth="true" Clearable="true">
+                <MudSelectItem Value="@("todos")">Todos</MudSelectItem>
+                <MudSelectItem Value="@("activos")">Activos</MudSelectItem>
+                <MudSelectItem Value="@("inactivos")">Inactivos</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+    </MudGrid>
+
+    <MudTable T="BloqueoDto" Items="@_itemsFiltrados" Hover="true" Breakpoint="Breakpoint.Sm"
+        SelectedItem="_selectedItem" SelectedItemChanged="@OnSelectedItemChanged" RowStyle="cursor: pointer;">
+        <ColGroup>
+            <col style="width:80px;" /><col style="width:120px;" /><col /><col style="width:160px;" /><col style="width:160px;" /><col style="width:100px;" />
+        </ColGroup>
+        <HeaderContent>
+            <MudTh>Id</MudTh><MudTh>Tipo</MudTh><MudTh>Motivo</MudTh><MudTh>Fec. Bloqueo</MudTh><MudTh>Fec. Vencimiento</MudTh><MudTh>Activo</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Id">@context.Id</MudTd>
+            <MudTd DataLabel="Tipo">
+                <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined">@context.TipoBloqueoNombre</MudChip>
+            </MudTd>
+            <MudTd DataLabel="Motivo">@context.Motivo</MudTd>
+            <MudTd DataLabel="Fec. Bloqueo">@context.FecInicio.ToLocalTime().ToString("g")</MudTd>
+            <MudTd DataLabel="Fec. Vencimiento">@context.FecFin?.ToLocalTime().ToString("g")</MudTd>
+            <MudTd DataLabel="Activo">
+                <MudChip T="string" Size="Size.Small" Color="@(context.Activo ? Color.Error : Color.Success)">
+                    @(context.Activo ? "Sí" : "No")
+                </MudChip>
+            </MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new int[]{10,25,50}" />
+        </PagerContent>
+        <NoRecordsContent>
+            <MudText Align="Align.Center" Class="py-6">
+                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Class="mr-2" />
+                No hay registros
+            </MudText>
+        </NoRecordsContent>
+    </MudTable>
+
+    @if (_selectedItem is not null)
+    {
+        <IamInspector Titulo="Detalle de Bloqueo" Visible="_showInspector" OnClose="@(() => { _selectedItem = null; _showInspector = false; })">
+            <MudTabs @bind-ActivePanelIndex="_inspectorTab" KeepPanelsAlive="true" Class="detail-tabs">
+                <MudTabPanel Text="Info" Icon="@Icons.Material.Filled.Info">
+                    <div class="pa-3">
+                        <div class="d-flex align-center mb-2" style="gap:8px;">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="min-width:100px;">Tipo:</MudText>
+                            <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined">@_selectedItem.TipoBloqueoNombre</MudChip>
+                        </div>
+                        <div class="d-flex align-center mb-2" style="gap:8px;">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="min-width:100px;">Motivo:</MudText>
+                            <MudText Typo="Typo.body2">@_selectedItem.Motivo</MudText>
+                        </div>
+                        <div class="d-flex align-center mb-2" style="gap:8px;">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="min-width:100px;">Estado:</MudText>
+                            <MudChip T="string" Size="Size.Small" Color="@(_selectedItem.Activo ? Color.Error : Color.Success)">
+                                @(_selectedItem.Activo ? "Activo" : "Inactivo")
+                            </MudChip>
+                        </div>
+                        <MudDivider Class="my-2" />
+                        <div class="d-flex align-center mb-2" style="gap:8px;">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="min-width:100px;">Inicio:</MudText>
+                            <MudText Typo="Typo.body2">@_selectedItem.FecInicio.ToLocalTime().ToString("g")</MudText>
+                        </div>
+                        <div class="d-flex align-center mb-2" style="gap:8px;">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="min-width:100px;">Vencimiento:</MudText>
+                            <MudText Typo="Typo.body2">@(_selectedItem.FecFin?.ToLocalTime().ToString("g") ?? "—")</MudText>
+                        </div>
+                        @if (!string.IsNullOrEmpty(_selectedItem.CodDesbloqueo))
+                        {
+                            <div class="d-flex align-center mb-2" style="gap:8px;">
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="min-width:100px;">Código:</MudText>
+                                <MudText Typo="Typo.body2" Class="mud-primary-text">@_selectedItem.CodDesbloqueo</MudText>
+                            </div>
+                        }
+                    </div>
+                </MudTabPanel>
+            </MudTabs>
+        </IamInspector>
+    }
+
+    <MudOverlay Visible="@_loading" />
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" Class="mt-4" />
+    }
+</MudContainer>
+}
+
+@code {
+    private List<BloqueoDto> _items = [];
+    private bool _loading;
+    private int _idUsuario;
+    private int _idTenant;
+    private List<UsuarioDto> _usuarios = [];
+    private List<TenantDto> _tenants = [];
+    private UsuarioDto? _usuarioSelected;
+    private TenantDto? _tenantSelected;
+    private BloqueoDto? _selectedItem;
+    private bool _showInspector;
+    private int _inspectorTab;
+    private string _filtroEstado = "todos";
+
+    private List<BloqueoDto> _itemsFiltrados
+    {
+        get
+        {
+            if (_filtroEstado == "todos") return _items;
+            var activo = _filtroEstado == "activos";
+            return _items.Where(b => b.Activo == activo).ToList();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.TienePermiso("BLOQUEOS_VER")) return;
+        var tUsuarios = Api.GetAsync<List<UsuarioDto>>("api/usuarios");
+        var tTenants = Api.GetAsync<List<TenantDto>>("api/tenants");
+        await Task.WhenAll(tUsuarios, tTenants);
+        _usuarios = tUsuarios.Result ?? [];
+        _tenants = tTenants.Result ?? [];
+
+        _idUsuario = Auth.IdUsuario ?? 0;
+        _idTenant = Auth.IdTenant ?? 0;
+        _usuarioSelected = _usuarios.FirstOrDefault(u => u.Id == _idUsuario);
+        _tenantSelected = _tenants.FirstOrDefault(t => t.Id == _idTenant);
+        await LoadData();
+    }
+
+    private Task<IEnumerable<UsuarioDto>> SearchUsuarios(string value, CancellationToken _)
+    {
+        if (string.IsNullOrEmpty(value))
+            return Task.FromResult(_usuarios.Take(20));
+        return Task.FromResult(_usuarios.Where(u =>
+            u.NomUsuario.Contains(value, StringComparison.OrdinalIgnoreCase) ||
+            u.Nombre.Contains(value, StringComparison.OrdinalIgnoreCase) ||
+            u.Email.Contains(value, StringComparison.OrdinalIgnoreCase)).Take(20));
+    }
+
+    private Task<IEnumerable<TenantDto>> SearchTenants(string value, CancellationToken _)
+    {
+        if (string.IsNullOrEmpty(value))
+            return Task.FromResult(_tenants.Take(20));
+        return Task.FromResult(_tenants.Where(t =>
+            t.Nombre.Contains(value, StringComparison.OrdinalIgnoreCase) ||
+            t.Codigo.Contains(value, StringComparison.OrdinalIgnoreCase)).Take(20));
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        try
+        {
+            _idUsuario = _usuarioSelected?.Id ?? 0;
+            _idTenant = _tenantSelected?.Id ?? 0;
+            var data = await Api.GetAsync<List<BloqueoDto>>($"api/bloqueos/usuario/{_idUsuario}/{_idTenant}");
+            _items = data ?? [];
+        }
+        catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error al cargar: {ex.Message}", Severity.Error); }
+        finally { _loading = false; }
+    }
+
+    private async Task RefreshAll()
+    {
+        await LoadData();
+    }
+
+    private void OnSelectedItemChanged(BloqueoDto? item)
+    {
+        _selectedItem = item;
+        _showInspector = item is not null;
+        _inspectorTab = 0;
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var dialog = await Dialog.ShowAsync<BloqueoDialog>("Nuevo Bloqueo");
+        var result = await dialog.Result;
+        if (!result.Canceled) await LoadData();
+    }
+}

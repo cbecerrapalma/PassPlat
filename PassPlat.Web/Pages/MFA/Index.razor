@@ -1,0 +1,162 @@
+@page "/mfa"
+@inject ApiClient Api
+@inject AuthService Auth
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@using PassPlat.Web.Models
+@using PassPlat.Web.Shared
+
+@if (!Auth.TienePermiso("MFA_VER"))
+{
+    <SinPermiso PermisoRequerido="MFA_VER" />
+}
+else
+{
+<MudContainer>
+    <MudBreadcrumbs Class="mb-3">
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/usuarios"))">Core</MudBreadcrumbItem>
+        <MudBreadcrumbItem>MFA</MudBreadcrumbItem>
+    </MudBreadcrumbs>
+
+    <div class="mud-grid mud-grid-spacing-3 mb-4">
+        <IamKpiCard Valor="@_items.Count.ToString()" Label="Registros" Subtexto="Métodos MFA" Icon="@Icons.Material.Filled.Security" ColorClass="primary" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_items.Count(m => m.EstadoMFANombre == "Activo").ToString()" Label="Activos" Subtexto="Vigentes" Icon="@Icons.Material.Filled.CheckCircle" ColorClass="success" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_items.Count(m => m.EsPrincipal).ToString()" Label="Principales" Subtexto="Método primario" Icon="@Icons.Material.Filled.Star" ColorClass="warning" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_items.Select(m => m.TipoMFANombre).Distinct().Count().ToString()" Label="Tipos" Subtexto="Distintos" Icon="@Icons.Material.Filled.Category" ColorClass="info" Xs="12" Sm="6" Md="3" />
+    </div>
+
+    <MudPaper Class="pa-4 mb-4 d-flex flex-wrap align-center gap-4" Elevation="0" Outlined="true">
+        <MudText Typo="Typo.h5" Class="flex-grow-1 mb-0">Métodos MFA</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium"
+            OnClick="@LoadData" />
+    </MudPaper>
+
+    <MudAutocomplete T="UsuarioDto" @bind-Value="_usuarioSelected"
+        SearchFunc="@SearchUsuarios" ToStringFunc="@(u => u is null ? "" : $"{u.NomUsuario} ({u.Nombre} {u.Apellido})")"
+        Label="Usuario" Variant="Variant.Outlined" Class="mb-3" />
+
+    <MudTable T="MFADto" Items="@_items" Hover="true" Breakpoint="Breakpoint.Sm"
+        SelectedItem="@_selectedItem" SelectedItemChanged="@OnSelectedItemChanged" RowStyle="cursor: pointer;">
+        <ColGroup>
+            <col style="width:80px;" /><col /><col /><col /><col style="width:100px;" /><col style="width:160px;" />
+        </ColGroup>
+        <HeaderContent>
+            <MudTh>Id</MudTh><MudTh>Tipo</MudTh><MudTh>Identificador</MudTh><MudTh>Estado</MudTh><MudTh>Principal</MudTh><MudTh>Registro</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Id">@context.Id</MudTd>
+            <MudTd DataLabel="Tipo">
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@context.TipoMFANombre</MudChip>
+            </MudTd>
+            <MudTd DataLabel="Identificador">@context.IdMFA</MudTd>
+            <MudTd DataLabel="Estado">@context.EstadoMFANombre</MudTd>
+            <MudTd DataLabel="Principal">
+                <MudChip T="string" Size="Size.Small" Color="@(context.EsPrincipal ? Color.Success : Color.Default)">
+                    @(context.EsPrincipal ? "Sí" : "No")
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Registro">@context.FecAlta.ToLocalTime().ToString("g")</MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new int[]{10,25,50}" />
+        </PagerContent>
+        <NoRecordsContent>
+            <MudText Align="Align.Center" Class="py-6">
+                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Class="mr-2" />
+                No hay registros
+            </MudText>
+        </NoRecordsContent>
+    </MudTable>
+
+    @if (_selectedItem is not null)
+    {
+        <IamInspector Titulo="Detalle MFA" Subtitulo="@_selectedItem.TipoMFANombre" Visible="_showInspector" OnClose="@(() => { _selectedItem = null; _showInspector = false; })">
+            <MudTabs @bind-ActivePanelIndex="_inspectorTab" KeepPanelsAlive="true" Class="detail-tabs">
+                <MudTabPanel Text="Info" Icon="@Icons.Material.Filled.Info">
+                    <div class="pa-3">
+                        <div class="d-flex align-center mb-2" style="gap:8px;">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="min-width:90px;">Tipo:</MudText>
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@_selectedItem.TipoMFANombre</MudChip>
+                        </div>
+                        <div class="d-flex align-center mb-2" style="gap:8px;">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="min-width:90px;">Identificador:</MudText>
+                            <MudText Typo="Typo.body2">@_selectedItem.IdMFA</MudText>
+                        </div>
+                        <div class="d-flex align-center mb-2" style="gap:8px;">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="min-width:90px;">Estado:</MudText>
+                            <MudText Typo="Typo.body2">@_selectedItem.EstadoMFANombre</MudText>
+                        </div>
+                        <div class="d-flex align-center mb-2" style="gap:8px;">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="min-width:90px;">Principal:</MudText>
+                            <MudChip T="string" Size="Size.Small" Color="@(_selectedItem.EsPrincipal ? Color.Success : Color.Default)">
+                                @(_selectedItem.EsPrincipal ? "Sí" : "No")
+                            </MudChip>
+                        </div>
+                        <MudDivider Class="my-2" />
+                        <div class="d-flex align-center mb-2" style="gap:8px;">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="min-width:90px;">Registro:</MudText>
+                            <MudText Typo="Typo.body2">@_selectedItem.FecAlta.ToLocalTime().ToString("g")</MudText>
+                        </div>
+                    </div>
+                </MudTabPanel>
+            </MudTabs>
+        </IamInspector>
+    }
+
+    <MudOverlay Visible="@_loading" />
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" Class="mt-4" />
+    }
+</MudContainer>
+}
+
+@code {
+    private List<MFADto> _items = [];
+    private bool _loading;
+    private int _idUsuario;
+    private UsuarioDto? _usuarioSelected;
+    private List<UsuarioDto> _usuarios = [];
+    private MFADto? _selectedItem;
+    private bool _showInspector;
+    private int _inspectorTab;
+    private string _filtroEstado = "todos";
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.TienePermiso("MFA_VER")) return;
+        _idUsuario = Auth.IdUsuario ?? 0;
+        if (_idUsuario > 0) await LoadData();
+    }
+
+    private async Task<IEnumerable<UsuarioDto>> SearchUsuarios(string? text, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return _usuarios.Take(10);
+        return _usuarios.Where(u =>
+            u.NomUsuario.Contains(text, StringComparison.OrdinalIgnoreCase) ||
+            u.Nombre.Contains(text, StringComparison.OrdinalIgnoreCase) ||
+            u.Apellido?.Contains(text, StringComparison.OrdinalIgnoreCase) == true).Take(10);
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        try
+        {
+            _usuarios = await Api.GetAsync<List<UsuarioDto>>("api/usuarios") ?? [];
+            _idUsuario = _usuarioSelected?.Id ?? _idUsuario;
+            var data = await Api.GetAsync<List<MFADto>>($"api/mfa/metodos/{_idUsuario}");
+            _items = data ?? [];
+        }
+        catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error al cargar: {ex.Message}", Severity.Error); }
+        finally { _loading = false; }
+    }
+
+    private void OnSelectedItemChanged(MFADto? item)
+    {
+        _selectedItem = item;
+        _showInspector = item is not null;
+        _inspectorTab = 0;
+    }
+}

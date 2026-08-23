@@ -1,0 +1,48 @@
+<Solution>
+  <Folder Name="/fwk/" />
+  <Folder Name="/fwk/Core/">
+    <Project Path="../CBP/CBP.Core/CBP.Events/CBP.Events.csproj" />
+    <Project Path="../CBP/CBP.Core/CBP.Results/CBP.Results.csproj" />
+    <Project Path="../CBP/CBP.Core/CBP/CBP.csproj" />
+  </Folder>
+  <Folder Name="/fwk/Data/">
+    <Project Path="../CBP/CBP.Data/CBP.Data.Abstractions/CBP.Data.Abstractions.csproj" />
+    <Project Path="../CBP/CBP.Data/CBP.Data.Asynchronous/CBP.Data.Asynchronous.csproj" />
+    <Project Path="../CBP/CBP.Data/CBP.Data.Specifications/CBP.Data.Specifications.csproj" />
+    <Project Path="../CBP/CBP.Data/CBP.Data.Utilities/CBP.Data.Utilities.csproj" />
+  </Folder>
+  <Folder Name="/fwk/Infraestructure/">
+    <Project Path="../CBP/CBP.Infraestructure/CBP.Emails/CBP.Emails.csproj" />
+    <Project Path="../CBP/CBP.Infraestructure/CBP.Logging/CBP.Logging.csproj" />
+    <Project Path="../CBP/CBP.Infraestructure/CBP.MultiTenant/CBP.MultiTenant.csproj" />
+    <Project Path="../CBP/CBP.Infraestructure/CBP.Security/CBP.Security.Cryptography/CBP.Security.Cryptography.csproj" />
+  </Folder>
+  <Folder Name="/fwk/Caching/">
+    <Project Path="../CBP/CBP.Caching/CBP.Caching.Abstractions/CBP.Caching.Abstractions.csproj" />
+    <Project Path="../CBP/CBP.Caching/CBP.Caching.Memory/CBP.Caching.Memory.csproj" />
+    <Project Path="../CBP/CBP.Caching/CBP.Caching.Redis/CBP.Caching.Redis.csproj" />
+    <Project Path="../CBP/CBP.Caching/CBP.Caching.NCache/CBP.Caching.NCache.csproj" />
+  </Folder>
+  <Folder Name="/fwk/Services/">
+    <Project Path="../CBP/CBP.Service/CBP.Services.Abstractions/CBP.Services.Abstractions.csproj" />
+    <Project Path="../CBP/CBP.Service/CBP.Services.Async/CBP.Services.Async.csproj" />
+  </Folder>
+  <Folder Name="/fwk/WebApi/">
+    <Project Path="../CBP/CBP.WebApi/CBP.WebApi/CBP.WebApi.csproj" />
+  </Folder>
+  <Folder Name="/fwk/Authentication/">
+    <Project Path="../CBP/CBP.Authentication/CBP.Authentication.Abstractions/CBP.Authentication.Abstractions.csproj" />
+    <Project Path="../CBP/CBP.Authentication/CBP.Authentication.JwtBearer/CBP.Authentication.JwtBearer.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="PassPlat.Dominio/PassPlat.Dominio.csproj" />
+    <Project Path="PassPlat.Datos/PassPlat.Datos.csproj" />
+    <Project Path="PassPlat.Aplicacion.Dtos/PassPlat.Aplicacion.Dtos.csproj" />
+    <Project Path="PassPlat.Aplicacion/PassPlat.Aplicacion.csproj" />
+    <Project Path="PassPlat.WebAPI/PassPlat.WebAPI.csproj" />
+    <Project Path="PassPlat.Web/PassPlat.Web.csproj" />
+    <Project Path="PassPlat.Consola/PassPlat.Consola.csproj" />
+  </Folder>
+  <Project Path="PassPlat.Aplicacion.Test/PassPlat.Aplicacion.Test.csproj" />
+  <Project Path="PassPlat.CBP.Architecture.Test/PassPlat.CBP.Architecture.Test.csproj" />
+</Solution>

@@ -1,0 +1,85 @@
+@using PassPlat.Aplicacion.Dtos.Catalogos
+@using PassPlat.Aplicacion.Dtos.Core
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Agregar proveedor externo</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (Proveedores is null || Proveedores.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">No hay proveedores configurados disponibles</MudAlert>
+        }
+        else
+        {
+            <MudText Typo="Typo.body2" Class="mb-4">Vincular al usuario con una identidad externa</MudText>
+            <MudSelect @bind-Value="_selectedConfig" Label="Proveedor" Variant="Variant.Outlined" Class="mb-3" Required="true"
+                        Error="@(_submitted && _selectedConfig is null)" ErrorText="Seleccione un proveedor">
+                @foreach (var config in Proveedores.Where(p => p.Activo && !string.IsNullOrWhiteSpace(p.ClientId)))
+                {
+                    <MudSelectItem Value="@config">@config.ProvIdenNombre (@config.ClientId)</MudSelectItem>
+                }
+            </MudSelect>
+            <MudTextField @bind-Value="_subExterno" Label="Sub (ID externo)" Variant="Variant.Outlined" Class="mb-3" Required="true"
+                        HelperText="Identificador único del usuario en el proveedor externo" />
+            <MudTextField @bind-Value="_emailExterno" Label="Email externo" Variant="Variant.Outlined" Class="mb-3" />
+            <MudTextField @bind-Value="_nombreExterno" Label="Nombre externo" Variant="Variant.Outlined" Class="mb-3" />
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@Save" Disabled="@(_saving || Proveedores.Count == 0)">
+            Vincular
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public int UserId { get; set; }
+    [Parameter] public List<ConfProvIdenDto> Proveedores { get; set; } = [];
+
+    private ConfProvIdenDto? _selectedConfig;
+    private string _subExterno = "";
+    private string? _emailExterno;
+    private string? _nombreExterno;
+    private bool _saving;
+    private bool _submitted;
+
+    private async Task Save()
+    {
+        _submitted = true;
+        if (_selectedConfig is null || string.IsNullOrWhiteSpace(_subExterno)) return;
+        _saving = true;
+        try
+        {
+            var result = await Api.PostAsync<IdenExtDto>("api/iden-ext", new
+            {
+                idUsuario = UserId,
+                idProvIden = _selectedConfig.IdProvIden,
+                idTenant = _selectedConfig.IdTenant,
+                subExterno = _subExterno,
+                emailExterno = _emailExterno,
+                nombreExterno = _nombreExterno
+            });
+            if (result is not null)
+            {
+                Snackbar.Add("Identidad externa vinculada", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+                Snackbar.Add(Api.LastError ?? "Error al vincular", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

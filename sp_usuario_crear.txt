@@ -1,0 +1,162 @@
+CREATE   PROCEDURE dbo.SP_Usuario_Crear
+    @IdTenant int,
+    @IdEstado int,
+    @EsSistema bit = 0,
+    @NomUsuario nvarchar(100),
+    @Email nvarchar(255) = NULL,
+    @Nombre nvarchar(100),
+    @Apellido nvarchar(100),
+    @HashPwd nvarchar(512) = NULL
+,
+    @Algoritmo nvarchar(50) = 'Argon2id',
+    @PepperVersion tinyint = 1,
+    @IdTipoCambio int = NULL,
+    @EmailVerificado bit = 0,
+    @IdUsrEjecutor int = NULL,
+    @IdTipoAccion int = NULL,
+    @IdDisp int = NULL,
+    @IdIP int = NULL,
+    @IdAgent
+e int = NULL
+AS
+BEGIN
+    SET NOCOUNT, XACT_ABORT ON;
+
+    DECLARE @IdUsuario int, @IdPolitica int;
+
+    BEGIN TRY
+        IF NOT EXISTS (SELECT 1 FROM dbo.Tenants WHERE Id = @IdTenant AND Activo = 1)
+        BEGIN
+            SELECT 1 AS Resultado, 'Tena
+nt no encontrado o inactivo' AS Mensaje, NULL AS IdUsuario;
+            RETURN;
+        END
+
+        IF NOT EXISTS (SELECT 1 FROM dbo.EstadosUsr WHERE Id = @IdEstado AND Activo = 1)
+        BEGIN
+            SELECT 2 AS Resultado, 'Estado de usuario no v�
+�lido' AS Mensaje, NULL AS IdUsuario;
+            RETURN;
+        END
+
+        IF EXISTS (SELECT 1 FROM dbo.Usuarios WHERE IdTenant = @IdTenant AND NomUsuario = @NomUsuario AND Eliminado = 0)
+        BEGIN
+            SELECT 3 AS Resultado, 'El nombre de 
+usuario ya está registrado en este tenant' AS Mensaje, NULL AS IdUsuario;
+            RETURN;
+        END
+
+        IF @Email IS NOT NULL AND EXISTS (SELECT 1 FROM dbo.Usuarios WHERE IdTenant = @IdTenant AND Email = @Email AND Eliminado = 0)
+        BEGIN
+
+            SELECT 4 AS Resultado, 'El correo electrónico ya está registrado en este tenant' AS Mensaje, NULL AS IdUsuario;
+            RETURN;
+        END
+
+        IF @HashPwd IS NOT NULL AND @HashPwd = ''
+        BEGIN
+            SELECT 6 AS Resulta
+do, 'El hash de contraseña no puede ser vacío' AS Mensaje, NULL AS IdUsuario;
+            RETURN;
+        END
+
+        IF @IdUsrEjecutor IS NOT NULL
+           AND NOT EXISTS (SELECT 1 FROM dbo.Usuarios WHERE Id = @IdUsrEjecutor AND IdTenant = @IdTenant
+ AND Eliminado = 0)
+        BEGIN
+            SELECT 7 AS Resultado, 'El usuario ejecutor no existe o no pertenece al tenant' AS Mensaje, NULL AS IdUsuario;
+            RETURN;
+        END
+
+        IF @EsSistema = 1 AND NOT EXISTS (SELECT 1 FROM dbo.Tenan
+ts WHERE Id = @IdTenant AND EsSistema = 1)
+        BEGIN
+            SELECT 10 AS Resultado, 'Un usuario de sistema debe pertenecer al tenant de sistema' AS Mensaje, NULL AS IdUsuario;
+            RETURN;
+        END
+
+        IF @HashPwd IS NOT NULL
+     
+   BEGIN
+            SELECT TOP 1 @IdPolitica = pp.Id
+            FROM dbo.PoliticasPwd pp
+            WHERE (pp.IdTenant = @IdTenant OR pp.IdTenant IS NULL)
+              AND pp.Activa = 1
+            ORDER BY pp.IdTenant DESC;
+
+            IF @IdPolitic
+a IS NULL
+            BEGIN
+                SELECT 5 AS Resultado, 'No hay política de contraseñas activa para el tenant' AS Mensaje, NULL AS IdUsuario;
+                RETURN;
+            END
+        END
+
+        BEGIN TRAN;
+
+        INSERT INTO dbo.Us
+uarios (IdTenant, IdEstado, EsSistema, NomUsuario, Email, EmailVerificado, Nombre, Apellido,
+                                   ReqCambioPwd, IntentosFallidos, Eliminado, FecCrea, FecMod)
+        VALUES (@IdTenant, @IdEstado, @EsSistema, @NomUsuario, @Ema
+il, @EmailVerificado, @Nombre, @Apellido,
+                CASE WHEN @HashPwd IS NULL THEN 1 ELSE 0 END, 0, 0, SYSUTCDATETIME(), SYSUTCDATETIME());
+
+        SET @IdUsuario = SCOPE_IDENTITY();
+
+        INSERT INTO dbo.UsuarioTenant (IdUsuario, IdTenant, IdE
+stado, Activo, FecAlta)
+        VALUES (@IdUsuario, @IdTenant, @IdEstado, 1, SYSUTCDATETIME());
+
+        IF @HashPwd IS NOT NULL
+        BEGIN
+            INSERT INTO dbo.HistorialPwd (IdUsuario, IdPolitica, IdTipoCambio, HashPwd, Algoritmo,
+             
+                              PepperVersion, EsActual, FecRegistro)
+            VALUES (@IdUsuario, @IdPolitica,
+                    ISNULL(@IdTipoCambio, 4),
+     @HashPwd, @Algoritmo,
+                    @PepperVersion, 1, SYSUTCDATETIME());
+        END
+
+
+        IF @IdUsrEjecutor IS NOT NULL AND @IdTipoAccion IS NOT NULL
+        BEGIN
+            INSERT INTO dbo.AuditoriaPwd (IdUsuario, IdTenant, IdApp, IdTipoAccion, IdUsrEjecutor,
+                                           IdDisp, IdIP, IdAgente, Detal
+les, FecAccion)
+            VALUES (@IdUsuario, @IdTenant, NULL, @IdTipoAccion, @IdUsrEjecutor,
+                    @IdDisp, @IdIP, @IdAgente,
+                    CASE WHEN @HashPwd IS NULL
+                         THEN 'Usuario creado sin contraseña'
+  
+                       ELSE 'Usuario creado con contraseña inicial'
+                    END,
+                    SYSUTCDATETIME());
+        END
+
+        COMMIT;
+
+        SELECT 0 AS Resultado, 'Usuario creado exitosamente' AS Mensaje, @IdUsuario AS IdUsu
+ario;
+
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK;
+
+        IF ERROR_NUMBER() = 2627
+        BEGIN
+            IF CHARINDEX('UQ_Usuarios_NomUsuario', ERROR_MESSAGE()) > 0
+                SELECT 3 AS Resultado, 'El nombre de usuario ya
+ está registrado' AS Mensaje, NULL AS IdUsuario;
+            ELSE IF CHARINDEX('UQ_Usuarios_Email', ERROR_MESSAGE()) > 0
+                SELECT 6 AS Resultado, 'El correo electrónico ya está registrado' AS Mensaje, NULL AS IdUsuario;
+            ELSE
+ 
+               SELECT 6 AS Resultado, 'Error de duplicado: ' + ERROR_MESSAGE() AS Mensaje, NULL AS IdUsuario;
+        END
+        ELSE
+            SELECT 99 AS Resultado, 'Error interno: ' + ERROR_MESSAGE() AS Mensaje, NULL AS IdUsuario;
+    END CATCH
+END
+;
+

@@ -1,0 +1,374 @@
+- generic [ref=e2]:
+  - dialog "Nuevo Usuario Close" [ref=e6]:
+    - generic [ref=e7]:
+      - heading "Nuevo Usuario" [level=6] [ref=e8]
+      - button "Close" [ref=e9] [cursor=pointer]:
+        - img [ref=e11]
+    - generic [ref=e15]:
+      - generic [ref=e17]:
+        - generic [ref=e19]:
+          - paragraph [ref=e20]:
+            - img [ref=e21]
+            - text: Detalle del usuario
+          - generic [ref=e25]:
+            - generic [ref=e26]:
+              - textbox "Usuario*" [ref=e27]: test_user_01
+              - group "Usuario"
+            - generic: Usuario*
+          - generic [ref=e29]:
+            - generic [ref=e30]:
+              - textbox "Email*" [ref=e31]: test_user_01@test.com
+              - group "Email"
+            - generic: Email*
+          - generic [ref=e33]:
+            - generic [ref=e34]:
+              - textbox "Nombre*" [ref=e35]: Test
+              - group "Nombre"
+            - generic: Nombre*
+          - generic [ref=e37]:
+            - generic [ref=e38]:
+              - textbox "Apellido*" [ref=e39]: User
+              - group "Apellido"
+            - generic: Apellido*
+          - separator
+          - paragraph [ref=e40]:
+            - img [ref=e41]
+            - text: Contraseña
+          - generic [ref=e44]:
+            - generic [ref=e45]:
+              - generic [ref=e476]:
+                - generic [ref=e477]:
+                  - textbox "Nueva contraseña" [ref=e478]: nbR@R;p&.+85
+                  - group "Nueva contraseña"
+                - generic: Nueva contraseña
+              - button [ref=e50] [cursor=pointer]:
+                - img [ref=e52]
+            - button "Generar contraseña segura (Ctrl+G)" [ref=e55] [cursor=pointer]:
+              - img [ref=e57]
+          - generic [ref=e482]:
+            - generic [ref=e483]:
+              - textbox "Confirmar contraseña" [ref=e484]: nbR@R;p&.+85
+              - img [ref=e486]
+              - group "Confirmar contraseña"
+            - generic: Confirmar contraseña
+        - generic [ref=e69]:
+          - paragraph [ref=e70]:
+            - img [ref=e71]
+            - text: Seguridad de contraseña
+          - text: Requisitos
+          - generic [ref=e74]:
+            - generic [ref=e77]: Mín. 10 car.
+            - generic [ref=e80]: Mayúscula
+            - generic [ref=e83]: Minúscula
+            - generic [ref=e86]: Número
+            - generic [ref=e89]: Car. especial
+          - generic [ref=e489]:
+            - generic [ref=e490]:
+              - generic [ref=e491]: Fortaleza
+              - generic [ref=e492]:
+                - img [ref=e493]
+                - text: Strong
+            - progressbar [ref=e496]
+            - text: Requisitos
+            - generic [ref=e499]:
+              - generic [ref=e500]:
+                - img [ref=e501]
+                - text: Mín. 10 car.
+              - generic [ref=e504]:
+                - img [ref=e505]
+                - text: Mayúscula
+              - generic [ref=e508]:
+                - img [ref=e509]
+                - text: Minúscula
+              - generic [ref=e512]:
+                - img [ref=e513]
+                - text: Número
+              - generic [ref=e516]:
+                - img [ref=e517]
+                - text: Car. especial
+              - generic [ref=e520]:
+                - img [ref=e521]
+                - text: No común
+              - generic [ref=e524]:
+                - img [ref=e525]
+                - text: Sin secuencias
+              - generic [ref=e528]:
+                - img [ref=e529]
+                - text: Sin repeticiones
+              - generic [ref=e532]:
+                - img [ref=e533]
+                - text: Sin datos personales
+            - generic [ref=e536]: Composición
+            - generic [ref=e537]:
+              - generic [ref=e540]: A-Z (2)
+              - generic [ref=e543]: a-z (3)
+              - generic [ref=e546]: 0-9 (2)
+              - generic [ref=e549]: "!@@# (5)"
+            - generic [ref=e550]:
+              - generic [ref=e551]: "Longitud:"
+              - generic [ref=e552]: "12"
+      - generic [ref=e90]:
+        - button "Cancelar" [ref=e91] [cursor=pointer]:
+          - generic [ref=e92]: Cancelar
+        - button "Crear" [ref=e553] [cursor=pointer]:
+          - generic [ref=e554]: Crear
+  - alert [ref=e555]:
+    - img [ref=e557]
+    - generic [ref=e559]: Contraseña generada
+    - button "Close" [ref=e561] [cursor=pointer]:
+      - img [ref=e563]
+  - generic [ref=e93]:
+    - banner [ref=e94]:
+      - toolbar [ref=e95]:
+        - button [ref=e96] [cursor=pointer]:
+          - img [ref=e98]
+        - generic [ref=e103]: AccessPlat
+        - heading "Usuarios" [level=6] [ref=e106]
+        - generic [ref=e107]:
+          - generic [ref=e108]: Buenas noches
+          - generic [ref=e110]: 22:22:48
+        - separator [ref=e111]
+        - generic [ref=e112]:
+          - button [ref=e114] [cursor=pointer]:
+            - img [ref=e116]
+          - button [ref=e120] [cursor=pointer]:
+            - img [ref=e122]
+          - button [ref=e126] [cursor=pointer]:
+            - img [ref=e128]
+          - generic [ref=e133]:
+            - img [ref=e135]
+            - status [ref=e138]: "5"
+          - separator [ref=e139]
+          - generic [ref=e141] [cursor=pointer]:
+            - img [ref=e143]:
+              - generic [ref=e144]: SI
+            - paragraph [ref=e146]: sistema
+            - generic [ref=e149]: Plataforma
+            - img [ref=e150]
+    - complementary [ref=e153]:
+      - generic [ref=e154]:
+        - generic [ref=e155]:
+          - img [ref=e156]:
+            - paragraph [ref=e157]: SI
+          - generic [ref=e158]:
+            - paragraph [ref=e159]: sistema
+            - text: Administrador
+        - separator [ref=e160]
+        - navigation [ref=e161]:
+          - link "Panel Principal" [ref=e163] [cursor=pointer]:
+            - /url: /
+            - img [ref=e164]
+            - generic [ref=e167]: Panel Principal
+          - generic [ref=e168]: CATÁLOGOS
+          - navigation "Gestión" [ref=e169]:
+            - button "Toggle Gestión" [expanded]:
+              - img
+              - generic: Gestión
+              - img [ref=e170] [cursor=pointer]
+            - navigation [ref=e176]:
+              - link "Tenants" [ref=e178] [cursor=pointer]:
+                - /url: /tenants
+                - img [ref=e179]
+                - generic [ref=e182]: Tenants
+              - link "Apps" [ref=e184] [cursor=pointer]:
+                - /url: /apps
+                - img [ref=e185]
+                - generic [ref=e188]: Apps
+              - link "Roles y Permisos" [ref=e190] [cursor=pointer]:
+                - /url: /admin/roles
+                - img [ref=e191]
+                - generic [ref=e198]: Roles y Permisos
+              - link "Políticas de Contraseña" [ref=e200] [cursor=pointer]:
+                - /url: /politicas-pwd
+                - img [ref=e201]
+                - generic [ref=e204]: Políticas de Contraseña
+              - link "Config App" [ref=e206] [cursor=pointer]:
+                - /url: /config-app
+                - img [ref=e207]
+                - generic [ref=e211]: Config App
+          - generic [ref=e212]: SEGURIDAD
+          - navigation "Control" [ref=e213]:
+            - button "Toggle Control" [expanded]:
+              - img
+              - generic: Control
+              - img [ref=e214] [cursor=pointer]
+            - navigation [ref=e220]:
+              - link "Usuarios" [ref=e222] [cursor=pointer]:
+                - /url: /usuarios
+                - img [ref=e223]
+                - generic [ref=e226]: Usuarios
+              - link "Accesos" [ref=e228] [cursor=pointer]:
+                - /url: /accesos
+                - img [ref=e229]
+                - generic [ref=e234]: Accesos
+          - generic [ref=e235]: IAM
+          - navigation "Permisos" [ref=e236]:
+            - button "Toggle Permisos":
+              - img
+              - generic: Permisos
+              - img [ref=e237] [cursor=pointer]
+          - generic [ref=e240]: MONITOREO
+          - navigation "Registros" [ref=e241]:
+            - button "Toggle Registros":
+              - img
+              - generic: Registros
+              - img [ref=e242] [cursor=pointer]
+          - generic [ref=e245]: COMUNICACIONES
+          - navigation "Email" [ref=e246]:
+            - button "Toggle Email" [expanded]:
+              - img
+              - generic: Email
+              - img [ref=e247] [cursor=pointer]
+            - navigation [ref=e253]:
+              - link "Providers" [ref=e255] [cursor=pointer]:
+                - /url: /email/providers
+                - img [ref=e256]
+                - generic [ref=e259]: Providers
+              - link "Cuentas de Correo" [ref=e261] [cursor=pointer]:
+                - /url: /email/accounts
+                - img [ref=e262]
+                - generic [ref=e265]: Cuentas de Correo
+              - link "Cuentas x Tenant" [ref=e267] [cursor=pointer]:
+                - /url: /email/tenant-accounts
+                - img [ref=e268]
+                - generic [ref=e271]: Cuentas x Tenant
+              - link "Cuentas x App" [ref=e273] [cursor=pointer]:
+                - /url: /email/app-accounts
+                - img [ref=e274]
+                - generic [ref=e277]: Cuentas x App
+              - link "Plantillas de Email" [ref=e279] [cursor=pointer]:
+                - /url: /email-templates
+                - img [ref=e280]
+                - generic [ref=e283]: Plantillas de Email
+        - generic [ref=e284]:
+          - separator [ref=e285]
+          - generic [ref=e286]: AccessPlat v1.0.0
+    - generic [ref=e287]:
+      - generic [ref=e289]:
+        - generic [ref=e291]:
+          - generic [ref=e292]:
+            - heading "Usuarios" [level=1] [ref=e293]
+            - paragraph [ref=e294]: Gestión de identidades, accesos, roles y grupos de la plataforma.
+          - button "Nuevo Usuario" [ref=e295] [cursor=pointer]:
+            - generic [ref=e296]:
+              - img [ref=e298]
+              - text: Nuevo Usuario
+        - generic [ref=e301]:
+          - generic [ref=e303]:
+            - img [ref=e304]:
+              - img [ref=e305]
+            - generic [ref=e308]:
+              - heading "2" [level=5] [ref=e309]
+              - paragraph [ref=e310]: Usuarios Totales
+              - text: 2 total
+          - generic [ref=e312]:
+            - img [ref=e313]:
+              - img [ref=e314]
+            - generic [ref=e317]:
+              - heading "2" [level=5] [ref=e318]
+              - paragraph [ref=e319]: Activos
+              - text: 2 activos
+          - generic [ref=e321]:
+            - img [ref=e322]:
+              - img [ref=e323]
+            - generic [ref=e326]:
+              - heading "2" [level=5] [ref=e327]
+              - paragraph [ref=e328]: Con MFA
+              - text: Autenticación de dos factores
+          - generic [ref=e330]:
+            - img [ref=e331]:
+              - img [ref=e332]
+            - generic [ref=e335]:
+              - heading "0" [level=5] [ref=e336]
+              - paragraph [ref=e337]: Bloqueados
+              - text: 0 bloqueados
+          - generic [ref=e339]:
+            - img [ref=e340]:
+              - img [ref=e341]
+            - generic [ref=e345]:
+              - heading "0" [level=5] [ref=e346]
+              - paragraph [ref=e347]: Sin Verificar
+              - text: 0 pendientes
+        - generic [ref=e349]:
+          - generic [ref=e350]:
+            - generic [ref=e352]:
+              - generic [ref=e353]:
+                - img [ref=e355]
+                - textbox "Buscar..." [ref=e358]
+                - group "Buscar..."
+              - generic: Buscar...
+            - button [ref=e360] [cursor=pointer]:
+              - img [ref=e362]
+          - generic [ref=e366]:
+            - table [ref=e368]:
+              - rowgroup [ref=e377]:
+                - row "Usuario Email Nombre Apellido Estado" [ref=e378]:
+                  - columnheader [ref=e379]
+                  - columnheader "Usuario" [ref=e380]
+                  - columnheader "Email" [ref=e381]
+                  - columnheader "Nombre" [ref=e382]
+                  - columnheader "Apellido" [ref=e383]
+                  - columnheader "Estado" [ref=e384]
+                  - columnheader [ref=e385]
+              - rowgroup [ref=e386]:
+                - row "sistema sistema@passplat.app Usuario Sistema Activo" [ref=e387] [cursor=pointer]:
+                  - cell [ref=e388]:
+                    - img [ref=e389]:
+                      - generic [ref=e390]: Us
+                  - cell "sistema" [ref=e391]:
+                    - paragraph [ref=e392]: sistema
+                  - cell "sistema@passplat.app" [ref=e393]
+                  - cell "Usuario" [ref=e394]
+                  - cell "Sistema" [ref=e395]
+                  - cell "Activo" [ref=e396]:
+                    - generic [ref=e397]: Activo
+                  - cell [ref=e399]:
+                    - button [ref=e402]:
+                      - img [ref=e404]
+                - row "admin_tenant admin@passplat.app Admin Tenant Activo" [ref=e407] [cursor=pointer]:
+                  - cell [ref=e408]:
+                    - img [ref=e409]:
+                      - generic [ref=e410]: Ad
+                  - cell "admin_tenant" [ref=e411]:
+                    - paragraph [ref=e412]: admin_tenant
+                  - cell "admin@passplat.app" [ref=e413]
+                  - cell "Admin" [ref=e414]
+                  - cell "Tenant" [ref=e415]
+                  - cell "Activo" [ref=e416]:
+                    - generic [ref=e417]: Activo
+                  - cell [ref=e419]:
+                    - button [ref=e422]:
+                      - img [ref=e424]
+            - toolbar [ref=e428]:
+              - generic [ref=e429]:
+                - generic [ref=e431]: "Rows per page:"
+                - generic [ref=e435] [cursor=pointer]:
+                  - generic [ref=e436]: "10"
+                  - img [ref=e438]
+              - generic [ref=e442]: 1-2 of 2
+              - generic [ref=e443]:
+                - button "First page" [disabled]:
+                  - generic:
+                    - img
+                - button "Previous page" [disabled]:
+                  - generic:
+                    - img
+                - button "Next page" [disabled]:
+                  - generic:
+                    - img
+                - button "Last page" [disabled]:
+                  - generic:
+                    - img
+      - generic [ref=e444]:
+        - generic [ref=e445]:
+          - generic [ref=e446]: © 2026 Plataforma de Acceso
+          - generic [ref=e449]:
+            - img [ref=e450]
+            - text: Producción
+        - generic [ref=e453]:
+          - button [ref=e455] [cursor=pointer]:
+            - img [ref=e457]
+          - button [ref=e468] [cursor=pointer]:
+            - img [ref=e470]
+          - separator [ref=e473]
+          - generic [ref=e474]: v1.0.0

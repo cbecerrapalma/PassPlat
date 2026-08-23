@@ -1,0 +1,304 @@
+@page "/admin/permisos"
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@inject AuthService Auth
+@inject NavigationManager Navigation
+@using PassPlat.Web.Models
+@using PassPlat.Web.Shared
+
+@if (!Auth.TienePermiso("PERMISOS_VER"))
+{
+    <SinPermiso PermisoRequerido="PERMISOS_VER" />
+}
+else
+{
+<div class="iam-page">
+    <MudBreadcrumbs Class="mb-3">
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/usuarios"))">Seguridad</MudBreadcrumbItem>
+        <MudBreadcrumbItem>Permisos</MudBreadcrumbItem>
+    </MudBreadcrumbs>
+
+    <div class="page-header">
+        <div class="page-title-row">
+            <div>
+                <h1 class="page-title">Permisos</h1>
+                <p class="page-subtitle">Administra los permisos del sistema organizados por módulo. Explora la jerarquía y revisa las asignaciones.</p>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AbrirCrearPermiso" StartIcon="@Icons.Material.Filled.Add">
+                    Nuevo Permiso
+                </MudButton>
+            </div>
+        </div>
+    </div>
+
+    <div class="kpi-row mb-4">
+        <IamKpiCard Valor="@_todosPermisos.Count.ToString()" Label="Permisos Totales" Subtexto="@($"{_todosPermisos.Count} total")" Icon="@Icons.Material.Filled.VerifiedUser" ColorClass="primary" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_todosPermisos.Count(p => p.Activo).ToString()" Label="Activos" Subtexto="@($"{_todosPermisos.Count(p => p.Activo)} activos")" Icon="@Icons.Material.Filled.CheckCircle" ColorClass="success" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_modulosUnicos.ToString()" Label="Módulos" Subtexto="@($"{_modulosUnicos} módulos")" Icon="@Icons.Material.Filled.Category" ColorClass="info" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_rolesConPermisos.ToString()" Label="Roles Asignados" Subtexto="@($"{_rolesConPermisos} roles")" Icon="@Icons.Material.Filled.Security" ColorClass="warning" Xs="12" Sm="6" Md="3" />
+    </div>
+
+    @if (_cargando)
+    {
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="100%" Height="400px" />
+    }
+    else
+    {
+        <div class="explorer-layout">
+            <section class="tree-panel" aria-label="Explorador de permisos">
+                <div class="tree-header">
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h5l2 2h5v8H2V3Z"/></svg>
+                    <span>Explorador de Permisos</span>
+                    <span class="tree-header-count">@_todosPermisos.Count</span>
+                </div>
+                <MudTextField @bind-Value="_treeBusqueda" Label="Filtrar permisos…" Variant="Variant.Outlined"
+                    Immediate="true" Clearable="true"
+                    Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                    Class="mb-3" />
+                <div class="tree-scroll">
+                    @foreach (var grupo in _gruposTree)
+                    {
+                        <div @key="grupo.Modulo" class="tree-node" @onclick="() => ToggleModulo(grupo.Modulo)" style="cursor:pointer;">
+                            <svg class="tree-arrow @(ModuloExpandido(grupo.Modulo) ? "open" : "")" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m6 4 4 4-4 4"/></svg>
+                            <svg class="tree-node-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/></svg>
+                            <span class="tree-node-label">@grupo.Modulo</span>
+                            <span class="tree-node-count">@grupo.Permisos.Count</span>
+                        </div>
+                        @if (ModuloExpandido(grupo.Modulo))
+                        {
+                            <div class="tree-children">
+                                @foreach (var perm in grupo.Permisos.OrderBy(p => p.Orden))
+                                {
+                                    <div @key="perm.Id" class="tree-node @(_selectedPermiso?.Id == perm.Id ? "selected" : "")" @onclick="() => SeleccionarPermiso(perm)">
+                                        <svg class="tree-arrow" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m6 4 4 4-4 4"/></svg>
+                                        <svg class="tree-node-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="3"/><path d="M1 8h14M8 1v14"/></svg>
+                                        <span class="tree-node-label">@perm.Nombre</span>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    }
+                </div>
+            </section>
+
+            <section class="iam-inspector" style="flex:1;" aria-label="Detalle de permiso">
+                @if (_selectedPermiso is not null)
+                {
+                    <div class="inspector-header">
+                        <div class="inspector-title-row">
+                            <div class="inspector-title">@_selectedPermiso.Nombre</div>
+                            <span class="badge @(_selectedPermiso.Activo ? "badge-active" : "badge-inactive")">
+                                <span class="badge-dot"></span>@(_selectedPermiso.Activo ? "Activo" : "Inactivo")
+                            </span>
+                        </div>
+                        <div class="inspector-tabs" role="tablist">
+                            <MudButton Variant="Variant.Text" Color="@(_inspectorTab == 0 ? Color.Primary : Color.Default)" @onclick="() => _inspectorTab = 0" Size="Size.Small">Info</MudButton>
+                            <MudButton Variant="Variant.Text" Color="@(_inspectorTab == 1 ? Color.Primary : Color.Default)" @onclick="() => _inspectorTab = 1" Size="Size.Small">Roles</MudButton>
+                            <MudButton Variant="Variant.Text" Color="@(_inspectorTab == 2 ? Color.Primary : Color.Default)" @onclick="() => _inspectorTab = 2" Size="Size.Small">Auditoría</MudButton>
+                        </div>
+                    </div>
+                    <div class="inspector-body">
+                        @if (_inspectorTab == 0)
+                        {
+                            <div class="insp-section">
+                                <div class="insp-section-title">Detalles del Permiso</div>
+                                <div class="field-row"><div class="field-label">Código</div><div class="field-value" style="font-family:'JetBrains Mono',monospace;">@_selectedPermiso.Codigo</div></div>
+                                <div class="field-row"><div class="field-label">Nombre</div><div class="field-value">@_selectedPermiso.Nombre</div></div>
+                                <div class="field-row"><div class="field-label">Descripción</div><div class="field-value">@_selectedPermiso.Descripcion</div></div>
+                                <div class="field-row"><div class="field-label">Módulo</div><div class="field-value"><span class="assign-chip" style="background:rgba(167,139,250,.1);color:var(--violet-400);">@_selectedPermiso.ModuloNombre</span></div></div>
+                                <div class="field-row"><div class="field-label">Orden</div><div class="field-value">@_selectedPermiso.Orden</div></div>
+                                <div class="field-row"><div class="field-label">Creado</div><div class="field-value" style="color:var(--text-muted);">@_selectedPermiso.FecCrea.ToLocalTime().ToString("dd MMM yyyy")</div></div>
+                            </div>
+                        }
+                        else if (_inspectorTab == 1)
+                        {
+                            <div class="insp-section">
+                                <div class="insp-section-title">Roles con este Permiso</div>
+                                @if (_rolesConPermiso.Count > 0)
+                                {
+                                    <table class="mini-table">
+                                        <thead><tr><th>Rol</th><th>Tenant</th><th>Asignación</th></tr></thead>
+                                        <tbody>
+                                            @foreach (var r in _rolesConPermiso)
+                                            {
+                                                <tr @key="r.IdRol">
+                                                    <td class="name-cell">@r.RolNombre</td>
+                                                    <td><span class="badge badge-default" style="font-size:10px;">@r.NombreModulo</span></td>
+                                                    <td><span class="badge @(r.EsDirecto ? "badge-active" : "badge-default")" style="font-size:10px;">@(r.EsDirecto ? "Directo" : r.EsHeredado ? "Por Herencia" : "Sistema")</span></td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                }
+                                else
+                                {
+                                    <div style="color:var(--text-muted);font-size:12px;padding:8px 0;">No hay roles asignados con este permiso</div>
+                                }
+                            </div>
+                        }
+                        else if (_inspectorTab == 2)
+                        {
+                            <div class="insp-section">
+                                <div class="insp-section-title">Actividad Reciente</div>
+                                <div style="color:var(--text-muted);font-size:12px;padding:8px 0;">
+                                    La auditoría de permisos estará disponible próximamente.
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    <div class="inspector-footer">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true" OnClick="() => AbrirEditarPermiso(_selectedPermiso!)" StartIcon="@Icons.Material.Filled.Edit">Editar</MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Error" FullWidth="true" OnClick="() => ConfirmarEliminarPermiso(_selectedPermiso!)" StartIcon="@Icons.Material.Filled.Block">@(_selectedPermiso.Activo ? "Desactivar" : "Activar")</MudButton>
+                    </div>
+                }
+                else
+                {
+                    <div style="padding:40px;text-align:center;color:var(--text-muted);font-size:13px;">
+                        Seleccione un permiso en el explorador para ver sus detalles
+                    </div>
+                }
+            </section>
+        </div>
+    }
+</div>
+}
+
+@code {
+    private List<PermisoDto> _todosPermisos = [];
+    private List<MatrizPermisoRole> _matrizRoles = [];
+    private string _treeBusqueda = "";
+    private bool _cargando;
+    private PermisoDto? _selectedPermiso;
+    private int _inspectorTab;
+    private readonly DialogOptions _dialogOptions = new() { FullWidth = true, CloseButton = true };
+    private readonly HashSet<string> _modulosExpandidos = [];
+
+    private int _modulosUnicos => _todosPermisos.Select(p => p.ModuloNombre ?? "").Distinct().Count();
+    private int _rolesConPermisos => _matrizRoles.Select(r => r.IdRol).Distinct().Count();
+
+    private List<MatrizPermisoRole> _rolesConPermiso
+    {
+        get
+        {
+            if (_selectedPermiso is null) return [];
+            return _matrizRoles
+                .Where(r => r.IdPermiso == _selectedPermiso.Id)
+                .GroupBy(r => r.IdRol)
+                .Select(g => g.First())
+                .ToList();
+        }
+    }
+
+    private List<PermisoGrupo> _gruposTree
+    {
+        get
+        {
+            var query = _todosPermisos.AsEnumerable();
+            if (!string.IsNullOrWhiteSpace(_treeBusqueda))
+                query = query.Where(p =>
+                    p.Nombre.Contains(_treeBusqueda, StringComparison.OrdinalIgnoreCase) ||
+                    p.Codigo.Contains(_treeBusqueda, StringComparison.OrdinalIgnoreCase));
+            return query
+                .GroupBy(p => p.ModuloNombre ?? "Sin Módulo")
+                .OrderBy(g => g.Key)
+                .Select(g => new PermisoGrupo { Modulo = g.Key, Permisos = g.OrderBy(p => p.Orden).ToList() })
+                .ToList();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.TienePermiso("PERMISOS_VER")) return;
+        await CargarDatos();
+    }
+
+    private async Task CargarDatos()
+    {
+        _cargando = true;
+        try
+        {
+            _todosPermisos = await Api.GetAsync<List<PermisoDto>>("api/permisos") ?? [];
+            if (Api.LastError != null) { Snackbar.Add(Api.LastError, Severity.Error); return; }
+            _matrizRoles = await Api.GetAsync<List<MatrizPermisoRole>>("api/MatrizPermisos") ?? [];
+            if (Api.LastError != null) Snackbar.Add(Api.LastError, Severity.Error);
+        }
+        catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error al cargar datos: {ex.Message}", Severity.Error); }
+        finally { _cargando = false; }
+    }
+
+    private bool ModuloExpandido(string modulo)
+    {
+        if (!string.IsNullOrWhiteSpace(_treeBusqueda)) return true;
+        return _modulosExpandidos.Contains(modulo);
+    }
+
+    private void ToggleModulo(string modulo)
+    {
+        if (_modulosExpandidos.Contains(modulo))
+            _modulosExpandidos.Remove(modulo);
+        else
+            _modulosExpandidos.Add(modulo);
+    }
+
+    private void SeleccionarPermiso(PermisoDto permiso)
+    {
+        _selectedPermiso = permiso;
+        _inspectorTab = 0;
+    }
+
+    private async Task AbrirCrearPermiso()
+    {
+        var parameters = new DialogParameters { ["IsEdit"] = false };
+        var dialog = await Dialog.ShowAsync<PermisoDialog>("Nuevo Permiso", parameters, _dialogOptions);
+        var result = await dialog.Result;
+        if (!result.Canceled) { await CargarDatos(); Snackbar.Add("Permiso creado", Severity.Success); }
+    }
+
+    private async Task AbrirEditarPermiso(PermisoDto permiso)
+    {
+        var parameters = new DialogParameters { ["IsEdit"] = true, ["Permiso"] = permiso };
+        var dialog = await Dialog.ShowAsync<PermisoDialog>("Editar Permiso", parameters, _dialogOptions);
+        var result = await dialog.Result;
+        if (!result.Canceled) { await CargarDatos(); Snackbar.Add("Permiso actualizado", Severity.Success); }
+    }
+
+    private async Task ConfirmarEliminarPermiso(PermisoDto permiso)
+    {
+        var parameters = new DialogParameters { ["Title"] = "Confirmar", ["Message"] = $"{(permiso.Activo ? "Desactivar" : "Activar")} '{permiso.Nombre}' ({permiso.Codigo})?", ["ConfirmText"] = permiso.Activo ? "Desactivar" : "Activar", ["CancelText"] = "Cancelar", ["ConfirmColor"] = Color.Error };
+        var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parameters);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            var ok = await Api.DeleteAsync($"api/permisos/{permiso.Id}");
+            if (ok) { Snackbar.Add($"Permiso '{permiso.Nombre}' {(permiso.Activo ? "desactivado" : "activado")}", Severity.Success); await CargarDatos(); }
+            else Snackbar.Add(Api.LastError ?? "Error al cambiar estado", Severity.Error);
+        }
+    }
+
+    public class PermisoGrupo
+    {
+        public string Modulo { get; set; } = string.Empty;
+        public List<PermisoDto> Permisos { get; set; } = [];
+    }
+
+    public class MatrizPermisoRole
+    {
+        public int IdRol { get; set; }
+        public string RolNombre { get; set; } = "";
+        public string RolCodigo { get; set; } = "";
+        public int IdPermiso { get; set; }
+        public string CodigoPermiso { get; set; } = "";
+        public string NombrePermiso { get; set; } = "";
+        public byte OrdenPermiso { get; set; }
+        public int IdModulo { get; set; }
+        public string NombreModulo { get; set; } = "";
+        public string CodigoModulo { get; set; } = "";
+        public byte OrdenModulo { get; set; }
+        public string Estado { get; set; } = "off";
+        public bool EsDirecto { get; set; }
+        public bool EsHeredado { get; set; }
+    }
+}

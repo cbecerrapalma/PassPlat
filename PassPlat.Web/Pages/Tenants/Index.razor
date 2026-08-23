@@ -1,0 +1,318 @@
+@page "/tenants"
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@inject NavigationManager Navigation
+@inject AuthService Auth
+@using PassPlat.Web.Models
+@using PassPlat.Web.Shared
+
+@if (!Auth.TienePermiso("TENANTS_VER"))
+{
+    <SinPermiso PermisoRequerido="TENANTS_VER" />
+}
+else
+{
+<MudContainer>
+    <MudBreadcrumbs Class="mb-3">
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/tenants"))">Administración</MudBreadcrumbItem>
+        <MudBreadcrumbItem>Tenants</MudBreadcrumbItem>
+    </MudBreadcrumbs>
+
+    <div class="mud-grid mud-grid-spacing-3 mb-4">
+        <IamKpiCard Valor="@_totalCount" Label="Total Tenants" Subtexto="Registrados en sistema" Icon="@Icons.Material.Filled.Business" ColorClass="primary" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_activosCount" Label="Activos" Subtexto="Vigentes" Icon="@Icons.Material.Filled.CheckCircle" ColorClass="success" Xs="12" Sm="6" Md="3" />
+        @{
+            var inactivosCount = (int.TryParse(_totalCount, out var t) && int.TryParse(_activosCount, out var a)) ? (t - a).ToString() : "—";
+        }
+        <IamKpiCard Valor="@inactivosCount" Label="Inactivos" Subtexto="Deshabilitados" Icon="@Icons.Material.Filled.Cancel" ColorClass="warning" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_dominiosCount" Label="Dominios" Subtexto="Asociados" Icon="@Icons.Material.Filled.Language" ColorClass="info" Xs="12" Sm="6" Md="3" />
+    </div>
+
+    <CrudToolbar Title="Tenants" ShowSearch="true" SearchLabel="Buscar por código o nombre..."
+        SearchString="@_searchString" SearchStringChanged="@OnSearchChanged"
+        OnRefresh="@Refrescar" ShowCreate="true" CreateButtonText="Nuevo Tenant" OnCreate="@OpenCreateDialog" />
+
+    <MudTable @ref="_table" T="TenantDto" ServerData="@_serverReload" Items="@_items" Hover="true" Breakpoint="Breakpoint.Sm"
+        SelectedItem="@_selectedItem" SelectedItemChanged="@OnSelectedItemChanged" RowStyle="cursor: pointer;">
+        <ColGroup>
+            <col style="width: 50px;" /><col /><col /><col style="width: 90px;" /><col style="width: 100px;" /><col style="width: 60px;" />
+        </ColGroup>
+        <HeaderContent>
+            <MudTh></MudTh><MudTh>Código</MudTh><MudTh>Nombre</MudTh><MudTh>Tipo</MudTh><MudTh>Estado</MudTh><MudTh></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>
+                <MudAvatar Size="Size.Small" Color="@GetAvatarColor(context.Nombre)" Class="row-avatar">
+                    <MudText Typo="Typo.caption">@context.Nombre[..Math.Min(2, context.Nombre.Length)]</MudText>
+                </MudAvatar>
+            </MudTd>
+            <MudTd DataLabel="Código">
+                <MudText Typo="Typo.body2" Class="font-weight-medium">@context.Codigo</MudText>
+            </MudTd>
+            <MudTd DataLabel="Nombre">
+                <MudText Typo="Typo.body2" Class="font-weight-bold">@context.Nombre</MudText>
+            </MudTd>
+            <MudTd DataLabel="Tipo">
+                @if (context.EsSistema)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled" Icon="@Icons.Material.Filled.Security">Sistema</MudChip>
+                }
+                else
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">Normal</MudChip>
+                }
+            </MudTd>
+            <MudTd DataLabel="Estado">
+                <MudChip T="string" Size="Size.Small" Color="@(context.Activo ? Color.Success : Color.Error)" Variant="Variant.Outlined">
+                    @(context.Activo ? "Activo" : "Inactivo")
+                </MudChip>
+            </MudTd>
+            <MudTd>
+                <div @onclick:stopPropagation="true" class="table-actions">
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true">
+                        <MudMenuItem OnClick="@(() => OpenEditDialog(context))">
+                            <MudIcon Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Class="mr-2" />
+                            Editar
+                        </MudMenuItem>
+                        @if (!context.EsSistema)
+                        {
+                            <MudMenuItem OnClick="@(() => ConfirmDelete(context))">
+                                <MudIcon Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Class="mr-2" Color="Color.Error" />
+                                Desactivar
+                            </MudMenuItem>
+                        }
+                    </MudMenu>
+                </div>
+            </MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new int[]{10, 25, 50}" />
+        </PagerContent>
+        <NoRecordsContent>
+            <div class="d-flex flex-column align-center py-8">
+                <MudAvatar Size="Size.Large" Color="Color.Default" Variant="Variant.Outlined" Class="mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Large" />
+                </MudAvatar>
+                <MudText Typo="Typo.subtitle1" Class="font-weight-bold mb-1">Sin tenants</MudText>
+                <MudText Typo="Typo.body2" Class="text-secondary mb-4">No se encontraron tenants en el sistema</MudText>
+                @if (Auth.TienePermiso("TENANTS_CREAR"))
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@OpenCreateDialog"
+                        StartIcon="@Icons.Material.Filled.Add">
+                        Crear primer tenant
+                    </MudButton>
+                }
+            </div>
+        </NoRecordsContent>
+    </MudTable>
+
+    @if (_selectedItem is not null)
+    {
+        <IamInspector Titulo="Detalle de Tenant" Subtitulo="@_selectedItem.Nombre" Visible="_showInspector" OnClose="@(() => { _selectedItem = null; _showInspector = false; })">
+            <MudTabs @bind-ActivePanelIndex="_inspectorTab" KeepPanelsAlive="true" Class="detail-tabs">
+                <MudTabPanel Text="Información" Icon="@Icons.Material.Filled.Info">
+                    <div class="pa-3">
+                        <div class="d-flex align-center mb-3" style="gap:8px;">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="min-width:100px;">Código:</MudText>
+                            <MudText Typo="Typo.body2" Class="font-weight-medium mono">@_selectedItem.Codigo</MudText>
+                        </div>
+                        <div class="d-flex align-center mb-3" style="gap:8px;">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="min-width:100px;">Nombre:</MudText>
+                            <MudText Typo="Typo.body2" Class="font-weight-bold">@_selectedItem.Nombre</MudText>
+                        </div>
+                        <div class="d-flex align-center mb-3" style="gap:8px;">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="min-width:100px;">Tipo:</MudText>
+                            @if (_selectedItem.EsSistema)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Icon="@Icons.Material.Filled.Security">Sistema</MudChip>
+                            }
+                            else
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">Normal</MudChip>
+                            }
+                        </div>
+                        <div class="d-flex align-center mb-3" style="gap:8px;">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="min-width:100px;">Estado:</MudText>
+                            <MudChip T="string" Size="Size.Small" Color="@(_selectedItem.Activo ? Color.Success : Color.Error)">
+                                @(_selectedItem.Activo ? "Activo" : "Inactivo")
+                            </MudChip>
+                        </div>
+                        <div class="d-flex align-center mb-3" style="gap:8px;">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="min-width:100px;">Creado:</MudText>
+                            <MudText Typo="Typo.body2">@_selectedItem.FecCrea.ToString("dd/MM/yyyy HH:mm")</MudText>
+                        </div>
+                        <div class="d-flex align-center" style="gap:8px;">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="min-width:100px;">ID:</MudText>
+                            <MudText Typo="Typo.body2" Class="mono mud-text-secondary">@_selectedItem.Id</MudText>
+                        </div>
+                    </div>
+                </MudTabPanel>
+                <MudTabPanel Text="Acciones" Icon="@Icons.Material.Filled.Settings">
+                    <div class="pa-3">
+                        <MudStack Spacing="2">
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true"
+                                StartIcon="@Icons.Material.Filled.Edit" OnClick="@(() => OpenEditDialog(_selectedItem))">
+                                Editar Tenant
+                            </MudButton>
+                            @if (!_selectedItem.EsSistema)
+                            {
+                                <MudButton Variant="Variant.Outlined" Color="Color.Error" FullWidth="true"
+                                    StartIcon="@Icons.Material.Filled.Delete" OnClick="@(() => ConfirmDelete(_selectedItem))">
+                                    Desactivar Tenant
+                                </MudButton>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary text-center pa-2">
+                                    El tenant del sistema no se puede desactivar
+                                </MudText>
+                            }
+                        </MudStack>
+                    </div>
+                </MudTabPanel>
+            </MudTabs>
+        </IamInspector>
+    }
+</MudContainer>
+}
+
+@code {
+    private MudTable<TenantDto>? _table;
+    private IEnumerable<TenantDto> _items = [];
+    private string _searchString = "";
+    private string _totalCount = "0";
+    private string _activosCount = "0";
+    private string _dominiosCount = "0";
+    private TenantDto? _selectedItem;
+    private bool _showInspector;
+    private int _inspectorTab;
+    private System.Threading.Timer? _debounceTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.TienePermiso("TENANTS_VER")) return;
+        await LoadKpis();
+    }
+
+    private void OnSearchChanged(string value)
+    {
+        _searchString = value;
+        _debounceTimer?.Dispose();
+        _debounceTimer = new System.Threading.Timer(_ =>
+        {
+            InvokeAsync(async () =>
+            {
+                if (_table is not null) await _table.ReloadServerData();
+                StateHasChanged();
+            });
+        }, null, 300, System.Threading.Timeout.Infinite);
+    }
+
+    private async Task LoadKpis()
+    {
+        try
+        {
+            var totalTask = Api.GetAsync<object>("api/tenants/count");
+            var activosTask = Api.GetAsync<object>("api/tenants/activos/count");
+            var dominiosTask = Api.GetAsync<object>("api/dominiosTenant/count");
+            await Task.WhenAll(totalTask, activosTask, dominiosTask);
+            _totalCount = totalTask.Result?.ToString() ?? "0";
+            _activosCount = activosTask.Result?.ToString() ?? "0";
+            _dominiosCount = dominiosTask.Result?.ToString() ?? "0";
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar KPIs: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task<TableData<TenantDto>> _serverReload(TableState state, CancellationToken ct)
+    {
+        try
+        {
+            var searchParam = string.IsNullOrEmpty(_searchString) ? "" : _searchString;
+            var response = await Api.GetAsync<PagedResponse<TenantDto>>(
+                $"api/tenants/page?pageNumber={state.Page + 1}&pageSize={state.PageSize}&search={Uri.EscapeDataString(searchParam)}");
+            if (response != null)
+            {
+                _items = response.Items;
+                return new TableData<TenantDto> { Items = response.Items, TotalItems = response.TotalCount };
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar: {ex.Message}", Severity.Error);
+        }
+        return new TableData<TenantDto> { Items = [], TotalItems = 0 };
+    }
+
+    private async Task Refrescar()
+    {
+        await LoadKpis();
+        if (_table is not null) await _table.ReloadServerData();
+    }
+
+    private void OnSelectedItemChanged(TenantDto? item)
+    {
+        _selectedItem = item;
+        _showInspector = item is not null;
+        _inspectorTab = 0;
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var parameters = new DialogParameters { ["IsEdit"] = false };
+        var dialog = await Dialog.ShowAsync<TenantDialog>("Nuevo Tenant", parameters);
+        var result = await dialog.Result;
+        if (!result.Canceled) await Refrescar();
+    }
+
+    private async Task OpenEditDialog(TenantDto tenant)
+    {
+        var parameters = new DialogParameters { ["IsEdit"] = true, ["Tenant"] = tenant };
+        var dialog = await Dialog.ShowAsync<TenantDialog>("Editar Tenant", parameters);
+        var result = await dialog.Result;
+        if (!result.Canceled) await Refrescar();
+    }
+
+    private async Task ConfirmDelete(TenantDto tenant)
+    {
+        if (tenant.EsSistema)
+        {
+            Snackbar.Add("No se puede desactivar el tenant del sistema", Severity.Warning);
+            return;
+        }
+        var parameters = new DialogParameters
+        {
+            ["Title"] = "Desactivar Tenant",
+            ["Message"] = $"¿Está seguro que desea desactivar el tenant \"{tenant.Nombre}\" ({tenant.Codigo})? Esta acción deshabilitará el acceso de todos los usuarios asociados.",
+            ["ConfirmText"] = "Sí, desactivar",
+            ["CancelText"] = "Cancelar"
+        };
+        var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parameters);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            var ok = await Api.PostAsync<object>($"api/tenants/{tenant.Id}/desactivar");
+            if (ok is not null)
+            {
+                Snackbar.Add($"Tenant \"{tenant.Nombre}\" desactivado", Severity.Success);
+                _selectedItem = null;
+                _showInspector = false;
+                await Refrescar();
+            }
+            else
+                Snackbar.Add(Api.LastError ?? "Error al desactivar", Severity.Error);
+        }
+    }
+
+    private static Color GetAvatarColor(string nombre) => nombre.Length switch
+    {
+        >= 3 when nombre.StartsWith("P") => Color.Primary,
+        >= 3 when nombre.StartsWith("A") => Color.Secondary,
+        >= 3 when nombre.StartsWith("S") => Color.Info,
+        _ => Color.Default
+    };
+}

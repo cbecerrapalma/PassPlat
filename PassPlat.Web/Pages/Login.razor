@@ -1,0 +1,728 @@
+@page "/login"
+@layout LoginLayout
+@inject AuthService Auth
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthStateProvider
+@inject AppSettings AppSettings
+@inject HttpClient Http
+
+@if (_showSkeleton)
+{
+    <div class="login-wrapper">
+        <div class="login-skeleton">
+            <div class="login-skeleton-circle" />
+            <div class="login-skeleton-line w-50" />
+            <div class="login-skeleton-line w-75" />
+            <div class="login-skeleton-line w-100" />
+            <div class="login-skeleton-line w-100" />
+        </div>
+    </div>
+}
+else
+{
+    <div class="login-wrapper @(_exiting ? "login-exit" : "")">
+        <MudPaper Elevation="0" Class="login-card px-8 py-10" Style="width: 100%; max-width: 420px; border-radius: 16px;">
+            <div class="d-flex flex-column align-center mb-6">
+                <div class="login-logo mb-3">
+                    <div class="login-logo-ring" />
+                    <div class="login-logo-inner">
+                        <span class="login-logo-icon">&#x1F512;</span>
+                    </div>
+                </div>
+                <MudText Typo="Typo.h5" Align="Align.Center" Class="font-weight-bold text-white">AccessPlat</MudText>
+                <MudText Typo="Typo.body2" Align="Align.Center" Class="text-gray">@_subtitle</MudText>
+            </div>
+
+            @if (_apps.Count > 0)
+            {
+                <MudText Typo="Typo.body2" Align="Align.Center" Class="mb-4 text-gray">Selecciona una aplicación para continuar</MudText>
+                <MudSelect Value="_selectedAppId"
+                           ValueChanged="@((int id) => { OnAppChanged(id); })"
+                           Label="Aplicación"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense"
+                           Class="mb-4"
+                           Disabled="_loading || _apps.Count == 0"
+                           AnchorOrigin="Origin.BottomCenter"
+                           ToStringFunc="@(a => _apps.FirstOrDefault(x => x.Id == a)?.Nombre ?? "")">
+                    @foreach (var app in _apps)
+                    {
+                        <MudSelectItem Value="@app.Id">@app.Nombre (@app.Codigo)</MudSelectItem>
+                    }
+                </MudSelect>
+            }
+
+            @if (_tenants.Count > 0)
+            {
+                <MudText Typo="Typo.body2" Align="Align.Center" Class="mb-4 text-gray">Selecciona un tenant para continuar</MudText>
+                <MudSelect Value="_selectedTenantId"
+                           ValueChanged="@((int id) => { OnTenantChanged(id); })"
+                           Label="Tenant"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense"
+                           Class="mb-4"
+                           Disabled="_loading || _tenants.Count == 0"
+                           AnchorOrigin="Origin.BottomCenter"
+                           ToStringFunc="@(t => _tenants.FirstOrDefault(x => x.Id == t)?.Nombre ?? "")">
+                    @foreach (var tenant in _tenants)
+                    {
+                        <MudSelectItem Value="@tenant.Id">@tenant.Nombre</MudSelectItem>
+                    }
+                </MudSelect>
+             }
+
+             @if (!_mfaRequired && IsAuthenticationContextReady)
+             {
+                 <MudForm @ref="_form">
+                    <MudTextField @bind-Value="_username"
+                                  Label="Usuario o email"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Class="mb-4"
+                                  Disabled="_loading"
+                                  Immediate="true"
+                                  Validation="@(new Func<string?, string?>(ValidarUsuario))"
+                                  @ref="_usernameRef" />
+
+                    <div class="d-flex align-center gap-2">
+                        @if (_showPassword)
+                        {
+                            <MudTextField @key="@("pw-text")" @bind-Value="_password"
+                                          Label="Contraseña"
+                                          Variant="Variant.Outlined"
+                                          InputType="InputType.Text"
+                                          Margin="Margin.Dense"
+                                          Class="flex-grow-1 mb-0"
+                                          Disabled="_loading"
+                                          OnKeyDown="@(args => { if (args.Key == "Enter") _ = DoLogin(); })" />
+                            <MudIconButton Icon="@Icons.Material.Filled.VisibilityOff"
+                                           Color="Color.Default"
+                                           OnClick="@ToggleShowPassword"
+                                           Size="Size.Small" />
+                        }
+                        else
+                        {
+                            <MudTextField @key="@("pw-password")" @bind-Value="_password"
+                                          Label="Contraseña"
+                                          Variant="Variant.Outlined"
+                                          InputType="InputType.Password"
+                                          Margin="Margin.Dense"
+                                          Class="flex-grow-1 mb-0"
+                                          Disabled="_loading"
+                                          OnKeyDown="@(args => { if (args.Key == "Enter") _ = DoLogin(); })" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                           Color="Color.Default"
+                                           OnClick="@ToggleShowPassword"
+                                           Size="Size.Small" />
+                        }
+                    </div>
+
+                    <div class="d-flex align-center justify-space-between mb-6">
+                        <MudSwitch @bind-Value="_rememberMe" Color="Color.Primary" Class="text-caption text-switch">
+                            Recordarme
+                        </MudSwitch>
+                        <MudButton Variant="Variant.Text" Color="Color.Primary" Class="text-caption" Disabled="_loading"
+                                   OnClick="@RecuperarPassword" Size="Size.Small" Style="text-transform: none;">
+                            ¿Olvidaste tu contraseña?
+                        </MudButton>
+                    </div>
+                </MudForm>
+             }
+            else if (_mfaRequired)
+            {
+                <div class="mb-4">
+                    <MudAlert Severity="Severity.Info" Class="mb-4" Variant="Variant.Outlined">
+                        <MudText Typo="Typo.body2" Class="text-primary">
+                            @_mfaMensaje
+                        </MudText>
+                    </MudAlert>
+
+                    <MudTextField @bind-Value="_mfaCode"
+                                  Label="Código de verificación"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Class="mb-4"
+                                  Disabled="_loading"
+                                  Immediate="true"
+                                  OnKeyDown="@(args => { if (args.Key == "Enter") _ = VerificarMfa(); })" />
+                </div>
+            }
+
+            @if (_showError)
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-4 login-error" Variant="Variant.Filled">
+                    @_errorMessage
+                </MudAlert>
+            }
+
+             @if (!_mfaRequired && IsAuthenticationContextReady)
+             {
+                 <MudButton Variant="Variant.Filled"
+                            Color="Color.Primary"
+                            FullWidth="true"
+                            OnClick="@DoLogin"
+                           Disabled="_loading"
+                           Size="Size.Large"
+                           Class="mb-6 login-btn">
+                    @if (_loading)
+                    {
+                        <MudProgressCircular Size="Size.Small" Class="mr-2" Color="Color.Inherit" Indeterminate="true" />
+                        <span>Iniciando sesión...</span>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.button">Iniciar Sesión</MudText>
+                    }
+                </MudButton>
+            }
+            else if (_mfaRequired)
+            {
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           FullWidth="true"
+                           OnClick="@VerificarMfa"
+                           Disabled="_loading"
+                           Size="Size.Large"
+                           Class="mb-2 login-btn">
+                    @if (_loading)
+                    {
+                        <MudProgressCircular Size="Size.Small" Class="mr-2" Color="Color.Inherit" Indeterminate="true" />
+                        <span>Verificando...</span>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.button">Verificar código</MudText>
+                    }
+                </MudButton>
+
+                <MudButton Variant="Variant.Text" Color="Color.Default" FullWidth="true"
+                           OnClick="@CancelarMfa" Disabled="_loading" Size="Size.Small" Class="text-caption">
+                    Volver al inicio de sesión
+                </MudButton>
+
+                @if (_mfaEsEmail)
+                {
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" FullWidth="true"
+                               OnClick="@ReenviarCodigoMfa" Disabled="_loading" Size="Size.Small" Class="text-caption mt-2">
+                        Reenviar código
+                    </MudButton>
+                }
+            }
+
+              @if (!_mfaRequired && IsAuthenticationContextReady)
+              {
+                  @if (_cargandoProveedores && _proveedores.Count == 0)
+                 {
+                     <MudText Typo="Typo.body2" Align="Align.Center" Class="mt-4 text-gray">Cargando proveedores...</MudText>
+                 }
+                 else if (_proveedores.Count > 0)
+                 {
+                     <MudDivider Class="my-4" />
+                     <MudText Typo="Typo.body2" Align="Align.Center" Class="mb-4 text-gray">
+                         O continúa con
+                     </MudText>
+                     <div class="d-flex justify-center gap-3 mb-6 flex-wrap">
+                         @{
+                             var provsOrdenados = _proveedores.OrderBy(p => p.OrdenVisual).ToList();
+                             var visibles = provsOrdenados.Take(3).ToList();
+                             var resto = provsOrdenados.Skip(3).ToList();
+                         }
+                         @foreach (var prov in visibles)
+                         {
+                             var cargando = _loadingProvider == prov.Codigo;
+                             <MudTooltip Text="@(prov.Tooltip ?? $"Continuar con {prov.Nombre}")">
+                                 <MudIconButton OnClick="@(() => IniciarConProveedorAsync(prov.Codigo))"
+                                                Icon="@(cargando ? null : GetProviderIcon(prov.Codigo))"
+                                                Color="@GetProviderColor(prov.Codigo, prov.Color)"
+                                                Variant="Variant.Outlined"
+                                                Size="Size.Large"
+                                                Disabled="@(cargando || _loading)"
+                                                Class="login-provider-icon">
+                                     @if (cargando)
+                                     {
+                                         <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+                                     }
+                                 </MudIconButton>
+                             </MudTooltip>
+                         }
+                         @if (resto.Count > 0)
+                         {
+                             <MudTooltip Text="Más opciones">
+                                 <MudIconButton Icon="@Icons.Material.Filled.MoreHoriz"
+                                                Variant="Variant.Outlined"
+                                                Size="Size.Large"
+                                                Disabled="_loading"
+                                                OnClick="@(() => _mostrarMasProveedores = !_mostrarMasProveedores)"
+                                                Class="login-provider-icon" />
+                             </MudTooltip>
+                         }
+                     </div>
+                     @if (_mostrarMasProveedores && resto.Count > 0)
+                     {
+                         var provsOrdenados2 = _proveedores.OrderBy(p => p.OrdenVisual).ToList();
+                         var resto2 = provsOrdenados2.Skip(3).ToList();
+                         <div class="d-flex justify-center gap-3 mb-6 flex-wrap">
+                             @foreach (var prov in resto2)
+                             {
+                                 var cargando = _loadingProvider == prov.Codigo;
+                                 <MudTooltip Text="@(prov.Tooltip ?? $"Continuar con {prov.Nombre}")">
+                                     <MudIconButton OnClick="@(() => IniciarConProveedorAsync(prov.Codigo))"
+                                                    Icon="@(cargando ? null : GetProviderIcon(prov.Codigo))"
+                                                    Color="@GetProviderColor(prov.Codigo, prov.Color)"
+                                                    Variant="Variant.Outlined"
+                                                    Size="Size.Large"
+                                                    Disabled="@(cargando || _loading)"
+                                                    Class="login-provider-icon">
+                                         @if (cargando)
+                                         {
+                                             <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+                                         }
+                                     </MudIconButton>
+                                 </MudTooltip>
+                             }
+                         </div>
+                     }
+                 }
+                 else
+                 {
+                     <MudText Typo="Typo.body2" Align="Align.Center" Class="mt-4 text-gray">
+                         No hay proveedores externos disponibles para este tenant.
+                     </MudText>
+                 }
+             }
+
+            <MudText Typo="Typo.caption" Align="Align.Center" Class="text-gray mt-4">
+                Plataforma de Acceso &mdash; v1.0
+            </MudText>
+        </MudPaper>
+    </div>
+}
+
+@code {
+    private bool _showSkeleton = true;
+    private bool _exiting;
+    private bool _loading;
+    private bool _showError;
+    private bool _showPassword;
+    private bool _rememberMe;
+    private string _username = "";
+    private string _password = "";
+    private string _errorMessage = "";
+    private MudBaseInput<string>? _usernameRef;
+    private MudForm? _form;
+
+    private bool _mfaRequired;
+    private bool _mfaEsEmail;
+    private string _mfaMensaje = "";
+    private string _mfaCode = "";
+    private int _mfaIdUsuario;
+    private int _mfaIdTenant;
+    private int _mfaIdApp;
+    private int _mfaIdMFAPrincipal;
+    private string _mfaNomUsuario = "";
+    private string _subtitle = "Inicia sesión para continuar";
+
+    private List<ProveedorItem> _proveedores = [];
+    private string? _loadingProvider;
+    private bool _mostrarMasProveedores;
+
+    private int _selectedTenantId;
+    private int _selectedAppId;
+    private bool _cargandoProveedores;
+    private int? _resolvedTenantId;
+    private List<TenantItem> _tenants = [];
+    private List<AppItem> _apps = [];
+
+    private int TenantIdContexto =>
+        _resolvedTenantId ?? (_selectedTenantId > 0 ? _selectedTenantId : 0);
+
+    private bool IsAuthenticationContextReady => Auth.AppId > 0 && TenantIdContexto > 0;
+
+    private Dictionary<int, CachedProviders> _providerCache = [];
+    private const int ProviderCacheTtlMinutes = 5;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Auth.IsAuthenticated)
+        {
+            Nav.NavigateTo("/");
+            return;
+        }
+
+        // Check for OAuth error query params
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        if (uri.Query.Contains("error"))
+        {
+            var errorParam = System.Web.HttpUtility.ParseQueryString(uri.Query).Get("error");
+            _errorMessage = errorParam switch
+            {
+                "state_invalido" or "state_invalido_o_expirado" => "La sesión del proveedor ha expirado. Intenta de nuevo.",
+                "proveedor_rechazo" => "Inicio de sesión cancelado por el proveedor.",
+                "proveedor_no_coincide" => "Error de coincidencia de proveedor.",
+                "redirect_uri_invalido" => "Error de configuración del proveedor.",
+                _ => $"Error de autenticación: {Uri.UnescapeDataString(errorParam ?? "")}"
+            };
+            _showError = true;
+        }
+
+        _apps = await Auth.GetAppsAsync();
+        if (_apps.Count == 0)
+        {
+            Auth.AppId = 0;
+            _showError = true;
+            _errorMessage = "No hay aplicaciones disponibles. Contacta al administrador.";
+        }
+        else
+        {
+            _selectedAppId = _apps.Count == 1 ? _apps[0].Id : 0;
+            Auth.AppId = _selectedAppId;
+            _tenants = await ResolverTenantAsync();
+        }
+    }
+
+    private async Task<List<TenantItem>> ResolverTenantAsync()
+    {
+        var tenantInfo = await Auth.GetTenantInfoAsync();
+        _tenants = await Auth.GetTenantsAsync();
+        if (tenantInfo is not null && !tenantInfo.RequiereSeleccion && tenantInfo.IdTenant.HasValue)
+        {
+            _resolvedTenantId = tenantInfo.IdTenant.Value;
+            _selectedTenantId = _resolvedTenantId.Value;
+            await CargarProveedoresAsync();
+        }
+        return _tenants;
+    }
+
+    private void OnAppChanged(int id)
+    {
+        _selectedAppId = id;
+        Auth.AppId = id;
+        StateHasChanged();
+    }
+
+    private void OnTenantChanged(int id)
+    {
+        _selectedTenantId = id;
+        _resolvedTenantId = id;
+        StateHasChanged();
+        _ = CargarProveedoresAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Task.Delay(400);
+            _showSkeleton = false;
+            StateHasChanged();
+        }
+    }
+
+    private string? ValidarUsuario(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return "El usuario o email es obligatorio";
+        return null;
+    }
+
+    private void ToggleShowPassword()
+    {
+        _showPassword = !_showPassword;
+        StateHasChanged();
+    }
+
+    private async Task DoLogin()
+    {
+        if (!IsAuthenticationContextReady)
+            return;
+
+        if (string.IsNullOrWhiteSpace(_username))
+            return;
+
+        _loading = true;
+        _showError = false;
+
+        try
+        {
+            var idTenant = _resolvedTenantId ?? (_selectedTenantId > 0 ? _selectedTenantId : null);
+            var result = await Auth.LoginAsync(_username, _password, Auth.AppId, _rememberMe, idTenant);
+            if (result.Success)
+            {
+                await ExitAndNavigate();
+            }
+            else if (result.RequiereMFA)
+            {
+                _mfaRequired = true;
+                _mfaIdUsuario = result.IdUsuario ?? 0;
+                _mfaIdTenant = result.IdTenant ?? 0;
+                _mfaIdApp = Auth.AppId;
+                _mfaIdMFAPrincipal = result.IdMFAPrincipal ?? 0;
+                _mfaNomUsuario = result.NomUsuario ?? _username;
+                _mfaEsEmail = result.IdTipoMFA == 3;
+                _mfaMensaje = _mfaEsEmail
+                    ? "Se ha enviado un código de verificación a tu correo electrónico."
+                    : "Ingresa el código de verificación de tu aplicación de autenticación.";
+                _subtitle = $"Hola {_mfaNomUsuario}, verifica tu identidad";
+                StateHasChanged();
+            }
+            else
+            {
+                _errorMessage = result.ErrorMessage ?? "Credenciales inválidas";
+                _showError = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error de conexión: {ex.Message}";
+            _showError = true;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task VerificarMfa()
+    {
+        if (string.IsNullOrWhiteSpace(_mfaCode))
+            return;
+
+        _loading = true;
+        _showError = false;
+
+        try
+        {
+            var result = await Auth.CompletarLoginMFAAsync(
+                _mfaIdUsuario, _mfaIdTenant, _mfaIdApp,
+                _mfaIdMFAPrincipal, _mfaCode, _rememberMe);
+
+            if (result.Success)
+            {
+                await ExitAndNavigate();
+            }
+            else
+            {
+                _errorMessage = result.ErrorMessage ?? "Código inválido";
+                _showError = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error de verificación: {ex.Message}";
+            _showError = true;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void CancelarMfa()
+    {
+        _mfaRequired = false;
+        _mfaCode = "";
+        _mfaEsEmail = false;
+        _mfaMensaje = "";
+        _subtitle = "Inicia sesión para continuar";
+        _showError = false;
+    }
+
+    private async Task ReenviarCodigoMfa()
+    {
+        _loading = true;
+        _showError = false;
+
+        try
+        {
+            await Auth.LoginAsync(_username, _password, Auth.AppId, _rememberMe, idTenant: _resolvedTenantId ?? (_selectedTenantId > 0 ? _selectedTenantId : null));
+            _showError = true;
+            _errorMessage = "Nuevo código enviado a tu correo.";
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error: {ex.Message}";
+            _showError = true;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task ExitAndNavigate()
+    {
+        _exiting = true;
+        StateHasChanged();
+        await Task.Delay(350);
+        await AuthStateProvider.GetAuthenticationStateAsync();
+        
+        if (Auth.ReqCambioPwd)
+        {
+            Nav.NavigateTo("/cambiar-password");
+        }
+        else
+        {
+            Nav.NavigateTo("/");
+        }
+    }
+
+    private async Task RecuperarPassword()
+    {
+        if (string.IsNullOrWhiteSpace(_username))
+        {
+            _errorMessage = "Ingresa tu correo electrónico para recuperar tu contraseña.";
+            _showError = true;
+            return;
+        }
+
+        _loading = true;
+        _showError = false;
+
+        try
+        {
+            var result = await Auth.SolicitarResetPasswordAsync(_username);
+            _showError = true;
+            _errorMessage = result.Success
+                ? "Si el correo existe, recibirás instrucciones para restablecer tu contraseña."
+                : (result.ErrorMessage ?? "Error al solicitar restablecimiento");
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error: {ex.Message}";
+            _showError = true;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task CargarProveedoresAsync()
+    {
+        if (Auth.AppId <= 0)
+            return;
+
+        var idTenant = _resolvedTenantId ?? (_selectedTenantId > 0 ? _selectedTenantId : 0);
+        if (idTenant <= 0)
+            return;
+
+        // Check cache
+        if (_providerCache.TryGetValue(idTenant, out var cached) && !cached.IsExpired)
+        {
+            _proveedores = cached.Providers;
+            _cargandoProveedores = false;
+            StateHasChanged();
+            return;
+        }
+
+        _cargandoProveedores = true;
+        _proveedores = [];
+        StateHasChanged();
+
+        try
+        {
+            var provs = await Http.GetFromJsonAsync<List<ProveedorItem>>($"api/auth/externo/proveedores-login?idTenant={idTenant}");
+            _proveedores = provs ?? [];
+            _providerCache[idTenant] = new CachedProviders { Providers = _proveedores, LoadedAt = DateTime.UtcNow };
+        }
+        catch
+        {
+        }
+        finally
+        {
+            _cargandoProveedores = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task IniciarConProveedorAsync(string codigo)
+    {
+        if (!IsAuthenticationContextReady)
+        {
+            _errorMessage = "Selecciona una aplicación y un tenant antes de continuar.";
+            _showError = true;
+            return;
+        }
+
+        var idTenant = _resolvedTenantId ?? (_selectedTenantId > 0 ? _selectedTenantId : 0);
+        if (idTenant <= 0)
+        {
+            _errorMessage = "Selecciona un tenant antes de continuar.";
+            _showError = true;
+            return;
+        }
+
+        _loadingProvider = codigo;
+        _loading = true;
+        _showError = false;
+        try
+        {
+            var idApp = Auth.AppId;
+            var result = await Http.GetFromJsonAsync<AutorizarUrlResponse>($"api/auth/externo/{codigo}/authorize?idTenant={idTenant}&idApp={idApp}");
+            if (result?.AuthorizationUrl is not null)
+                Nav.NavigateTo(result.AuthorizationUrl);
+            else
+            {
+                _errorMessage = "No se pudo obtener la URL de autenticación del proveedor.";
+                _showError = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error al conectar con {codigo}: {ex.Message}";
+            _showError = true;
+        }
+        finally
+        {
+            _loading = false;
+            _loadingProvider = null;
+        }
+    }
+
+    private string GetProviderIcon(string codigo) => codigo switch
+    {
+        "GOOGLE" => Icons.Custom.Brands.Google,
+        "GITHUB" => Icons.Custom.Brands.GitHub,
+        "LINKEDIN" => Icons.Custom.Brands.LinkedIn,
+        "INSTAGRAM" => Icons.Material.Filled.CameraAlt,
+        "FACEBOOK" => Icons.Custom.Brands.Facebook,
+        _ => Icons.Material.Filled.AccountCircle
+    };
+
+    private Color GetProviderColor(string codigo, string? colorFromApi = null)
+    {
+        if (!string.IsNullOrWhiteSpace(colorFromApi) && Enum.TryParse<Color>(colorFromApi, out var parsed))
+            return parsed;
+        return codigo switch
+        {
+            "GOOGLE" => Color.Error,
+            "GITHUB" => Color.Dark,
+            "LINKEDIN" => Color.Info,
+            "INSTAGRAM" => Color.Secondary,
+            "FACEBOOK" => Color.Primary,
+            _ => Color.Default
+        };
+    }
+
+    private class ProveedorItem
+    {
+        public string Codigo { get; set; } = "";
+        public string Nombre { get; set; } = "";
+        public string Icono { get; set; } = "";
+        public string? Color { get; set; }
+        public string? Tooltip { get; set; }
+        public int OrdenVisual { get; set; }
+    }
+
+    private class CachedProviders
+    {
+        public List<ProveedorItem> Providers { get; init; } = [];
+        public DateTime LoadedAt { get; init; }
+        public bool IsExpired => DateTime.UtcNow - LoadedAt > TimeSpan.FromMinutes(ProviderCacheTtlMinutes);
+    }
+
+    private class AutorizarUrlResponse
+    {
+        public string? AuthorizationUrl { get; set; }
+    }
+}

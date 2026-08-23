@@ -1,0 +1,95 @@
+@page "/auditoria"
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject AuthService Auth
+@using PassPlat.Web.Models
+@using PassPlat.Web.Shared
+
+@if (!Auth.TienePermiso("AUDITORIA_VER"))
+{
+    <SinPermiso PermisoRequerido="AUDITORIA_VER" />
+}
+else
+{
+<MudContainer>
+    <MudBreadcrumbs Class="mb-3">
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/auditoria"))">Auditoría</MudBreadcrumbItem>
+        <MudBreadcrumbItem>Auditoría de Contraseñas</MudBreadcrumbItem>
+    </MudBreadcrumbs>
+
+    <div class="mud-grid mud-grid-spacing-3 mb-4">
+        <IamKpiCard Valor="@_items.Count().ToString()" Label="Registros" Subtexto="En página actual" Icon="@Icons.Material.Filled.HistoryToggleOff" ColorClass="primary" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_items.Select(i => i.TipoAccionNombre).Distinct().Count().ToString()" Label="Tipos" Subtexto="De acciones" Icon="@Icons.Material.Filled.Category" ColorClass="success" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_items.Select(i => i.NivelRiesgo.ToString()).Distinct().Count().ToString()" Label="Niveles" Subtexto="De riesgo" Icon="@Icons.Material.Filled.Speed" ColorClass="warning" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_items.Select(i => i.UsuarioNombre).Distinct().Count().ToString()" Label="Usuarios" Subtexto="Afectados" Icon="@Icons.Material.Filled.People" ColorClass="info" Xs="12" Sm="6" Md="3" />
+    </div>
+
+    <MudPaper Class="pa-4 mb-4 d-flex flex-wrap align-center gap-4" Elevation="0" Outlined="true">
+        <MudText Typo="Typo.h5" Class="flex-grow-1 mb-0">Auditoría de Contraseñas</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium"
+            OnClick="@(() => _table.ReloadServerData())" />
+    </MudPaper>
+
+    <MudTable @ref="_table" T="AuditoriaPwdDto" ServerData="@_serverReload" Items="@_items" Hover="true" Breakpoint="Breakpoint.Sm">
+        <ColGroup>
+            <col style="width: 80px;" /><col /><col /><col /><col style="width: 80px;" /><col style="width: 160px;" />
+        </ColGroup>
+        <HeaderContent>
+            <MudTh>Id</MudTh><MudTh>Usuario</MudTh><MudTh>Tipo</MudTh><MudTh>Mensaje</MudTh><MudTh>Nivel</MudTh><MudTh>Fecha</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Id">@context.Id</MudTd>
+            <MudTd DataLabel="Usuario">@context.UsuarioNombre</MudTd>
+            <MudTd DataLabel="Tipo">
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@context.TipoAccionNombre</MudChip>
+            </MudTd>
+            <MudTd DataLabel="Mensaje">@context.Detalles</MudTd>
+            <MudTd DataLabel="Nivel">@context.NivelRiesgo</MudTd>
+            <MudTd DataLabel="Fecha">@context.FecAccion?.ToLocalTime().ToString("g")</MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new int[]{10, 25, 50}" />
+        </PagerContent>
+        <NoRecordsContent>
+            <MudText Align="Align.Center" Class="py-6">
+                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Class="mr-2" />
+                No hay registros
+            </MudText>
+        </NoRecordsContent>
+    </MudTable>
+
+    <MudOverlay Visible="@_loading" />
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" Class="mt-4" />
+    }
+</MudContainer>
+}
+
+@code {
+    private MudTable<AuditoriaPwdDto> _table = default!;
+    private IEnumerable<AuditoriaPwdDto> _items = [];
+    private bool _loading;
+
+    private async Task<TableData<AuditoriaPwdDto>> _serverReload(TableState state, CancellationToken ct)
+    {
+        _loading = true;
+        try
+        {
+            var idTenant = Auth.IdTenant ?? 0;
+            var tenantSuffix = idTenant > 0 ? $"/tenant/{idTenant}" : "";
+            var response = await Api.GetAsync<PagedResponse<AuditoriaPwdDto>>(
+                $"api/auditoriapwd/page{tenantSuffix}?pageNumber={state.Page + 1}&pageSize={state.PageSize}");
+            if (response != null)
+            {
+                _items = response.Items;
+                return new TableData<AuditoriaPwdDto> { Items = response.Items, TotalItems = response.TotalCount };
+            }
+        }
+        catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error al cargar: {ex.Message}", Severity.Error); }
+        finally { _loading = false; }
+        return new TableData<AuditoriaPwdDto> { Items = [], TotalItems = 0 };
+    }
+}

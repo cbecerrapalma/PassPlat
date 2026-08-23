@@ -1,0 +1,203 @@
+@page "/intentos-acceso"
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject AuthService Auth
+@using PassPlat.Web.Models
+@using PassPlat.Web.Shared
+
+@if (!Auth.TienePermiso("INTENTOS_ACCESO_VER"))
+{
+    <SinPermiso PermisoRequerido="INTENTOS_ACCESO_VER" />
+}
+else
+{
+<MudContainer>
+    <MudBreadcrumbs Class="mb-3">
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/auditoria"))">Auditoría</MudBreadcrumbItem>
+        <MudBreadcrumbItem>Intentos de Acceso</MudBreadcrumbItem>
+    </MudBreadcrumbs>
+
+    <MudPaper Class="pa-4 mb-4 d-flex flex-wrap align-center gap-4" Elevation="0" Outlined="true">
+        <MudText Typo="Typo.h5" Class="flex-grow-1 mb-0">Intentos de Acceso</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium" OnClick="@LoadData" />
+    </MudPaper>
+
+    <MudGrid Class="mb-4">
+        <MudItem xs="12" sm="6" md="3" lg="3">
+            <IamKpiCard Label="Total Intentos" Valor="@KpiTotal" Icon="@Icons.Material.Filled.Login" ColorClass="info" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3" lg="3">
+            <IamKpiCard Label="Exitosos" Valor="@KpiExitosos" Icon="@Icons.Material.Filled.CheckCircle" ColorClass="success" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3" lg="3">
+            <IamKpiCard Label="Fallidos" Valor="@KpiFallidos" Icon="@Icons.Material.Filled.Cancel" ColorClass="error" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3" lg="3">
+            <IamKpiCard Label="Usuarios" Valor="@KpiUsuarios" Icon="@Icons.Material.Filled.Person" ColorClass="primary" />
+        </MudItem>
+    </MudGrid>
+
+    <MudPaper Class="pa-4 mb-4" Elevation="0" Outlined="true">
+        <MudGrid>
+            <MudItem xs="12" sm="6" md="4">
+                <MudTextField @bind-Value="_search" Label="Buscar usuario..." Variant="Variant.Outlined" Immediate="true" Clearable="true" FullWidth="true" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudSelect T="string" @bind-Value="_filterResultado" Label="Resultado" Variant="Variant.Outlined" Clearable="true" FullWidth="true">
+                    <MudSelectItem Value="@("Exitoso")">Exitoso</MudSelectItem>
+                    <MudSelectItem Value="@("Fallido")">Fallido</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3" Class="d-flex align-end">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@LoadData" FullWidth="true">Buscar</MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <MudTable T="IntentoAccesoDto" Items="@_filteredItems" Hover="true" Breakpoint="Breakpoint.Sm"
+        SelectedItem="@_selected" SelectedItemChanged="@OnSelectedItemChanged">
+        <ColGroup>
+            <col style="width: 80px;" />
+            <col />
+            <col />
+            <col />
+            <col />
+            <col style="width: 100px;" />
+            <col style="width: 160px;" />
+        </ColGroup>
+        <HeaderContent>
+            <MudTh>Id</MudTh>
+            <MudTh>Usuario</MudTh>
+            <MudTh>Resultado</MudTh>
+            <MudTh>IP</MudTh>
+            <MudTh>Detalle</MudTh>
+            <MudTh>Respuesta</MudTh>
+            <MudTh>Fecha</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Id">@context.Id</MudTd>
+            <MudTd DataLabel="Usuario">@context.NomUsuarioIntentado</MudTd>
+            <MudTd DataLabel="Resultado">
+                <MudChip T="string" Size="Size.Small" Color="@(context.Exitoso ? Color.Success : Color.Error)">
+                    @context.ResultadoNombre
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="IP">@context.IPDireccion</MudTd>
+            <MudTd DataLabel="Detalle">@context.DetResultado</MudTd>
+            <MudTd DataLabel="Respuesta">@(context.TpoRespuesta.HasValue ? $"{context.TpoRespuesta}ms" : "-")</MudTd>
+            <MudTd DataLabel="Fecha">@context.FecIntento.ToLocalTime().ToString("g")</MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new int[]{10, 25, 50}" />
+        </PagerContent>
+        <NoRecordsContent>
+            <MudText Align="Align.Center" Class="py-6">
+                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Class="mr-2" />
+                No hay registros
+            </MudText>
+        </NoRecordsContent>
+    </MudTable>
+
+    <MudOverlay Visible="@_loading" />
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" Class="mt-4" />
+    }
+</MudContainer>
+
+@if (_selected is not null)
+{
+    <IamInspector Titulo="Detalle del Intento" Width="500px" OnClose="@(() => _selected = null)">
+        <MudTabs Rounded="true" Border="true" Class="mt-4">
+            <MudTab Text="Información">
+                <MudPaper Elevation="0" Class="pa-4">
+                    <MudTable T="(string, string)" Items="@_detailRows(_selected)" Hover="false" Outlined="false">
+                        <HeaderContent>
+                            <MudTh>Propiedad</MudTh>
+                            <MudTh>Valor</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd><strong>@context.Item1</strong></MudTd>
+                            <MudTd>@context.Item2</MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                </MudPaper>
+            </MudTab>
+        </MudTabs>
+    </IamInspector>
+}
+}
+
+@code {
+    private List<IntentoAccesoDto> _items = [];
+    private List<IntentoAccesoDto> _filteredItems
+    {
+        get
+        {
+            var q = _items.AsEnumerable();
+            if (!string.IsNullOrWhiteSpace(_search))
+                q = q.Where(i => i.NomUsuarioIntentado.Contains(_search, StringComparison.OrdinalIgnoreCase) || (i.IPDireccion?.Contains(_search, StringComparison.OrdinalIgnoreCase) == true));
+            if (_filterResultado == "Exitoso") q = q.Where(i => i.Exitoso);
+            if (_filterResultado == "Fallido") q = q.Where(i => !i.Exitoso);
+            return q.ToList();
+        }
+    }
+    private bool _loading;
+    private string _search = "";
+    private string? _filterResultado;
+    private IntentoAccesoDto? _selected;
+
+    private string KpiTotal => _items.Count.ToString();
+    private string KpiExitosos => _items.Count(i => i.Exitoso).ToString();
+    private string KpiFallidos => _items.Count(i => !i.Exitoso).ToString();
+    private string KpiUsuarios => _items.Select(i => i.NomUsuarioIntentado).Distinct().Count().ToString();
+
+    private List<(string, string)> _detailRows(IntentoAccesoDto item) =>
+    [
+        ("Usuario", item.NomUsuarioIntentado),
+        ("Resultado", item.ResultadoNombre ?? "-"),
+        ("Exitoso", item.Exitoso ? "Sí" : "No"),
+        ("IP", item.IPDireccion ?? "-"),
+        ("Detalle", item.DetResultado ?? "-"),
+        ("Tpo. Respuesta", item.TpoRespuesta.HasValue ? $"{item.TpoRespuesta}ms" : "-"),
+        ("Código Respuesta", item.CodRespuesta?.ToString() ?? "-"),
+        ("Id Dispositivo", item.IdDisp?.ToString() ?? "-"),
+        ("Id Agente", item.IdAgente?.ToString() ?? "-"),
+        ("Id IP", item.IdIP?.ToString() ?? "-"),
+        ("Id App", item.IdApp?.ToString() ?? "-"),
+        ("Fecha", item.FecIntento.ToLocalTime().ToString("G"))
+    ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.TienePermiso("INTENTOS_ACCESO_VER")) return;
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        try
+        {
+            var idTenant = Auth.IdTenant ?? 0;
+            var tenantSuffix = idTenant > 0 ? $"&idTenant={idTenant}" : "";
+            var response = await Api.GetAsync<PagedResponse<IntentoAccesoDto>>($"api/intentosacceso/page?pageNumber=1&pageSize=500{tenantSuffix}");
+            _items = response?.Items?.ToList() ?? [];
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void OnSelectedItemChanged(IntentoAccesoDto? item)
+    {
+        _selected = item;
+    }
+}

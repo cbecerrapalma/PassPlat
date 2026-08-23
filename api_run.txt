@@ -1,0 +1,4 @@
+
+--EXEC sys.sp_addextendedproperty N'MS_Description', N'Orquestador de login mediante proveedor externo. Implementa tres escenarios: A) Usuario ya vinculado, B) Auto-link por email, C) Auto-provisionamiento. Mismo contrato de salida que SP_Auth_Login.', 'S
+
+(1 rows affected)

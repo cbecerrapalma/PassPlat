@@ -1,0 +1,89 @@
+@using PassPlat.Aplicacion.Dtos.Core
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+
+@if (_loading)
+{
+    <MudSkeleton Width="100%" Height="200px" />
+}
+else if (_items.Count == 0)
+{
+    <MudContainer Class="mt-4">
+        <MudText Typo="Typo.subtitle2" Class="mb-3" Style="color:var(--mud-palette-text-secondary);">
+            Últimos intentos de inicio de sesión (máx. 60).
+        </MudText>
+        <MudText Align="Align.Center" Class="py-8">
+            <MudIcon Icon="@Icons.Material.Filled.Login" Class="mb-2" /><br />Sin intentos registrados
+        </MudText>
+    </MudContainer>
+}
+else
+{
+    <MudContainer Class="mt-4">
+        <MudText Typo="Typo.subtitle2" Class="mb-3" Style="color:var(--mud-palette-text-secondary);">
+            Últimos intentos de inicio de sesión (máx. 60).
+        </MudText>
+        <MudTable T="IntentoAccesoDto" Items="@_items" Hover="true" Breakpoint="Breakpoint.Sm">
+            <ColGroup>
+                <col style="width:80px;" /><col /><col /><col /><col /><col style="width:80px;" />
+            </ColGroup>
+            <HeaderContent>
+                <MudTh>Id</MudTh><MudTh>Usuario</MudTh><MudTh>Resultado</MudTh><MudTh>IP</MudTh><MudTh>Fecha</MudTh><MudTh>Éxito</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Id">@context.Id</MudTd>
+                <MudTd DataLabel="Usuario">@context.NomUsuarioIntentado</MudTd>
+                <MudTd DataLabel="Resultado">@context.ResultadoNombre</MudTd>
+                <MudTd DataLabel="IP">@context.IPDireccion</MudTd>
+                <MudTd DataLabel="Fecha">@context.FecIntento.ToLocalTime().ToString("g")</MudTd>
+                <MudTd DataLabel="Éxito">
+                    <MudChip T="string" Size="Size.Small" Color="@(context.Exitoso ? Color.Success : Color.Error)">
+                        @(context.Exitoso ? "Sí" : "No")
+                    </MudChip>
+                </MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                <MudText Align="Align.Center" Class="py-8">
+                    <MudIcon Icon="@Icons.Material.Filled.Login" Class="mb-2" /><br />Sin intentos registrados
+                </MudText>
+            </NoRecordsContent>
+        </MudTable>
+    </MudContainer>
+}
+
+@code {
+    [Parameter] public int UserId { get; set; }
+    [Parameter] public bool IsActive { get; set; }
+    [Parameter] public EventCallback<int> CountChanged { get; set; }
+
+    private List<IntentoAccesoDto> _items = [];
+    private bool _loading = true;
+    private bool _loaded;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsActive && !_loaded)
+        {
+            _loaded = true;
+            await LoadData();
+        }
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        try
+        {
+            _items = await Api.GetAsync<List<IntentoAccesoDto>>($"api/intentosacceso/recientes/{UserId}/60") ?? [];
+            await CountChanged.InvokeAsync(_items.Count);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

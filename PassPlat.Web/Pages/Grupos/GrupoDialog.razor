@@ -1,0 +1,93 @@
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog Options="_dialogOptions">
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudAvatar Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled">
+                <MudIcon Icon="@(IsEdit ? Icons.Material.Filled.Edit : Icons.Material.Filled.Group)" Size="Size.Small" />
+            </MudAvatar>
+            <MudText Typo="Typo.h6">@(IsEdit ? "Editar" : "Nuevo") Grupo</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="_codigo" Label="Codigo" Variant="Variant.Outlined" Class="mb-3" Required="true"
+            Disabled="IsEdit"
+            Error="@(_submitted && string.IsNullOrWhiteSpace(_codigo))" ErrorText="El codigo es requerido"
+            Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Code"
+            HelperText="Identificador unico del grupo" />
+        <MudTextField @bind-Value="_nombre" Label="Nombre" Variant="Variant.Outlined" Class="mb-3" Required="true"
+            Error="@(_submitted && string.IsNullOrWhiteSpace(_nombre))" ErrorText="El nombre es requerido"
+            Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Badge"
+            HelperText="Nombre descriptivo del grupo" />
+        <MudTextField @bind-Value="_descripcion" Label="Descripcion" Variant="Variant.Outlined" Class="mb-3"
+            Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Description"
+            HelperText="Opcional - proposito del grupo" />
+        @if (IsEdit)
+        {
+            <MudDivider Class="my-3" />
+            <MudSwitch @bind-Value="_activo" Label="Grupo activo" Color="Color.Primary" />
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@Save" Disabled="@(!CanSave() || _saving)">
+            @(IsEdit ? "Guardar" : "Crear")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private DialogOptions _dialogOptions = new() { FullWidth = true, CloseButton = true };
+
+    [Parameter] public bool IsEdit { get; set; }
+    [Parameter] public GrupoDto? Grupo { get; set; }
+
+    private string _codigo = "";
+    private string _nombre = "";
+    private string _descripcion = "";
+    private bool _activo = true;
+    private bool _saving;
+    private bool _submitted;
+
+    protected override void OnInitialized()
+    {
+        if (IsEdit && Grupo is not null)
+        {
+            _codigo = Grupo.Codigo;
+            _nombre = Grupo.Nombre;
+            _descripcion = Grupo.Descripcion ?? "";
+            _activo = Grupo.Activo;
+        }
+    }
+
+    private bool CanSave() => !string.IsNullOrWhiteSpace(_codigo) && !string.IsNullOrWhiteSpace(_nombre);
+
+    private async Task Save()
+    {
+        _submitted = true;
+        if (!CanSave()) return;
+        _saving = true;
+        try
+        {
+            if (IsEdit && Grupo is not null)
+            {
+                var dto = new ActualizarGrupoDto { Nombre = _nombre, Descripcion = _descripcion, Activo = _activo };
+                var result = await Api.PutAsync<GrupoDto>($"api/grupos/{Grupo.Id}", dto);
+                if (result is not null) { Snackbar.Add("Grupo actualizado", Severity.Success); MudDialog.Close(DialogResult.Ok(true)); }
+                else Snackbar.Add(Api.LastError ?? "Error al actualizar grupo", Severity.Error);
+            }
+            else
+            {
+                var dto = new CrearGrupoDto { Codigo = _codigo, Nombre = _nombre, Descripcion = _descripcion };
+                var result = await Api.PostAsync<GrupoDto>("api/grupos", dto);
+                if (result is not null) { Snackbar.Add("Grupo creado", Severity.Success); MudDialog.Close(DialogResult.Ok(true)); }
+                else Snackbar.Add(Api.LastError ?? "Error al crear grupo", Severity.Error);
+            }
+        }
+        catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error); }
+        finally { _saving = false; }
+    }
+}

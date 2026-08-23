@@ -1,0 +1,261 @@
+@inject ApiClient Api
+@inject AuthService Auth
+@inject ISnackbar Snackbar
+@using PassPlat.Aplicacion.Dtos.Catalogos
+@using PassPlat.Aplicacion.Dtos.Core
+
+<MudDialog Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(IsEdit ? "Editar" : "Nueva") Política de Contraseña</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudExpansionPanels MultiExpansion="true">
+            <MudExpansionPanel Text="General">
+                <MudTextField @bind-Value="_codigo" Label="Código" Variant="Variant.Outlined" Class="mb-3" Disabled="@IsEdit" Required="true"
+                              Error="@(_submitted && string.IsNullOrWhiteSpace(_codigo))" ErrorText="El código es requerido" />
+                <MudTextField @bind-Value="_nombre" Label="Nombre" Variant="Variant.Outlined" Class="mb-3" Required="true"
+                              Error="@(_submitted && string.IsNullOrWhiteSpace(_nombre))" ErrorText="El nombre es requerido" />
+                <MudAutocomplete T="TenantDto" @bind-Value="_tenantSelected"
+                    SearchFunc="@SearchTenants" ToStringFunc="@(t => t is null ? "" : $"{t.Nombre} ({t.Codigo})")"
+                    Label="Tenant (opcional)" Variant="Variant.Outlined" Class="mb-3" Clearable="true" />
+                <MudAutocomplete T="AppDto" @bind-Value="_appSelected"
+                    SearchFunc="@SearchApps" ToStringFunc="@(a => a is null ? "" : $"{a.Nombre} ({a.Codigo})")"
+                    Label="App (opcional)" Variant="Variant.Outlined" Class="mb-3" Clearable="true" />
+            </MudExpansionPanel>
+            <MudExpansionPanel Text="Longitud">
+                <div class="d-flex gap-4">
+                    <MudTextField @bind-Value="_longMinStr" Label="Long. Mínima" Variant="Variant.Outlined" Class="mb-3 flex-1" />
+                    <MudTextField @bind-Value="_longMaxStr" Label="Long. Máxima" Variant="Variant.Outlined" Class="mb-3 flex-1" />
+                </div>
+            </MudExpansionPanel>
+            <MudExpansionPanel Text="Requisitos de Caracteres">
+                <MudSwitch @bind-Value="_reqMayuscula" Label="Requiere mayúscula" Color="Color.Primary" Class="mb-2" />
+                <MudSwitch @bind-Value="_reqMinuscula" Label="Requiere minúscula" Color="Color.Primary" Class="mb-2" />
+                <MudSwitch @bind-Value="_reqNumero" Label="Requiere número" Color="Color.Primary" Class="mb-2" />
+                <MudSwitch @bind-Value="_reqEspecial" Label="Requiere carácter especial" Color="Color.Primary" Class="mb-2" />
+                <MudTextField @bind-Value="_caracteresEspeciales" Label="Caracteres especiales permitidos" Variant="Variant.Outlined" Class="mb-3" HelperText="Dejar vacío para usar los predeterminados" />
+            </MudExpansionPanel>
+            <MudExpansionPanel Text="Prohibiciones">
+                <MudSwitch @bind-Value="_prohSecuenciales" Label="Prohibir secuencias (123, abc)" Color="Color.Error" Class="mb-2" />
+                <MudSwitch @bind-Value="_prohRepetitivos" Label="Prohibir repetitivos (aaa, 111)" Color="Color.Error" Class="mb-2" />
+                <MudSwitch @bind-Value="_prohPatrones" Label="Prohibir patrones de teclado" Color="Color.Error" Class="mb-2" />
+                <MudSwitch @bind-Value="_prohPwdComun" Label="Prohibir contraseñas comunes" Color="Color.Error" Class="mb-2" />
+                <MudSwitch @bind-Value="_prohInfoUsuario" Label="Prohibir información del usuario" Color="Color.Error" Class="mb-2" />
+            </MudExpansionPanel>
+            <MudExpansionPanel Text="Seguridad">
+                <MudSwitch @bind-Value="_verificarBrechas" Label="Verificar en brechas de datos" Color="Color.Warning" Class="mb-2" />
+                <MudSwitch @bind-Value="_permitirEspacios" Label="Permitir espacios" Color="Color.Warning" Class="mb-2" />
+            </MudExpansionPanel>
+            <MudExpansionPanel Text="Vigencia y Bloqueo">
+                <MudTextField @bind-Value="_diasVigenciaStr" Label="Días de vigencia" Variant="Variant.Outlined" Class="mb-3" HelperText="0 = sin expiración" />
+                <MudTextField @bind-Value="_pwdRecordadasStr" Label="Contraseñas recordadas" Variant="Variant.Outlined" Class="mb-3" HelperText="0 = sin historial" />
+                <MudTextField @bind-Value="_maxIntentosStr" Label="Máx. intentos fallidos" Variant="Variant.Outlined" Class="mb-3" />
+                <MudTextField @bind-Value="_durBloqueoMinStr" Label="Duración bloqueo (minutos)" Variant="Variant.Outlined" Class="mb-3" HelperText="0 = hasta desbloqueo manual" />
+            </MudExpansionPanel>
+            <MudExpansionPanel Text="Estado">
+                <MudSwitch @bind-Value="_activa" Label="Política activa" Color="Color.Success" Class="mb-2" />
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@Cancel">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@Save" Disabled="@(!CanSave() || _saving)">
+            @(IsEdit ? "Guardar" : "Crear")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.ExtraExtraLarge, FullWidth = true, CloseButton = true };
+
+    [Parameter] public bool IsEdit { get; set; }
+    [Parameter] public PoliticaPwdDto? Politica { get; set; }
+
+    private string _codigo = "";
+    private string _nombre = "";
+    private List<TenantDto> _tenants = [];
+    private List<AppDto> _apps = [];
+    private TenantDto? _tenantSelected;
+    private AppDto? _appSelected;
+    private string _longMinStr = "8";
+    private string _longMaxStr = "64";
+    private bool _reqMayuscula;
+    private bool _reqMinuscula;
+    private bool _reqNumero;
+    private bool _reqEspecial;
+    private string? _caracteresEspeciales;
+    private bool _prohSecuenciales;
+    private bool _prohRepetitivos;
+    private bool _prohPatrones;
+    private bool _prohPwdComun = true;
+    private bool _prohInfoUsuario = true;
+    private bool _verificarBrechas = true;
+    private bool _permitirEspacios = true;
+    private string _diasVigenciaStr = "0";
+    private string _pwdRecordadasStr = "24";
+    private string _maxIntentosStr = "5";
+    private string _durBloqueoMinStr = "30";
+    private bool _activa = true;
+    private bool _saving;
+    private bool _submitted;
+
+    private bool CanSave() => !string.IsNullOrWhiteSpace(_codigo) && !string.IsNullOrWhiteSpace(_nombre);
+
+    private void Cancel() => MudDialog.Cancel();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var tTenants = Api.GetAsync<List<TenantDto>>("api/tenants");
+        var tApps = Api.GetAsync<List<AppDto>>("api/apps");
+        await Task.WhenAll(tTenants, tApps);
+
+        _tenants = tTenants.Result ?? [];
+        _apps = tApps.Result ?? [];
+
+        if (IsEdit && Politica is not null)
+        {
+            _codigo = Politica.Codigo;
+            _nombre = Politica.Nombre;
+            _longMinStr = Politica.LongMin.ToString();
+            _longMaxStr = Politica.LongMax.ToString();
+            _reqMayuscula = Politica.ReqMayuscula;
+            _reqMinuscula = Politica.ReqMinuscula;
+            _reqNumero = Politica.ReqNumero;
+            _reqEspecial = Politica.ReqEspecial;
+            _caracteresEspeciales = Politica.CaracteresEspeciales;
+            _prohSecuenciales = Politica.ProhSecuenciales;
+            _prohRepetitivos = Politica.ProhRepetitivos;
+            _prohPatrones = Politica.ProhPatrones;
+            _prohPwdComun = Politica.ProhPwdComun;
+            _prohInfoUsuario = Politica.ProhInfoUsuario;
+            _verificarBrechas = Politica.VerificarBrechas;
+            _permitirEspacios = Politica.PermitirEspacios;
+            _diasVigenciaStr = Politica.DiasVigencia.ToString();
+            _pwdRecordadasStr = Politica.PwdRecordadas.ToString();
+            _maxIntentosStr = Politica.MaxIntentos.ToString();
+            _durBloqueoMinStr = Politica.DurBloqueoMin.ToString();
+            _activa = Politica.Activa;
+            _tenantSelected = _tenants.FirstOrDefault(t => t.Id == (Politica.IdTenant ?? Auth.IdTenant ?? 0));
+            _appSelected = _apps.FirstOrDefault(a => a.Id == Politica.IdApp);
+        }
+        else
+        {
+            _tenantSelected = _tenants.FirstOrDefault(t => t.Id == (Auth.IdTenant ?? 0));
+        }
+    }
+
+    private Task<IEnumerable<TenantDto>> SearchTenants(string value, CancellationToken _)
+    {
+        if (string.IsNullOrEmpty(value))
+            return Task.FromResult(_tenants.Take(20));
+        return Task.FromResult(_tenants.Where(t =>
+            t.Nombre.Contains(value, StringComparison.OrdinalIgnoreCase) ||
+            t.Codigo.Contains(value, StringComparison.OrdinalIgnoreCase)).Take(20));
+    }
+
+    private Task<IEnumerable<AppDto>> SearchApps(string value, CancellationToken _)
+    {
+        if (string.IsNullOrEmpty(value))
+            return Task.FromResult(_apps.Take(20));
+        return Task.FromResult(_apps.Where(a =>
+            a.Nombre.Contains(value, StringComparison.OrdinalIgnoreCase) ||
+            a.Codigo.Contains(value, StringComparison.OrdinalIgnoreCase)).Take(20));
+    }
+
+    private async Task Save()
+    {
+        _submitted = true;
+        if (!CanSave()) return;
+        _saving = true;
+        try
+        {
+            byte.TryParse(_longMinStr, out var longMin);
+            byte.TryParse(_longMaxStr, out var longMax);
+            short.TryParse(_diasVigenciaStr, out var diasVigencia);
+            byte.TryParse(_pwdRecordadasStr, out var pwdRecordadas);
+            byte.TryParse(_maxIntentosStr, out var maxIntentos);
+            int.TryParse(_durBloqueoMinStr, out var durBloqueoMin);
+
+            if (IsEdit)
+            {
+                var ok = await Api.PutVoidAsync($"api/politicaspwd/{Politica!.Id}",
+                    new
+                    {
+                        id = Politica.Id,
+                        nombre = _nombre,
+                        longMin,
+                        longMax,
+                        reqMayuscula = _reqMayuscula,
+                        reqMinuscula = _reqMinuscula,
+                        reqNumero = _reqNumero,
+                        reqEspecial = _reqEspecial,
+                        caracteresEspeciales = _caracteresEspeciales,
+                        prohSecuenciales = _prohSecuenciales,
+                        prohRepetitivos = _prohRepetitivos,
+                        prohPatrones = _prohPatrones,
+                        prohPwdComun = _prohPwdComun,
+                        prohInfoUsuario = _prohInfoUsuario,
+                        verificarBrechas = _verificarBrechas,
+                        permitirEspacios = _permitirEspacios,
+                        diasVigencia,
+                        pwdRecordadas,
+                        maxIntentos,
+                        durBloqueoMin
+                    });
+                if (ok)
+                {
+                    Snackbar.Add("Política actualizada", Severity.Success);
+                    MudDialog.Close(DialogResult.Ok(true));
+                }
+                else
+                    Snackbar.Add(Api.LastError ?? "Error al actualizar", Severity.Error);
+            }
+            else
+            {
+                var result = await Api.PostAsync<PoliticaPwdDto>("api/politicaspwd",
+                    new
+                    {
+                        codigo = _codigo,
+                        nombre = _nombre,
+                        idTenant = _tenantSelected?.Id,
+                        idApp = _appSelected?.Id,
+                        longMin,
+                        longMax,
+                        reqMayuscula = _reqMayuscula,
+                        reqMinuscula = _reqMinuscula,
+                        reqNumero = _reqNumero,
+                        reqEspecial = _reqEspecial,
+                        caracteresEspeciales = _caracteresEspeciales,
+                        prohSecuenciales = _prohSecuenciales,
+                        prohRepetitivos = _prohRepetitivos,
+                        prohPatrones = _prohPatrones,
+                        prohPwdComun = _prohPwdComun,
+                        prohInfoUsuario = _prohInfoUsuario,
+                        verificarBrechas = _verificarBrechas,
+                        permitirEspacios = _permitirEspacios,
+                        diasVigencia,
+                        pwdRecordadas,
+                        maxIntentos,
+                        durBloqueoMin
+                    });
+                if (result is not null)
+                {
+                    Snackbar.Add("Política creada", Severity.Success);
+                    MudDialog.Close(DialogResult.Ok(true));
+                }
+                else
+                    Snackbar.Add(Api.LastError ?? "Error al crear", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

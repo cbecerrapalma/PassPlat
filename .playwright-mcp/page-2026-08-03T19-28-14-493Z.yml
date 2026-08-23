@@ -1,0 +1,40 @@
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - generic [ref=e6]: 🔒
+    - heading "AccessPlat" [level=5] [ref=e10]
+    - paragraph [ref=e11]: Inicia sesión para continuar
+  - paragraph [ref=e12]: Selecciona una aplicación para continuar
+  - generic [ref=e15]:
+    - generic [ref=e16] [cursor=pointer]:
+      - combobox "Aplicación" [ref=e17]: AccessPlat
+      - group "Aplicación"
+    - generic: Aplicación
+  - paragraph [ref=e22]: Selecciona un tenant para continuar
+  - generic [ref=e25]:
+    - generic [ref=e26] [cursor=pointer]:
+      - combobox "Tenant" [active] [ref=e27]: Abarrotes del Sur
+      - group "Tenant"
+    - generic: Tenant
+  - generic [ref=e48]:
+    - generic [ref=e50]:
+      - generic [ref=e51]:
+        - textbox "Usuario o email" [ref=e52]: sistema
+        - group "Usuario o email"
+      - generic: Usuario o email
+    - generic [ref=e53]:
+      - generic [ref=e55]:
+        - generic [ref=e56]:
+          - textbox "Contraseña" [ref=e57]: Admin@123
+          - group "Contraseña"
+        - generic: Contraseña
+      - button [ref=e58] [cursor=pointer]
+    - generic [ref=e63]:
+      - generic [ref=e66] [cursor=pointer]:
+        - switch "Recordarme" [ref=e70]
+        - generic [ref=e73]: Recordarme
+      - button "¿Olvidaste tu contraseña?" [ref=e74] [cursor=pointer]
+  - button "Iniciar Sesión" [ref=e76] [cursor=pointer]
+  - separator [ref=e79]
+  - paragraph [ref=e80]: O continúa con
+  - button [ref=e83] [cursor=pointer]
+  - generic [ref=e32]: Plataforma de Acceso — v1.0

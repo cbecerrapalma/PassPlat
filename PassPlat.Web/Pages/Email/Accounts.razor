@@ -1,0 +1,264 @@
+@page "/email/accounts"
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@inject NavigationManager Navigation
+@inject AuthService Auth
+@using PassPlat.Web.Shared
+@using PassPlat.Aplicacion.Dtos.Core
+@using PassPlat.Aplicacion.Dtos.Catalogos
+
+<MudContainer>
+    <MudBreadcrumbs Class="mb-3">
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
+        <MudBreadcrumbItem>Comunicaciones</MudBreadcrumbItem>
+        <MudBreadcrumbItem>Cuentas de Correo</MudBreadcrumbItem>
+    </MudBreadcrumbs>
+
+    <MudPaper Class="pa-4 mb-4 d-flex flex-wrap align-center gap-4" Elevation="0" Outlined="true">
+        <div>
+            <MudText Typo="Typo.h5" Class="mb-0">Cuentas de Correo</MudText>
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">Gestiona proveedores y cuentas de envio para aplicaciones y tenants.</MudText>
+        </div>
+        <MudSpacer />
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium" Class="mr-2" OnClick="@ReCargar" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Size="Size.Medium"
+            OnClick="@AbrirCrear">
+            Nueva Cuenta
+        </MudButton>
+    </MudPaper>
+
+    @if (_cargando)
+    {
+        <MudPaper Elevation="0" Outlined="true" Class="pa-4">
+            <MudSkeleton SkeletonType="SkeletonType.Text" Width="100%" />
+            <MudSkeleton SkeletonType="SkeletonType.Text" Width="80%" />
+            <MudSkeleton SkeletonType="SkeletonType.Text" Width="60%" />
+            <MudSkeleton SkeletonType="SkeletonType.Text" Width="90%" />
+            <MudSkeleton SkeletonType="SkeletonType.Text" Width="70%" />
+        </MudPaper>
+    }
+    else if (_items.Count == 0)
+    {
+        <MudPaper Elevation="0" Outlined="true" Class="pa-8 text-center">
+            <MudIcon Icon="@Icons.Material.Filled.MailOutline" Size="Size.Large" Class="mb-4 mud-text-secondary" />
+            <MudText Typo="Typo.h6" Class="mb-2">Sin cuentas de correo</MudText>
+            <MudText Typo="Typo.body2" Class="mud-text-secondary mb-4">Configure la primera cuenta de envio SMTP para comenzar.</MudText>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@AbrirCrear">
+                Crear Primera Cuenta
+            </MudButton>
+        </MudPaper>
+    }
+    else
+    {
+        <MudTable @ref="_table" T="EmailAccountDto" Items="@_items" Hover="true" Breakpoint="Breakpoint.Sm">
+            <ColGroup>
+                <col />
+                <col style="width: 120px;" />
+                <col />
+                <col style="width: 100px;" />
+                <col style="width: 80px;" />
+                <col style="width: 140px;" />
+                <col style="width: 80px;" />
+            </ColGroup>
+            <HeaderContent>
+                <MudTh>Nombre</MudTh>
+                <MudTh>Provider</MudTh>
+                <MudTh>From / Email</MudTh>
+                <MudTh>Estado</MudTh>
+                <MudTh>Default</MudTh>
+                <MudTh>Ult. Modificacion</MudTh>
+                <MudTh></MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Nombre">
+                    <MudText Typo="Typo.body2" Class="font-weight-medium">@context.Nombre</MudText>
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">@context.Descripcion</MudText>
+                </MudTd>
+                <MudTd DataLabel="Provider">
+                    <MudChip T="string" Size="Size.Small" Color="Color.Info">@context.ProviderNombre</MudChip>
+                </MudTd>
+                <MudTd DataLabel="From / Email">
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary" Style="font-family:monospace;font-size:0.8rem;">@context.FromAddress</MudText>
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">@context.Host:@context.Puerto</MudText>
+                </MudTd>
+                <MudTd DataLabel="Estado">
+                    <MudChip T="string" Size="Size.Small" Color="@(context.Activo ? Color.Success : Color.Default)">
+                        @(context.Activo ? "Activo" : "Inactivo")
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Default">
+                    <MudIcon Icon="@(context.EsPredeterminada ? Icons.Material.Filled.Star : Icons.Material.Outlined.StarBorder)"
+                        Color="@(context.EsPredeterminada ? Color.Warning : Color.Default)" Size="Size.Small" />
+                </MudTd>
+                <MudTd DataLabel="Ult. Modificacion">
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">@(context.FecMod?.ToString("g") ?? context.FecCrea.ToString("g"))</MudText>
+                </MudTd>
+                <MudTd DataLabel="">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => AbrirEditar(context))" />
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager PageSizeOptions="new int[]{10, 25, 50}" />
+            </PagerContent>
+            <NoRecordsContent>
+                <MudText Align="Align.Center" Class="py-6">
+                    <MudIcon Icon="@Icons.Material.Filled.SearchOff" Class="mr-2" />
+                    No hay cuentas de correo
+                </MudText>
+            </NoRecordsContent>
+        </MudTable>
+    }
+
+    @if (_selectedAccount is not null)
+    {
+        <MudPaper Class="mt-4" Elevation="0" Outlined="true">
+            <div class="pa-4 d-flex align-center flex-wrap gap-4" Style="border-bottom:1px solid var(--mud-palette-lines-inputs);">
+                <div class="flex-grow-1">
+                    <MudText Typo="Typo.h6">@_selectedAccount.Nombre</MudText>
+                    <div class="d-flex align-center gap-2 mt-1">
+                        <MudChip T="string" Size="Size.Small" Color="@(_selectedAccount.Activo ? Color.Success : Color.Default)">
+                            @(_selectedAccount.Activo ? "Activo" : "Inactivo")
+                        </MudChip>
+                        @if (_selectedAccount.EsPredeterminada)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Warning">Predeterminada</MudChip>
+                        }
+                    </div>
+                </div>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                    StartIcon="@Icons.Material.Filled.Edit" OnClick="@(() => AbrirEditar(_selectedAccount))">
+                    Editar
+                </MudButton>
+            </div>
+
+            <MudTabs Class="pa-0" Elevation="0" Position="Position.Left" HideSlider="true">
+                <MudTabPanel Text="Info">
+                    <div class="pa-4">
+                        <MudText Typo="Typo.subtitle2" Class="mud-text-secondary mb-2">INFORMACION GENERAL</MudText>
+                        <div class="mb-3">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary">Nombre</MudText>
+                            <MudText Typo="Typo.body2">@_selectedAccount.Nombre</MudText>
+                        </div>
+                        <div class="mb-3">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary">Descripcion</MudText>
+                            <MudText Typo="Typo.body2" Class="mud-text-secondary">@_selectedAccount.Descripcion</MudText>
+                        </div>
+                        <div class="mb-3">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary">Provider</MudText>
+                            <MudChip T="string" Size="Size.Small" Color="Color.Info">@_selectedAccount.ProviderNombre</MudChip>
+                        </div>
+
+                        <MudText Typo="Typo.subtitle2" Class="mud-text-secondary mb-2 mt-4">CONFIGURACION SMTP</MudText>
+                        <MudGrid>
+                            <MudItem xs="6">
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">Host</MudText>
+                                <MudText Typo="Typo.body2" Style="font-family:monospace;">@_selectedAccount.Host</MudText>
+                            </MudItem>
+                            <MudItem xs="3">
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">Puerto</MudText>
+                                <MudText Typo="Typo.body2" Style="font-family:monospace;">@_selectedAccount.Puerto</MudText>
+                            </MudItem>
+                            <MudItem xs="3">
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">SSL/TLS</MudText>
+                                <MudText Typo="Typo.body2">@(_selectedAccount.UsaSSL ? "SSL" : _selectedAccount.UsaTLS ? "TLS" : "Ninguno")</MudText>
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">Usuario</MudText>
+                                <MudText Typo="Typo.body2" Style="font-family:monospace;">@_selectedAccount.SmtpUsuario</MudText>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">From Address</MudText>
+                                <MudText Typo="Typo.body2" Style="font-family:monospace;">@_selectedAccount.FromAddress</MudText>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">From Name</MudText>
+                                <MudText Typo="Typo.body2">@_selectedAccount.FromName</MudText>
+                            </MudItem>
+                        </MudGrid>
+
+                        <MudText Typo="Typo.subtitle2" Class="mud-text-secondary mb-2 mt-4">FECHAS</MudText>
+                        <MudGrid>
+                            <MudItem xs="6">
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">Creado</MudText>
+                                <MudText Typo="Typo.body2">@_selectedAccount.FecCrea.ToString("g")</MudText>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">Ultima modificacion</MudText>
+                                <MudText Typo="Typo.body2">@(_selectedAccount.FecMod?.ToString("g") ?? "-")</MudText>
+                            </MudItem>
+                        </MudGrid>
+                    </div>
+                </MudTabPanel>
+                <MudTabPanel Text="Asignaciones">
+                    <div class="pa-4">
+                        <MudText Typo="Typo.body2" Class="mud-text-secondary">Asignaciones a aplicaciones y tenants disponibles desde la pagina de Asignaciones.</MudText>
+                    </div>
+                </MudTabPanel>
+            </MudTabs>
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    private MudTable<EmailAccountDto>? _table;
+    private List<EmailAccountDto> _items = [];
+    private EmailAccountDto? _selectedAccount;
+    private bool _cargando;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.TienePermiso("EMAIL_ACCOUNTS_VER")) return;
+        await CargarDatos();
+    }
+
+    private async Task CargarDatos()
+    {
+        _cargando = true;
+        try
+        {
+            _items = await Api.GetAsync<List<EmailAccountDto>>("api/emailaccounts") ?? [];
+            _selectedAccount = _items.FirstOrDefault();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar cuentas: {ex.Message}", Severity.Error);
+        }
+        finally { _cargando = false; }
+    }
+
+    private async Task ReCargar()
+    {
+        await CargarDatos();
+        Snackbar.Add("Cuentas recargadas", Severity.Info);
+    }
+
+    private async Task AbrirCrear()
+    {
+        var dialog = await Dialog.ShowAsync<EmailAccountDialog>("Nueva Cuenta de Correo", _dialogOptions);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            await CargarDatos();
+            Snackbar.Add("Cuenta creada", Severity.Success);
+        }
+    }
+
+    private async Task AbrirEditar(EmailAccountDto item)
+    {
+        var parameters = new DialogParameters
+        {
+            ["IsEdit"] = true,
+            ["Account"] = item
+        };
+        var dialog = await Dialog.ShowAsync<EmailAccountDialog>("Editar Cuenta de Correo", parameters, _dialogOptions);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            await CargarDatos();
+            Snackbar.Add("Cuenta actualizada", Severity.Success);
+        }
+    }
+
+    private static readonly DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Large, FullWidth = true, CloseButton = true };
+}

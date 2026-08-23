@@ -1,0 +1,382 @@
+@page "/admin/iam-dashboard"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Policy = "USUARIOS_VER")]
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<MudContainer>
+    <MudPaper Class="pa-6 mb-6" Elevation="0" Outlined="true">
+        <div class="d-flex flex-wrap align-center gap-4">
+            <div class="flex-grow-1">
+                <MudBreadcrumbs>
+                    <MudBreadcrumbItem Href="/">Dashboard</MudBreadcrumbItem>
+                    <MudBreadcrumbItem>Identity & Access Management</MudBreadcrumbItem>
+                </MudBreadcrumbs>
+                <MudText Typo="Typo.h4" Class="font-weight-bold mb-1">Identity & Access Management</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Monitoreo centralizado de identidades, sesiones y políticas de acceso</MudText>
+            </div>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadAllAsync">
+                Actualizar
+            </MudButton>
+        </div>
+    </MudPaper>
+
+    @if (_loading)
+    {
+        <MudGrid>
+            @for (var i = 0; i < 6; i++)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <MudSkeleton Height="100px" Animation="Animation.Pulse" />
+                </MudItem>
+            }
+        </MudGrid>
+    }
+    else
+    {
+        @* ── Stat Cards ── *@
+        <MudGrid Class="mb-6">
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Class="pa-4" Elevation="0" Outlined="true">
+                    <div class="d-flex align-center gap-3">
+                        <MudAvatar Color="Color.Primary" Variant="Variant.Filled">
+                            <MudIcon Icon="@Icons.Material.Filled.Badge" />
+                        </MudAvatar>
+                        <div>
+                            <MudText Typo="Typo.h4" Class="font-weight-bold">@(_totalIdentidades)</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Identidades totales</MudText>
+                        </div>
+                    </div>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Class="pa-4" Elevation="0" Outlined="true">
+                    <div class="d-flex align-center gap-3">
+                        <MudAvatar Color="Color.Success" Variant="Variant.Filled">
+                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" />
+                        </MudAvatar>
+                        <div>
+                            <MudText Typo="Typo.h4" Class="font-weight-bold">@(_identidadesAutorizadas)</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Autorizadas</MudText>
+                        </div>
+                    </div>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Class="pa-4" Elevation="0" Outlined="true">
+                    <div class="d-flex align-center gap-3">
+                        <MudAvatar Color="Color.Error" Variant="Variant.Filled">
+                            <MudIcon Icon="@Icons.Material.Filled.Block" />
+                        </MudAvatar>
+                        <div>
+                            <MudText Typo="Typo.h4" Class="font-weight-bold">@(_identidadesRevocadas)</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Revocadas</MudText>
+                        </div>
+                    </div>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Class="pa-4" Elevation="0" Outlined="true">
+                    <div class="d-flex align-center gap-3">
+                        <MudAvatar Color="Color.Warning" Variant="Variant.Filled">
+                            <MudIcon Icon="@Icons.Material.Filled.History" />
+                        </MudAvatar>
+                        <div>
+                            <MudText Typo="Typo.h4" Class="font-weight-bold">@(_historialHoy)</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Cambios hoy</MudText>
+                        </div>
+                    </div>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        @* ── Identity by State + Provider Breakdown ── *@
+        <MudGrid Class="mb-6">
+            <MudItem xs="12" md="6">
+                <MudPaper Class="pa-4" Elevation="0" Outlined="true">
+                    <MudText Typo="Typo.h6" Class="font-weight-bold mb-4">Identidades por Estado</MudText>
+                    @if (_identidadesPorEstado.Count > 0)
+                    {
+                        <MudTable Items="@_identidadesPorEstado" Dense="true" Hover="true" Elevation="0">
+                            <HeaderContent>
+                                <MudTh>Estado</MudTh>
+                                <MudTh>Cantidad</MudTh>
+                                <MudTh>%</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd>
+                                    <div class="d-flex align-center gap-2">
+                                        <MudIcon Icon="@Icons.Material.Filled.Circle" Size="Size.Small" Color="@EstadoColor(context.Estado)" />
+                                        <span>@context.Estado</span>
+                                    </div>
+                                </MudTd>
+                                <MudTd>@context.Cantidad</MudTd>
+                                <MudTd>@context.Porcentaje%</MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                    else
+                    {
+                        <div class="pa-4 text-center">
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">Sin datos disponibles</MudText>
+                        </div>
+                    }
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudPaper Class="pa-4" Elevation="0" Outlined="true">
+                    <MudText Typo="Typo.h6" Class="font-weight-bold mb-4">Actividad Reciente de Identidades</MudText>
+                    @if (_historialReciente.Count > 0)
+                    {
+                        <MudList T="string" Dense="true">
+                            @foreach (var item in _historialReciente)
+                            {
+                                <MudListItem T="string">
+                                    <div class="d-flex align-center gap-2" style="width:100%">
+                                        <MudIcon Icon="@HistorialIcon(item.TipoCambio)" Size="Size.Small" Color="@HistorialColor(item.TipoCambio)" />
+                                        <div class="flex-grow-1">
+                                            <MudText Typo="Typo.body2">@item.TipoCambio</MudText>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                @item.UsuarioNombre · @item.FecCambio.ToString("g")
+                                            </MudText>
+                                        </div>
+                                    </div>
+                                </MudListItem>
+                            }
+                        </MudList>
+                    }
+                    else
+                    {
+                        <div class="pa-4 text-center">
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">Sin actividad reciente</MudText>
+                        </div>
+                    }
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        @* ── Session & Device Stats ── *@
+        <MudGrid>
+            @if (Auth.TienePermiso("SESIONES_VER"))
+            {
+            <MudItem xs="12" md="6">
+                <MudPaper Class="pa-4" Elevation="0" Outlined="true">
+                    <MudText Typo="Typo.h6" Class="font-weight-bold mb-4">Sesiones Activas</MudText>
+                    <div class="d-flex align-center gap-3 mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.Devices" Size="Size.Large" Color="Color.Primary" />
+                        <div>
+                            <MudText Typo="Typo.h3" Class="font-weight-bold">@(_sesionesActivas)</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">sesiones simultáneas</MudText>
+                        </div>
+                    </div>
+                    @if (_topDispositivos.Count > 0)
+                    {
+                        <MudText Typo="Typo.body2" Class="font-weight-medium mb-2">Top dispositivos</MudText>
+                        @foreach (var d in _topDispositivos)
+                        {
+                            <div class="d-flex align-center gap-2 mb-1">
+                                <MudIcon Icon="@Icons.Material.Filled.PhoneAndroid" Size="Size.Small" Color="Color.Secondary" />
+                                <MudText Typo="Typo.body2" Class="flex-grow-1">@d.Modelo</MudText>
+                                <MudChip T="int" Size="Size.Small" Variant="Variant.Outlined">@d.Cantidad</MudChip>
+                            </div>
+                        }
+                    }
+                </MudPaper>
+            </MudItem>
+            }
+            @if (Auth.TienePermiso("USUARIOS_VER"))
+            {
+            <MudItem xs="12" md="6">
+                <MudPaper Class="pa-4" Elevation="0" Outlined="true">
+                    <MudText Typo="Typo.h6" Class="font-weight-bold mb-4">Proveedores Configurados</MudText>
+                    @if (_proveedoresConfigurados.Count > 0)
+                    {
+                        @foreach (var p in _proveedoresConfigurados)
+                        {
+                            <div class="d-flex align-center gap-3 pa-2 mb-2" style="border:1px solid var(--mud-palette-lines-default);border-radius:4px">
+                                <MudIcon Icon="@Icons.Material.Filled.VpnKey" Size="Size.Small" Color="Color.Primary" />
+                                <div class="flex-grow-1">
+                                    <MudText Typo="Typo.body2" Class="font-weight-bold">@p.Nombre</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">@p.Codigo</MudText>
+                                </div>
+                                <MudChip T="string" Size="Size.Small" Color="@(p.Activo ? Color.Success : Color.Default)">
+                                    @(p.Activo ? "Activo" : "Inactivo")
+                                </MudChip>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="pa-4 text-center">
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">No hay proveedores configurados</MudText>
+                        </div>
+                    }
+                </MudPaper>
+            </MudItem>
+            }
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    private bool _loading = true;
+    private int _totalIdentidades;
+    private int _identidadesAutorizadas;
+    private int _identidadesRevocadas;
+    private int _historialHoy;
+    private int _sesionesActivas;
+    private List<EstadoCount> _identidadesPorEstado = [];
+    private List<HistorialResumenDto> _historialReciente = [];
+    private List<DispositivoCount> _topDispositivos = [];
+    private List<ProveedorInfoDto> _proveedoresConfigurados = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAllAsync();
+    }
+
+    private async Task LoadAllAsync()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            var tenantId = Auth.IdTenant ?? 1;
+
+            var tasks = new List<Task>
+            {
+                LoadIdentidadesAsync(tenantId),
+                LoadHistorialAsync(tenantId),
+                LoadProveedoresAsync(tenantId)
+            };
+
+            if (Auth.TienePermiso("SESIONES_VER"))
+                tasks.Add(LoadSesionesAsync());
+
+            await Task.WhenAll(tasks);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar dashboard IAM: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    [Inject] private AuthService Auth { get; set; } = default!;
+
+    private async Task LoadIdentidadesAsync(int tenantId)
+    {
+        try
+        {
+            var identidades = await Api.GetAsync<List<IdenExtDto>>($"api/iden-ext/tenant/{tenantId}");
+            _totalIdentidades = identidades?.Count ?? 0;
+            _identidadesAutorizadas = identidades?.Count(i => i.IdEstado == 2) ?? 0;
+            _identidadesRevocadas = identidades?.Count(i => i.IdEstado == 3) ?? 0;
+
+            if (identidades?.Count > 0)
+            {
+                _identidadesPorEstado = identidades
+                    .GroupBy(i => i.EstadoNombre ?? "Sin estado")
+                    .Select(g => new EstadoCount
+                    {
+                        Estado = g.Key,
+                        Cantidad = g.Count(),
+                        Porcentaje = Math.Round(g.Count() * 100.0 / identidades.Count, 1)
+                    })
+                    .OrderByDescending(x => x.Cantidad)
+                    .ToList();
+            }
+        }
+        catch { _identidadesPorEstado = []; }
+    }
+
+    private async Task LoadHistorialAsync(int tenantId)
+    {
+        try
+        {
+            _historialReciente = await Api.GetAsync<List<HistorialResumenDto>>($"api/HistorialIdenExt/tenant/{tenantId}?limit=10") ?? [];
+            _historialHoy = _historialReciente.Count(h => h.FecCambio.Date == DateTime.Today);
+        }
+        catch { _historialReciente = []; }
+    }
+
+    private async Task LoadSesionesAsync()
+    {
+        if (!Auth.TienePermiso("SESIONES_VER")) return;
+        try
+        {
+            _sesionesActivas = await Api.GetAsync<int>("api/Sesiones/contar-tenant");
+        }
+        catch { _sesionesActivas = 0; }
+    }
+
+    private async Task LoadProveedoresAsync(int tenantId)
+    {
+        try
+        {
+            _proveedoresConfigurados = await Api.GetAsync<List<ProveedorInfoDto>>($"api/providen/activos") ?? [];
+        }
+        catch { _proveedoresConfigurados = []; }
+    }
+
+    private static Color EstadoColor(string estado) => estado switch
+    {
+        "Autorizada" => Color.Success,
+        "Pendiente" => Color.Warning,
+        "Revocada" => Color.Error,
+        "Suspendida" => Color.Warning,
+        "Error" => Color.Error,
+        _ => Color.Default
+    };
+
+    private static string HistorialIcon(string tipo) => tipo switch
+    {
+        "CREAR" => Icons.Material.Filled.Add,
+        "DESvincular" => Icons.Material.Filled.LinkOff,
+        "REVOCAR" => Icons.Material.Filled.Block,
+        "CAMBIAR_ESTADO" => Icons.Material.Filled.SwapHoriz,
+        "CAMBIAR_PRINCIPAL" => Icons.Material.Filled.Star,
+        _ => Icons.Material.Filled.Info
+    };
+
+    private static Color HistorialColor(string tipo) => tipo switch
+    {
+        "CREAR" => Color.Success,
+        "DESvincular" => Color.Warning,
+        "REVOCAR" => Color.Error,
+        _ => Color.Info
+    };
+
+    private class EstadoCount
+    {
+        public string Estado { get; set; } = "";
+        public int Cantidad { get; set; }
+        public double Porcentaje { get; set; }
+    }
+
+    private class HistorialResumenDto
+    {
+        public string TipoCambio { get; set; } = "";
+        public string? UsuarioNombre { get; set; }
+        public DateTime FecCambio { get; set; }
+    }
+
+    private class DispositivoCount
+    {
+        public string Modelo { get; set; } = "";
+        public int Cantidad { get; set; }
+    }
+
+    private class ProveedorInfoDto
+    {
+        public string Nombre { get; set; } = "";
+        public string Codigo { get; set; } = "";
+        public bool Activo { get; set; }
+    }
+}

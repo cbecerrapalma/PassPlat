@@ -1,0 +1,175 @@
+@page "/federacion/providen"
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@inject NavigationManager Navigation
+
+<div class="iam-page">
+    <MudBreadcrumbs Class="mb-3">
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
+        <MudBreadcrumbItem>Federación</MudBreadcrumbItem>
+        <MudBreadcrumbItem>Proveedores</MudBreadcrumbItem>
+    </MudBreadcrumbs>
+
+    <div class="page-header">
+        <div class="page-title-row">
+            <div>
+                <h1 class="page-title">Catálogo de Proveedores</h1>
+                <p class="page-subtitle">Proveedores de identidad externa soportados por PassPlat.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="kpi-row mb-4">
+        <IamKpiCard Valor="@_totalCount" Label="Total Proveedores" Subtexto="Registrados" Icon="@Icons.Material.Filled.Dns" ColorClass="primary" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_configuradosCount" Label="Configurados" Subtexto="Completos y activos" Icon="@Icons.Material.Filled.CheckCircle" ColorClass="success" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_pendientesCount" Label="Pendientes" Subtexto="Sin configurar" Icon="@Icons.Material.Filled.HourglassEmpty" ColorClass="warning" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_erroresCount" Label="Con errores" Subtexto="Requieren atención" Icon="@Icons.Material.Filled.Error" ColorClass="error" Xs="12" Sm="6" Md="3" />
+    </div>
+
+    <div class="content-body">
+        <div class="table-panel">
+            <CrudToolbar ShowSearch="true" ShowFilter="false"
+                SearchString="@_searchString" SearchStringChanged="@OnSearchChanged"
+                OnRefresh="@Refrescar" ShowCreate="false" />
+            <div class="table-wrap">
+                <MudTable Items="@_items" Hover="true" Breakpoint="Breakpoint.Sm"
+                    RowStyle="cursor: pointer;" OnRowClick="@((TableRowClickEventArgs<ProvIdenCatalogDto> e) => AbrirDialog(e.Item!))">
+                    <ColGroup>
+                        <col style="width:80px;" /><col style="width:200px;" /><col style="width:100px;" /><col style="width:90px;" /><col style="width:140px;" /><col style="width:60px;" />
+                    </ColGroup>
+                    <HeaderContent>
+                        <MudTh>Código</MudTh><MudTh>Nombre</MudTh><MudTh>Protocolo</MudTh><MudTh>Disponible</MudTh><MudTh>Configuración</MudTh><MudTh>Orden</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Código" style="font-family:'JetBrains Mono',monospace;font-size:11px;">@context.Proveedor.Codigo</MudTd>
+                        <MudTd DataLabel="Nombre">
+                            <div class="col-name">@context.Proveedor.Nombre</div>
+                            @if (!string.IsNullOrEmpty(context.Proveedor.Version))
+                            {
+                                <div style="font-size:10px;color:var(--text-muted);">v@(context.Proveedor.Version)</div>
+                            }
+                        </MudTd>
+                        <MudTd DataLabel="Protocolo">
+                            <MudChip T="string" Size="Size.Small" Color="Color.Primary">OAuth</MudChip>
+                        </MudTd>
+                        <MudTd DataLabel="Disponible">
+                            @if (context.Proveedor.Activo)
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Color="Color.Success" />
+                            }
+                            else
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.Cancel" Size="Size.Small" Color="Color.Error" />
+                            }
+                        </MudTd>
+                        <MudTd DataLabel="Configuración">
+                            <MudChip T="string" Size="Size.Small" Color="@_colorEstado(context.Status.Estado)" Class="chip-estado">
+                                @_textoEstado(context.Status.Estado)
+                            </MudChip>
+                        </MudTd>
+                        <MudTd DataLabel="Orden">@context.Proveedor.Orden</MudTd>
+                    </RowTemplate>
+                    <PagerContent>
+                        <MudTablePager PageSizeOptions="new int[]{10, 25, 50}" />
+                    </PagerContent>
+                    <NoRecordsContent>
+                        <MudText Align="Align.Center" Class="py-6">
+                            <MudIcon Icon="@Icons.Material.Filled.SearchOff" Class="mr-2" />
+                            No hay registros
+                        </MudText>
+                    </NoRecordsContent>
+                </MudTable>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private IEnumerable<ProvIdenCatalogDto> _items = [];
+    private bool _loading;
+    private string _searchString = "";
+    private string _totalCount = "0";
+    private string _configuradosCount = "0";
+    private string _pendientesCount = "0";
+    private string _erroresCount = "0";
+    private readonly DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarCatalogAsync();
+    }
+
+    private async Task CargarCatalogAsync()
+    {
+        _loading = true;
+        try
+        {
+            var catalog = await Api.GetAsync<List<ProvIdenCatalogDto>>("api/providen/catalog");
+            if (catalog is not null)
+            {
+                _items = AplicarFiltro(catalog);
+                _totalCount = catalog.Count.ToString();
+                _configuradosCount = catalog.Count(c => c.Status.IsConfigured).ToString();
+                _pendientesCount = catalog.Count(c => !c.Status.IsConfigured && !c.Status.HasErrors).ToString();
+                _erroresCount = catalog.Count(c => c.Status.HasErrors).ToString();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private List<ProvIdenCatalogDto> AplicarFiltro(List<ProvIdenCatalogDto> items)
+    {
+        if (string.IsNullOrWhiteSpace(_searchString)) return items;
+        var s = _searchString.Trim().ToLowerInvariant();
+        return items.Where(i =>
+            i.Proveedor.Codigo.ToLowerInvariant().Contains(s) ||
+            i.Proveedor.Nombre.ToLowerInvariant().Contains(s)).ToList();
+    }
+
+    private async Task OnSearchChanged(string value)
+    {
+        _searchString = value;
+        await CargarCatalogAsync();
+    }
+
+    private async Task Refrescar()
+    {
+        await CargarCatalogAsync();
+    }
+
+    private async Task AbrirDialog(ProvIdenCatalogDto item)
+    {
+        var parameters = new DialogParameters { ["ProvIden"] = item.Proveedor };
+        await Dialog.ShowAsync<ProvIdenDialog>("Detalle del Proveedor", parameters, _dialogOptions);
+    }
+
+    private static string _textoEstado(EEstadoConfiguracionOAuth estado) => estado switch
+    {
+        EEstadoConfiguracionOAuth.NoConfigurado => "No configurado",
+        EEstadoConfiguracionOAuth.NoSoportado => "No soportado",
+        EEstadoConfiguracionOAuth.Inactivo => "Inactivo",
+        EEstadoConfiguracionOAuth.Incompleto => "Incompleto",
+        EEstadoConfiguracionOAuth.Configurado => "Configurado",
+        EEstadoConfiguracionOAuth.ConfiguracionInvalida => "Config. inválida",
+        _ => "Desconocido"
+    };
+
+    private static Color _colorEstado(EEstadoConfiguracionOAuth estado) => estado switch
+    {
+        EEstadoConfiguracionOAuth.Configurado => Color.Success,
+        EEstadoConfiguracionOAuth.Incompleto => Color.Warning,
+        EEstadoConfiguracionOAuth.ConfiguracionInvalida => Color.Error,
+        EEstadoConfiguracionOAuth.Inactivo => Color.Error,
+        EEstadoConfiguracionOAuth.NoSoportado => Color.Warning,
+        EEstadoConfiguracionOAuth.NoConfigurado => Color.Default,
+        _ => Color.Default
+    };
+}

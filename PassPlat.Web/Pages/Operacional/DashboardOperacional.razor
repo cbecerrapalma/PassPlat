@@ -1,0 +1,401 @@
+@page "/admin/dashboard-operacional"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Policy = "USUARIOS_VER")]
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<MudContainer>
+    <MudPaper Class="pa-6 mb-6" Elevation="0" Outlined="true">
+        <div class="d-flex flex-wrap align-center gap-4">
+            <div class="flex-grow-1">
+                <MudBreadcrumbs>
+                    <MudBreadcrumbItem Href="/">Dashboard</MudBreadcrumbItem>
+                    <MudBreadcrumbItem>Operacional</MudBreadcrumbItem>
+                </MudBreadcrumbs>
+                <MudText Typo="Typo.h4" Class="font-weight-bold mb-1">Dashboard Operacional</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Monitoreo de salud del sistema, correo electrónico, servicios y seguridad</MudText>
+            </div>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadAllAsync">
+                Actualizar
+            </MudButton>
+        </div>
+    </MudPaper>
+
+    @if (_loading)
+    {
+        <MudGrid>
+            @for (var i = 0; i < 8; i++)
+            {
+                <MudItem xs="12" sm="6" md="3">
+                    <MudSkeleton Height="100px" Animation="Animation.Pulse" />
+                </MudItem>
+            }
+        </MudGrid>
+    }
+    else
+    {
+        @* ── Stat Cards ── *@
+        <MudGrid Class="mb-6">
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Class="pa-4" Elevation="0" Outlined="true">
+                    <div class="d-flex align-center gap-3">
+                        <MudAvatar Color="Color.Primary" Variant="Variant.Filled">
+                            <MudIcon Icon="@Icons.Material.Filled.Email" />
+                        </MudAvatar>
+                        <div>
+                            <MudText Typo="Typo.h4" Class="font-weight-bold">@_emailsPendientes</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Emails pendientes</MudText>
+                        </div>
+                    </div>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Class="pa-4" Elevation="0" Outlined="true">
+                    <div class="d-flex align-center gap-3">
+                        <MudAvatar Color="@(_intentosFallidos < 10 ? Color.Success : Color.Warning)" Variant="Variant.Filled">
+                            <MudIcon Icon="@Icons.Material.Filled.Warning" />
+                        </MudAvatar>
+                        <div>
+                            <MudText Typo="Typo.h4" Class="font-weight-bold">@_intentosFallidos</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Intentos fallidos (24h)</MudText>
+                        </div>
+                    </div>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Class="pa-4" Elevation="0" Outlined="true">
+                    <div class="d-flex align-center gap-3">
+                        <MudAvatar Color="@(_usuariosBloqueados > 0 ? Color.Error : Color.Success)" Variant="Variant.Filled">
+                            <MudIcon Icon="@Icons.Material.Filled.Lock" />
+                        </MudAvatar>
+                        <div>
+                            <MudText Typo="Typo.h4" Class="font-weight-bold">@_usuariosBloqueados</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Usuarios bloqueados</MudText>
+                        </div>
+                    </div>
+                </MudPaper>
+            </MudItem>
+            @if (Auth.TienePermiso("SESIONES_VER"))
+            {
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Class="pa-4" Elevation="0" Outlined="true">
+                    <div class="d-flex align-center gap-3">
+                        <MudAvatar Color="@(_sesionesActivas > 100 ? Color.Warning : Color.Info)" Variant="Variant.Filled">
+                            <MudIcon Icon="@Icons.Material.Filled.Devices" />
+                        </MudAvatar>
+                        <div>
+                            <MudText Typo="Typo.h4" Class="font-weight-bold">@_sesionesActivas</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Sesiones activas</MudText>
+                        </div>
+                    </div>
+                </MudPaper>
+            </MudItem>
+            }
+        </MudGrid>
+
+        @* ── Email Section ── *@
+        <MudGrid Class="mb-6">
+            <MudItem xs="12" md="6">
+                <MudPaper Class="pa-4" Elevation="0" Outlined="true">
+                    <MudText Typo="Typo.h6" Class="font-weight-bold mb-4">
+                        <MudIcon Icon="@Icons.Material.Filled.Email" Class="mr-2" />
+                        Correo Electrónico
+                    </MudText>
+                    @if (_emailsPendientesList.Count > 0)
+                    {
+                        <MudTable Items="@_emailsPendientesList" Dense="true" Hover="true" Elevation="0">
+                            <HeaderContent>
+                                <MudTh>Destinatario</MudTh>
+                                <MudTh>Asunto</MudTh>
+                                <MudTh>Intentos</MudTh>
+                                <MudTh>Estado</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd>@context.Destinatario</MudTd>
+                                <MudTd>@context.Asunto</MudTd>
+                                <MudTd>@context.Intentos</MudTd>
+                                <MudTd>
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Warning">Pendiente</MudChip>
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                    else
+                    {
+                        <div class="pa-4 text-center">
+                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" Color="Color.Success" />
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">No hay correos pendientes de envío</MudText>
+                        </div>
+                    }
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudPaper Class="pa-4" Elevation="0" Outlined="true">
+                    <MudText Typo="Typo.h6" Class="font-weight-bold mb-4">
+                        <MudIcon Icon="@Icons.Material.Filled.Security" Class="mr-2" />
+                        Salud del Sistema
+                    </MudText>
+                    <div class="d-flex align-center gap-3 mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" Color="Color.Success" />
+                        <div>
+                            <MudText Typo="Typo.body1" Class="font-weight-bold">API Saludable</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Health check: OK</MudText>
+                        </div>
+                    </div>
+                    <MudDivider Class="my-3" />
+                    <div class="d-flex align-center gap-3 mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Medium" Color="Color.Primary" />
+                        <div class="flex-grow-1">
+                            <MudText Typo="Typo.body2">Total usuarios</MudText>
+                        </div>
+                        <MudChip T="int" Size="Size.Small" Variant="Variant.Outlined">@_totalUsuarios</MudChip>
+                    </div>
+                    @if (Auth.TienePermiso("APPS_VER"))
+                    {
+                    <div class="d-flex align-center gap-3 mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.Apps" Size="Size.Medium" Color="Color.Primary" />
+                        <div class="flex-grow-1">
+                            <MudText Typo="Typo.body2">Aplicaciones</MudText>
+                        </div>
+                        <MudChip T="int" Size="Size.Small" Variant="Variant.Outlined">@_totalApps</MudChip>
+                    </div>
+                    }
+                    @if (Auth.TienePermiso("TENANTS_VER"))
+                    {
+                    <div class="d-flex align-center gap-3 mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Medium" Color="Color.Primary" />
+                        <div class="flex-grow-1">
+                            <MudText Typo="Typo.body2">Tenants activos</MudText>
+                        </div>
+                        <MudChip T="int" Size="Size.Small" Variant="Variant.Outlined">@_tenantsActivos</MudChip>
+                    </div>
+                    }
+                    <div class="d-flex align-center gap-3">
+                        <MudIcon Icon="@Icons.Material.Filled.Badge" Size="Size.Medium" Color="Color.Primary" />
+                        <div class="flex-grow-1">
+                            <MudText Typo="Typo.body2">Identidades externas</MudText>
+                        </div>
+                        <MudChip T="int" Size="Size.Small" Variant="Variant.Outlined">@_totalIdentidades</MudChip>
+                    </div>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        @* ── Security & Audit Section ── *@
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudPaper Class="pa-4" Elevation="0" Outlined="true">
+                    <MudText Typo="Typo.h6" Class="font-weight-bold mb-4">
+                        <MudIcon Icon="@Icons.Material.Filled.Shield" Class="mr-2" />
+                        Seguridad
+                    </MudText>
+                    <div class="d-flex align-center gap-3 mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.Key" Size="Size.Medium" Color="Color.Primary" />
+                        <div class="flex-grow-1">
+                            <MudText Typo="Typo.body2">Usuarios con MFA</MudText>
+                        </div>
+                        <MudChip T="int" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">@_usuariosConMFA</MudChip>
+                    </div>
+                    <div class="d-flex align-center gap-3 mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.Password" Size="Size.Medium" Color="Color.Warning" />
+                        <div class="flex-grow-1">
+                            <MudText Typo="Typo.body2">Usuarios con pwd expirada</MudText>
+                        </div>
+                        <MudChip T="int" Size="Size.Small" Color="@(_pwdExpiradas > 0 ? Color.Warning : Color.Success)" Variant="Variant.Outlined">@_pwdExpiradas</MudChip>
+                    </div>
+                    <div class="d-flex align-center gap-3 mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.Block" Size="Size.Medium" Color="Color.Error" />
+                        <div class="flex-grow-1">
+                            <MudText Typo="Typo.body2">Usuarios inactivos</MudText>
+                        </div>
+                        <MudChip T="int" Size="Size.Small" Color="@(_usuariosInactivos > 0 ? Color.Warning : Color.Success)" Variant="Variant.Outlined">@_usuariosInactivos</MudChip>
+                    </div>
+                    @if (Auth.TienePermiso("AUDITORIA_VER"))
+                    {
+                    <div class="d-flex align-center gap-3">
+                        <MudIcon Icon="@Icons.Material.Filled.HistoryToggleOff" Size="Size.Medium" Color="Color.Info" />
+                        <div class="flex-grow-1">
+                            <MudText Typo="Typo.body2">Eventos de auditoría</MudText>
+                        </div>
+                        <MudChip T="int" Size="Size.Small" Variant="Variant.Outlined">@_auditoriaReciente</MudChip>
+                    </div>
+                    }
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudPaper Class="pa-4" Elevation="0" Outlined="true">
+                    <MudText Typo="Typo.h6" Class="font-weight-bold mb-4">
+                        <MudIcon Icon="@Icons.Material.Filled.Flag" Class="mr-2" />
+                        Alertas
+                    </MudText>
+                    @if (_alertas.Count > 0)
+                    {
+                        <MudList T="string" Dense="true">
+                            @foreach (var alerta in _alertas)
+                            {
+                                <MudListItem T="string">
+                                    <div class="d-flex align-center gap-2" style="width:100%">
+                                        <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Small" Color="@alerta.Color" />
+                                        <div class="flex-grow-1">
+                                            <MudText Typo="Typo.body2">@alerta.Mensaje</MudText>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                @alerta.Detalle
+                                            </MudText>
+                                        </div>
+                                    </div>
+                                </MudListItem>
+                            }
+                        </MudList>
+                    }
+                    else
+                    {
+                        <div class="pa-4 text-center">
+                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" Color="Color.Success" />
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">Sin alertas activas</MudText>
+                        </div>
+                    }
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    private bool _loading = true;
+    private int _emailsPendientes;
+    private int _intentosFallidos;
+    private int _usuariosBloqueados;
+    private int _sesionesActivas;
+    private int _totalUsuarios;
+    private int _totalApps;
+    private int _tenantsActivos;
+    private int _totalIdentidades;
+    private int _usuariosConMFA;
+    private int _pwdExpiradas;
+    private int _usuariosInactivos;
+    private int _auditoriaReciente;
+    private List<EmailLogDto> _emailsPendientesList = [];
+    private List<AlertaDto> _alertas = [];
+
+    [Inject] private AuthService Auth { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAllAsync();
+    }
+
+    private async Task LoadAllAsync()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            var tenantId = Auth.IdTenant ?? 1;
+
+            await Task.WhenAll(
+                LoadEmailAsync(),
+                LoadDashboardAsync(),
+                LoadSesionesAsync(),
+                LoadAlertasAsync(tenantId)
+            );
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar dashboard operacional: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadEmailAsync()
+    {
+        try
+        {
+            var pendientes = await Api.GetAsync<List<EmailLogDto>>("api/EmailLog/pendientes");
+            _emailsPendientesList = pendientes ?? [];
+            _emailsPendientes = _emailsPendientesList.Count;
+        }
+        catch { _emailsPendientes = 0; _emailsPendientesList = []; }
+    }
+
+    private async Task LoadDashboardAsync()
+    {
+        try
+        {
+            var dto = await Api.GetAsync<DashboardDto>("api/Dashboard");
+            if (dto is not null)
+            {
+                _totalUsuarios = dto.TotalUsuarios;
+                _usuariosBloqueados = dto.UsuariosBloqueados;
+                _usuariosInactivos = dto.UsuariosInactivos;
+                _usuariosConMFA = dto.UsuariosConMFA;
+                _totalIdentidades = dto.UsuariosOAuth + dto.UsuariosHibridos;
+                _intentosFallidos = dto.IntentosRecientes?.Count(i => !i.Exitoso) ?? 0;
+            }
+        }
+        catch { }
+    }
+
+    private async Task LoadSesionesAsync()
+    {
+        var tasks = new List<Task>();
+
+        if (Auth.TienePermiso("SESIONES_VER"))
+            tasks.Add(Task.Run(async () => _sesionesActivas = await Api.GetAsync<int>("api/Sesiones/contar-tenant")));
+
+        if (Auth.TienePermiso("APPS_VER"))
+            tasks.Add(Task.Run(async () => _totalApps = await Api.GetAsync<int>("api/Apps/count")));
+
+        if (Auth.TienePermiso("TENANTS_VER"))
+            tasks.Add(Task.Run(async () => _tenantsActivos = await Api.GetAsync<int>("api/Tenants/activos/count")));
+
+        await Task.WhenAll(tasks);
+    }
+
+    private async Task LoadAlertasAsync(int tenantId)
+    {
+        _alertas = [];
+        try
+        {
+            var pwdExpiradas = await Api.GetAsync<List<UsuarioDto>>("api/Usuarios/con-password-expirada");
+            _pwdExpiradas = pwdExpiradas?.Count ?? 0;
+            if (_pwdExpiradas > 0)
+                _alertas.Add(new AlertaDto
+                {
+                    Mensaje = $"{_pwdExpiradas} usuarios con contraseña expirada",
+                    Detalle = "Requerir cambio de contraseña o revisar política",
+                    Color = Color.Warning
+                });
+        }
+        catch { }
+
+        if (Auth.TienePermiso("AUDITORIA_VER"))
+        {
+            try
+            {
+                var audit = await Api.GetAsync<List<AuditoriaPwdDto>>($"api/AuditoriaPwd/tenant/20");
+                _auditoriaReciente = audit?.Count ?? 0;
+                if (audit is not null && audit.Any(a => a.NivelRiesgo >= 5))
+                    _alertas.Add(new AlertaDto
+                    {
+                        Mensaje = "Intentos de acceso fallidos detectados en auditoría",
+                        Detalle = "Revisar actividad reciente",
+                        Color = Color.Warning
+                    });
+            }
+            catch { }
+        }
+    }
+
+    private class AlertaDto
+    {
+        public string Mensaje { get; set; } = "";
+        public string Detalle { get; set; } = "";
+        public Color Color { get; set; } = Color.Info;
+    }
+}

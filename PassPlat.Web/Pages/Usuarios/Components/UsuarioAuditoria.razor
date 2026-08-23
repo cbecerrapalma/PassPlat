@@ -1,0 +1,83 @@
+@using PassPlat.Aplicacion.Dtos.Core
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+
+@if (_loading)
+{
+    <MudSkeleton Width="100%" Height="200px" />
+}
+else if (_items.Count == 0)
+{
+    <MudContainer Class="mt-4">
+        <MudText Typo="Typo.subtitle2" Class="mb-3" Style="color:var(--mud-palette-text-secondary);">
+            Eventos de seguridad registrados sobre la cuenta.
+        </MudText>
+        <MudText Align="Align.Center" Class="py-8">
+            <MudIcon Icon="@Icons.Material.Filled.Assignment" Class="mb-2" /><br />Sin registros
+        </MudText>
+    </MudContainer>
+}
+else
+{
+    <MudContainer Class="mt-4">
+        <MudText Typo="Typo.subtitle2" Class="mb-3" Style="color:var(--mud-palette-text-secondary);">
+            Eventos de seguridad registrados sobre la cuenta.
+        </MudText>
+        <MudTable T="AuditoriaPwdDto" Items="@_items" Hover="true" Breakpoint="Breakpoint.Sm">
+            <ColGroup>
+                <col style="width:80px;" /><col /><col /><col />
+            </ColGroup>
+            <HeaderContent>
+                <MudTh>Id</MudTh><MudTh>Acción</MudTh><MudTh>Detalles</MudTh><MudTh>Fecha</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Id">@context.Id</MudTd>
+                <MudTd DataLabel="Acción">@context.TipoAccionNombre</MudTd>
+                <MudTd DataLabel="Detalles">@context.Detalles</MudTd>
+                <MudTd DataLabel="Fecha">@context.FecAccion?.ToLocalTime().ToString("g")</MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                <MudText Align="Align.Center" Class="py-8">
+                    <MudIcon Icon="@Icons.Material.Filled.Assignment" Class="mb-2" /><br />Sin registros
+                </MudText>
+            </NoRecordsContent>
+        </MudTable>
+    </MudContainer>
+}
+
+@code {
+    [Parameter] public int UserId { get; set; }
+    [Parameter] public bool IsActive { get; set; }
+    [Parameter] public EventCallback<int> CountChanged { get; set; }
+
+    private List<AuditoriaPwdDto> _items = [];
+    private bool _loading = true;
+    private bool _loaded;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsActive && !_loaded)
+        {
+            _loaded = true;
+            await LoadData();
+        }
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        try
+        {
+            _items = await Api.GetAsync<List<AuditoriaPwdDto>>($"api/auditoriapwd/usuario/{UserId}/20") ?? [];
+            await CountChanged.InvokeAsync(_items.Count);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

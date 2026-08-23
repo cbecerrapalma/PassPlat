@@ -1,0 +1,204 @@
+@inject ISnackbar Snackbar
+
+<MudDialog Options="@_dialogOptions" Class="provider-dialog">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(IsEdit ? "Editar" : "Nuevo") Provider</MudText>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">Configura un tipo de proveedor de correo para la plataforma.</MudText>
+    </TitleContent>
+
+    <DialogContent>
+        <MudGrid>
+            <MudItem xs="12" lg="8">
+                @* Tipo de Provider *@
+                <MudPaper Class="pa-4 mb-4" Elevation="0" Outlined="true">
+                    <MudText Typo="Typo.subtitle2" Class="mb-3">Seleccionar Tipo de Provider</MudText>
+                    <div class="provider-type-grid d-flex flex-wrap gap-2">
+                        @foreach (var pt in _providerTypes)
+                        {
+                            <MudPaper @onclick="() => _selectedType = pt.Value"
+                                      Class="@GetTypeItemClass(pt.Value)"
+                                      Elevation="0" Outlined="true"
+                                      Style="@GetTypeItemStyle(pt.Value)">
+                                <div class="d-flex flex-column align-center mud-width-full">
+                                    <MudIcon Icon="@pt.Icon" Color="@pt.Color" Size="Size.Large" />
+                                    <MudText Typo="Typo.body2" Class="mt-2 font-weight-medium">@pt.Label</MudText>
+                                    <MudText Typo="Typo.caption" Class="mud-text-secondary text-center">@pt.Description</MudText>
+                                </div>
+                            </MudPaper>
+                        }
+                    </div>
+                </MudPaper>
+
+                @* Información General *@
+                <MudPaper Class="pa-4 mb-4" Elevation="0" Outlined="true">
+                    <MudText Typo="Typo.subtitle2" Class="mb-3">Información General</MudText>
+                    <MudGrid>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField Label="Nombre del Provider *" Variant="Variant.Outlined" Value="@_nombre" FullWidth="true"
+                                          HelperText="Nombre descriptivo para identificar este provider." />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField Label="Clave / Key *" Variant="Variant.Outlined" Value="@_clave" FullWidth="true"
+                                          HelperText="Identificador único (slug). Solo letras, números y guiones." />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField Label="Descripción" Variant="Variant.Outlined" Value="@_descripcion" FullWidth="true"
+                                          HelperText="Describe el propósito y uso de este provider de correo." />
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+
+                @* Configuración SMTP *@
+                <MudPaper Class="pa-4 mb-4" Elevation="0" Outlined="true">
+                    <MudText Typo="Typo.subtitle2" Class="mb-1">Configuración SMTP Predeterminada</MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary mb-3">Valores por defecto para las cuentas creadas con este provider. Pueden sobrescribirse por cuenta.</MudText>
+                    <MudGrid>
+                        <MudItem xs="12" sm="8">
+                            <MudTextField Label="Host *" Variant="Variant.Outlined" Value="@_smtpHost" FullWidth="true" />
+                        </MudItem>
+                        <MudItem xs="12" sm="4">
+                            <MudTextField Label="Puerto *" Variant="Variant.Outlined" Value="@_smtpPuerto" Type="number" FullWidth="true" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField Label="Usuario por defecto" Variant="Variant.Outlined" Value="@_smtpUsuario" FullWidth="true"
+                                          HelperText="Usuario predeterminado para nuevas cuentas SMTP." />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudSwitch @bind-Value="_sslDefault" Color="Color.Primary">SSL habilitado por defecto</MudSwitch>
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudSwitch @bind-Value="_tlsDefault" Color="Color.Primary">TLS habilitado por defecto</MudSwitch>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            </MudItem>
+
+            @* RIGHT SIDEBAR *@
+            <MudItem xs="12" lg="4">
+                @* Estado *@
+                <MudPaper Class="pa-4 mb-4" Elevation="0" Outlined="true">
+                    <MudText Typo="Typo.subtitle2" Class="mb-3">Estado</MudText>
+                    <MudSwitch @bind-Value="_habilitado" Color="Color.Primary" Class="mb-3">Provider habilitado</MudSwitch>
+                    <div class="mud-text-secondary">
+                        <MudText Typo="Typo.body2">Estado</MudText>
+                        <MudText Typo="Typo.body2" Class="@GetStatusTextClass()">
+                            @(_habilitado ? "● Habilitado" : "● Deshabilitado")
+                        </MudText>
+                        <MudText Typo="Typo.body2">Creado</MudText>
+                        <MudText Typo="Typo.body2" Class="mb-2">—</MudText>
+                        <MudText Typo="Typo.body2">Última edición</MudText>
+                        <MudText Typo="Typo.body2">—</MudText>
+                    </div>
+                </MudPaper>
+
+                @* Tenants *@
+                <MudPaper Class="pa-4 mb-4" Elevation="0" Outlined="true">
+                    <MudText Typo="Typo.subtitle2" Class="mb-1">Tenants Asociados</MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary mb-3">Selecciona en qué tenants estará disponible este provider.</MudText>
+                    <MudSelect T="string" Label="Alcance" Variant="Variant.Outlined" Value="@_alcance" FullWidth="true" Class="mb-3">
+                        <MudSelectItem Value="@("todos")">Todos los tenants</MudSelectItem>
+                        <MudSelectItem Value="@("plataforma")">Solo Plataforma (Sistema)</MudSelectItem>
+                        <MudSelectItem Value="@("plataforma-corp")">Plataforma + Corp</MudSelectItem>
+                        <MudSelectItem Value="@("corp")">Corp únicamente</MudSelectItem>
+                        <MudSelectItem Value="@("dev")">Dev únicamente</MudSelectItem>
+                    </MudSelect>
+                    <div class="d-flex flex-wrap gap-2">
+                        <MudChip T="string" Size="Size.Small" Color="Color.Primary">Plataforma</MudChip>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Info">Corp</MudChip>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Success">Dev</MudChip>
+                    </div>
+                </MudPaper>
+
+                @* Auditoría *@
+                <MudPaper Class="pa-4 mb-4" Elevation="0" Outlined="true">
+                    <MudText Typo="Typo.subtitle2" Class="mb-3">Auditoría</MudText>
+                    <div class="mud-text-secondary">
+                        <MudText Typo="Typo.body2">Creado por</MudText>
+                        <MudText Typo="Typo.body2" Class="mb-2">Carlos Arriagada</MudText>
+                        <MudText Typo="Typo.body2">Fecha creación</MudText>
+                        <MudText Typo="Typo.body2" Class="mb-2">—</MudText>
+                        <MudText Typo="Typo.body2">Última edición</MudText>
+                        <MudText Typo="Typo.body2">—</MudText>
+                    </div>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="@Cancel">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" OnClick="@Submit">
+            @(IsEdit ? "Guardar Cambios" : "Crear Provider")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public bool IsEdit { get; set; }
+    [Parameter] public string? ProviderNombre { get; set; }
+
+    private DialogOptions _dialogOptions = new()
+    {
+        MaxWidth = MaxWidth.ExtraExtraLarge,
+        FullWidth = true,
+        CloseButton = true
+    };
+
+    private string _selectedType = "smtp";
+    private string _nombre = "";
+    private string _clave = "";
+    private string _descripcion = "";
+    private string _smtpHost = "smtp.gmail.com";
+    private string _smtpPuerto = "587";
+    private string _smtpUsuario = "";
+    private bool _sslDefault;
+    private bool _tlsDefault = true;
+    private bool _habilitado = true;
+    private string _alcance = "todos";
+
+    private readonly List<ProviderTypeOption> _providerTypes =
+    [
+        new() { Value = "smtp", Label = "SMTP", Description = "Protocolo estándar de correo", Icon = Icons.Material.Filled.Email, Color = Color.Info },
+        new() { Value = "sendgrid", Label = "SendGrid", Description = "API RESTful de Twilio", Icon = Icons.Material.Filled.Send, Color = Color.Info },
+        new() { Value = "ses", Label = "Amazon SES", Description = "Servicio de correo AWS", Icon = Icons.Material.Filled.Cloud, Color = Color.Warning },
+        new() { Value = "graph", Label = "MS Graph", Description = "Microsoft 365 / Exchange", Icon = Icons.Material.Filled.DesktopWindows, Color = Color.Info },
+        new() { Value = "mailgun", Label = "Mailgun", Description = "API enfocada desarrolladores", Icon = Icons.Material.Filled.MailOutline, Color = Color.Secondary },
+        new() { Value = "custom", Label = "Personalizado", Description = "Provider REST/API genérico", Icon = Icons.Material.Filled.Settings, Color = Color.Default }
+    ];
+
+    protected override void OnInitialized()
+    {
+        if (IsEdit && !string.IsNullOrEmpty(ProviderNombre))
+        {
+            _nombre = ProviderNombre;
+            _clave = ProviderNombre.ToLower().Replace(" ", "-");
+        }
+    }
+
+    private string GetTypeItemClass(string value) =>
+        $"provider-type-item pa-3 {(_selectedType == value ? "selected" : "")}";
+
+    private string GetTypeItemStyle(string value) =>
+        $"cursor:pointer;flex:1 0 140px;max-width:160px;{(_selectedType == value ? "border-color:var(--mud-palette-primary) !important;" : "")}";
+
+    private string GetStatusTextClass() =>
+        _habilitado ? "mud-text-success mb-2" : "mud-text-warning mb-2";
+
+    private void Submit()
+    {
+        Snackbar.Add(IsEdit ? "Provider actualizado visualmente" : "Provider creado visualmente", Severity.Success);
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private class ProviderTypeOption
+    {
+        public string Value { get; set; } = "";
+        public string Label { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string Icon { get; set; } = "";
+        public Color Color { get; set; }
+    }
+}

@@ -1,0 +1,93 @@
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+
+@if (!IsActive)
+{
+    return;
+}
+
+@if (!_loaded)
+{
+    <MudSkeleton Width="100%" Height="200px" />
+}
+else if (_items.Count == 0)
+{
+    <div class="d-flex flex-column align-center pa-6">
+        <MudIcon Icon="@Icons.Material.Filled.Shield" Size="Size.Large" Class="mud-text-secondary mb-2" />
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">Sin permisos efectivos</MudText>
+    </div>
+}
+else
+{
+    <MudTable Items="@_items" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm">
+        <HeaderContent>
+            <MudTh>Permiso</MudTh>
+            <MudTh>Aplicación</MudTh>
+            <MudTh>Módulo</MudTh>
+            <MudTh>Origen</MudTh>
+            <MudTh>Estado</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Permiso">
+                <MudText Typo="Typo.body2" Class="font-weight-medium">@context.Nombre</MudText>
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">@context.Codigo</MudText>
+            </MudTd>
+            <MudTd DataLabel="Aplicación"><MudText Typo="Typo.body2">@context.Modulo</MudText></MudTd>
+            <MudTd DataLabel="Módulo"><MudText Typo="Typo.body2">@context.ModuloNombre</MudText></MudTd>
+            <MudTd DataLabel="Origen">
+                <IamPermissionBadge Origen="@context.Origen" EsDirecto="@context.EsDirecto" EsHeredado="@context.EsHeredado" EsSistema="@context.EsSistema" />
+            </MudTd>
+            <MudTd DataLabel="Estado">
+                <MudChip T="string" Size="Size.Small" Color="@(context.Activo ? Color.Success : Color.Default)">
+                    @(context.Activo ? "Activo" : "Inactivo")
+                </MudChip>
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText Align="Align.Center" Class="pa-4 mud-text-secondary">Sin permisos asignados</MudText>
+        </NoRecordsContent>
+    </MudTable>
+}
+
+@code {
+    [Parameter] public int UserId { get; set; }
+    [Parameter] public bool IsActive { get; set; }
+    [Parameter] public EventCallback<int> CountChanged { get; set; }
+
+    private List<PermisoEfectivoRow> _items = [];
+    private bool _loaded;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsActive && !_loaded)
+        {
+            try
+            {
+                var result = await Api.GetAsync<List<PermisoEfectivoRow>>($"api/PermisosEfectivos/usuario/{UserId}");
+                _items = result ?? [];
+                await CountChanged.InvokeAsync(_items.Count);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+            }
+            _loaded = true;
+        }
+    }
+
+    private class PermisoEfectivoRow
+    {
+        public int IdPermiso { get; set; }
+        public string Codigo { get; set; } = "";
+        public string Nombre { get; set; } = "";
+        public string? Descripcion { get; set; }
+        public string Modulo { get; set; } = "";
+        public string? ModuloNombre { get; set; }
+        public byte Orden { get; set; }
+        public bool Activo { get; set; } = true;
+        public bool EsDirecto { get; set; }
+        public bool EsHeredado { get; set; }
+        public bool EsSistema { get; set; }
+        public string Origen => EsSistema ? "Sistema" : EsDirecto ? "Directo" : EsHeredado ? "Rol Heredado" : "Rol";
+    }
+}

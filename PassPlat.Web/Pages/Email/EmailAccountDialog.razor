@@ -1,0 +1,223 @@
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog Options="_dialogOptions">
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudAvatar Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled">
+                <MudIcon Icon="@(IsEdit ? Icons.Material.Filled.Edit : Icons.Material.Filled.MailOutline)" Size="Size.Small" />
+            </MudAvatar>
+            <MudText Typo="Typo.h6">@(IsEdit ? "Editar" : "Nueva") Cuenta de Correo</MudText>
+        </div>
+    </TitleContent>
+
+    <DialogContent>
+        <MudText Typo="Typo.subtitle2" Class="mud-text-secondary mb-2">PROVIDER Y DATOS GENERALES</MudText>
+        <MudGrid>
+            <MudItem xs="12" sm="6">
+                <MudSelect T="byte" Label="Provider *" Variant="Variant.Outlined" @bind-Value="_idProvider" FullWidth="true" Required="true"
+                    Error="@(_submitted && _idProvider == 0)" ErrorText="Seleccione un provider">
+                    @foreach (var p in _providers)
+                    {
+                        <MudSelectItem Value="p.Id">@p.Nombre</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="_nombre" Label="Nombre de la Cuenta" Variant="Variant.Outlined" FullWidth="true" Required="true"
+                    Error="@(_submitted && string.IsNullOrWhiteSpace(_nombre))" ErrorText="El nombre es requerido"
+                    HelperText="Ej: SMTP Gmail Principal" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="_descripcion" Label="Descripcion" Variant="Variant.Outlined" FullWidth="true"
+                    HelperText="Opcional - proposito de la cuenta" />
+            </MudItem>
+        </MudGrid>
+
+        <MudText Typo="Typo.subtitle2" Class="mud-text-secondary mb-2 mt-4">CONFIGURACION SMTP</MudText>
+        <MudGrid>
+            <MudItem xs="12" sm="8">
+                <MudTextField @bind-Value="_host" Label="Host / Servidor" Variant="Variant.Outlined" FullWidth="true" Required="true"
+                    Error="@(_submitted && string.IsNullOrWhiteSpace(_host))" ErrorText="El host es requerido"
+                    HelperText="Ej: smtp.gmail.com" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="_puerto" Label="Puerto" Variant="Variant.Outlined" Type="number" FullWidth="true"
+                    HelperText="Comun: 25, 465 (SSL), 587 (TLS)" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="_usuario" Label="Usuario / Username" Variant="Variant.Outlined" FullWidth="true" Required="true"
+                    Error="@(_submitted && string.IsNullOrWhiteSpace(_usuario))" ErrorText="El usuario es requerido" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="_password" Label="Contrasena / App Password" Variant="Variant.Outlined" InputType="InputType.Password" FullWidth="true"
+                    Required="@(!IsEdit)"
+                    Error="@(_submitted && !IsEdit && string.IsNullOrWhiteSpace(_password))" ErrorText="La contrasena es requerida"
+                    HelperText="@(IsEdit ? "Dejar en blanco para mantener la existente" : "Se almacena encriptada con AES-256")" />
+            </MudItem>
+        </MudGrid>
+
+        <MudText Typo="Typo.subtitle2" Class="mud-text-secondary mb-2 mt-4">INFORMACION DEL REMITENTE</MudText>
+        <MudGrid>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="_fromAddress" Label="From Address" Variant="Variant.Outlined" FullWidth="true" Required="true"
+                    Error="@(_submitted && string.IsNullOrWhiteSpace(_fromAddress))" ErrorText="El remitente es requerido"
+                    HelperText="Direccion que veran los destinatarios." />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="_fromName" Label="From Name" Variant="Variant.Outlined" FullWidth="true"
+                    HelperText="Nombre visible del remitente." />
+            </MudItem>
+        </MudGrid>
+
+        <MudText Typo="Typo.subtitle2" Class="mud-text-secondary mb-2 mt-4">SEGURIDAD Y CIFRADO</MudText>
+        <MudGrid>
+            <MudItem xs="12" sm="6">
+                <MudSwitch @bind-Value="_usaSSL" Color="Color.Primary">Usar SSL (puerto 465)</MudSwitch>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudSwitch @bind-Value="_usaTLS" Color="Color.Primary">Usar TLS (STARTTLS, puerto 587)</MudSwitch>
+            </MudItem>
+            <MudItem xs="12">
+                <MudSwitch @bind-Value="_esPredet" Color="Color.Primary">Marcar como cuenta predeterminada para el provider</MudSwitch>
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" OnClick="@Guardar" Disabled="@(!PuedeGuardar() || _guardando)">
+            @(IsEdit ? "Guardar Cambios" : "Guardar Cuenta")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Large, FullWidth = true, CloseButton = true };
+
+    [Parameter] public bool IsEdit { get; set; }
+    [Parameter] public EmailAccountDto? Account { get; set; }
+
+    private List<EmailProviderDto> _providers = [];
+    private byte _idProvider;
+    private string _nombre = "";
+    private string _descripcion = "";
+    private string _host = "";
+    private int _puerto = 587;
+    private string _usuario = "";
+    private string _password = "";
+    private string _fromAddress = "";
+    private string _fromName = "";
+    private bool _usaSSL;
+    private bool _usaTLS = true;
+    private bool _esPredet;
+    private bool _guardando;
+    private bool _submitted;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _providers = await Api.GetAsync<List<EmailProviderDto>>("api/emailproviders") ?? [];
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar providers: {ex.Message}", Severity.Error);
+        }
+
+        if (IsEdit && Account is not null)
+        {
+            _idProvider = Account.IdProvider;
+            _nombre = Account.Nombre;
+            _descripcion = Account.Descripcion ?? "";
+            _host = Account.Host;
+            _puerto = Account.Puerto;
+            _usuario = Account.SmtpUsuario;
+            _fromAddress = Account.FromAddress;
+            _fromName = Account.FromName ?? "";
+            _usaSSL = Account.UsaSSL;
+            _usaTLS = Account.UsaTLS;
+            _esPredet = Account.EsPredeterminada;
+        }
+    }
+
+    private bool PuedeGuardar()
+    {
+        if (string.IsNullOrWhiteSpace(_nombre)) return false;
+        if (string.IsNullOrWhiteSpace(_host)) return false;
+        if (string.IsNullOrWhiteSpace(_usuario)) return false;
+        if (string.IsNullOrWhiteSpace(_fromAddress)) return false;
+        if (_idProvider == 0) return false;
+        if (!IsEdit && string.IsNullOrWhiteSpace(_password)) return false;
+        return true;
+    }
+
+    private async Task Guardar()
+    {
+        _submitted = true;
+        if (!PuedeGuardar()) return;
+        _guardando = true;
+        try
+        {
+            if (IsEdit && Account is not null)
+            {
+                var dto = new ActualizarEmailAccountDto
+                {
+                    Nombre = _nombre,
+                    Descripcion = string.IsNullOrWhiteSpace(_descripcion) ? null : _descripcion,
+                    Host = _host,
+                    Puerto = _puerto,
+                    SmtpUsuario = _usuario,
+                    Password = string.IsNullOrWhiteSpace(_password) ? null : _password,
+                    FromAddress = _fromAddress,
+                    FromName = string.IsNullOrWhiteSpace(_fromName) ? null : _fromName,
+                    UsaSSL = _usaSSL,
+                    UsaTLS = _usaTLS,
+                    EsPredeterminada = _esPredet,
+                    Activo = true
+                };
+                var result = await Api.PutAsync<EmailAccountDto>($"api/emailaccounts/{Account.Id}", dto);
+                if (result is not null)
+                {
+                    Snackbar.Add("Cuenta actualizada", Severity.Success);
+                    MudDialog.Close(DialogResult.Ok(true));
+                }
+                else
+                    Snackbar.Add(Api.LastError ?? "Error al actualizar cuenta", Severity.Error);
+            }
+            else
+            {
+                var dto = new CrearEmailAccountDto
+                {
+                    IdProvider = _idProvider,
+                    Nombre = _nombre,
+                    Descripcion = string.IsNullOrWhiteSpace(_descripcion) ? null : _descripcion,
+                    Host = _host,
+                    Puerto = _puerto,
+                    SmtpUsuario = _usuario,
+                    Password = _password,
+                    FromAddress = _fromAddress,
+                    FromName = string.IsNullOrWhiteSpace(_fromName) ? null : _fromName,
+                    UsaSSL = _usaSSL,
+                    UsaTLS = _usaTLS,
+                    EsPredeterminada = _esPredet
+                };
+                var result = await Api.PostAsync<EmailAccountDto>("api/emailaccounts", dto);
+                if (result is not null)
+                {
+                    Snackbar.Add("Cuenta creada", Severity.Success);
+                    MudDialog.Close(DialogResult.Ok(true));
+                }
+                else
+                    Snackbar.Add(Api.LastError ?? "Error al crear cuenta", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+        }
+        finally { _guardando = false; }
+    }
+}

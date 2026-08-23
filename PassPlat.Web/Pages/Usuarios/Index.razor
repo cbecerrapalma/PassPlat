@@ -1,0 +1,263 @@
+@page "/usuarios"
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@inject NavigationManager Navigation
+@inject AuthService Auth
+@using PassPlat.Web.Models
+@using PassPlat.Web.Shared
+
+@if (!Auth.TienePermiso("USUARIOS_VER"))
+{
+    <SinPermiso PermisoRequerido="USUARIOS_VER" />
+}
+else
+{
+<div class="iam-page">
+    <MudBreadcrumbs Class="mb-3">
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/tenants"))">Administracion</MudBreadcrumbItem>
+        <MudBreadcrumbItem>Usuarios</MudBreadcrumbItem>
+    </MudBreadcrumbs>
+
+    <div class="page-header">
+        <div class="page-title-row">
+            <div>
+                <h1 class="page-title">Usuarios</h1>
+                <p class="page-subtitle">Gestión de identidades, accesos, roles y grupos de la plataforma.</p>
+            </div>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenCreateDialog" StartIcon="@Icons.Material.Filled.Add">
+                Nuevo Usuario
+            </MudButton>
+        </div>
+    </div>
+
+    <div class="kpi-row mb-4">
+        <IamKpiCard Valor="@_totalCount.ToString()" Label="Usuarios Totales" Subtexto="@($"{_totalCount} total")" Icon="@Icons.Material.Filled.People" ColorClass="primary" Xs="12" Sm="6" Md="2" Lg="2" />
+        <IamKpiCard Valor="@_estados.Activos.ToString()" Label="Activos" Subtexto="@($"{_estados.Activos} activos")" Icon="@Icons.Material.Filled.CheckCircle" ColorClass="success" Xs="12" Sm="6" Md="2" Lg="2" />
+        <IamKpiCard Valor="@_estados.ConMFA.ToString()" Label="Con MFA" Subtexto="Autenticación de dos factores" Icon="@Icons.Material.Filled.Security" ColorClass="info" Xs="12" Sm="6" Md="2" Lg="2" />
+        <IamKpiCard Valor="@_estados.Bloqueados.ToString()" Label="Bloqueados" Subtexto="@($"{_estados.Bloqueados} bloqueados")" Icon="@Icons.Material.Filled.Block" ColorClass="warning" Xs="12" Sm="6" Md="2" Lg="2" />
+        <IamKpiCard Valor="@_estados.Pendientes.ToString()" Label="Sin Verificar" Subtexto="@($"{_estados.Pendientes} pendientes")" Icon="@Icons.Material.Filled.PendingActions" ColorClass="error" Xs="12" Sm="6" Md="2" Lg="2" />
+    </div>
+
+    <div class="content-body">
+        <div class="table-panel">
+            <CrudToolbar ShowSearch="true" ShowFilter="true" FilterButtonText="Filtros"
+                SearchString="@_searchString" SearchStringChanged="@OnSearchChanged"
+                OnRefresh="@RefrescarTodo" ShowCreate="false" />
+            <div class="table-wrap">
+                <MudTable @ref="_table" T="UsuarioDto" ServerData="@_serverReload" Items="@_items" Hover="true" Breakpoint="Breakpoint.Sm"
+                    RowStyle="cursor: pointer;" SelectedItem="_selectedItem" SelectedItemChanged="@OnSelectedItemChanged">
+                    <ColGroup>
+                        <col style="width: 60px;" /><col /><col /><col /><col /><col style="width: 100px;" /><col style="width: 60px;" />
+                    </ColGroup>
+                    <HeaderContent>
+                        <MudTh></MudTh><MudTh>Usuario</MudTh><MudTh>Email</MudTh><MudTh>Nombre</MudTh><MudTh>Apellido</MudTh><MudTh>Estado</MudTh><MudTh></MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>
+                            <MudAvatar Size="Size.Small" Color="Color.Primary" Class="row-avatar">
+                                <MudText Typo="Typo.caption">@context.Nombre[..Math.Min(2, context.Nombre.Length)]</MudText>
+                            </MudAvatar>
+                        </MudTd>
+                        <MudTd DataLabel="Usuario">
+                            <MudText Typo="Typo.body2" Class="font-weight-bold">@context.NomUsuario</MudText>
+                        </MudTd>
+                        <MudTd DataLabel="Email">@context.Email</MudTd>
+                        <MudTd DataLabel="Nombre">@context.Nombre</MudTd>
+                        <MudTd DataLabel="Apellido">@context.Apellido</MudTd>
+                        <MudTd DataLabel="Estado">
+                            <span class="badge @(!context.Eliminado ? "badge-active" : "badge-inactive")">
+                                <span class="badge-dot"></span>@(!context.Eliminado ? "Activo" : "Eliminado")
+                            </span>
+                        </MudTd>
+                        <MudTd>
+                            <div @onclick:stopPropagation="true" class="table-actions">
+                                <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true">
+                                    <MudMenuItem OnClick="@(() => Navigation.NavigateTo($"/usuario/{context.Id}"))">
+                                        <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Class="mr-2" Color="Color.Info" />
+                                        Ver detalle
+                                    </MudMenuItem>
+                                    <MudMenuItem OnClick="@(() => OpenEditDialog(context))">
+                                        <MudIcon Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Class="mr-2" />
+                                        Editar
+                                    </MudMenuItem>
+                                    <MudMenuItem OnClick="@(() => ConfirmDelete(context))">
+                                        <MudIcon Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Class="mr-2" Color="Color.Error" />
+                                        Eliminar
+                                    </MudMenuItem>
+                                </MudMenu>
+                            </div>
+                        </MudTd>
+                    </RowTemplate>
+                    <PagerContent>
+                        <MudTablePager PageSizeOptions="new int[]{10, 25, 50}" />
+                    </PagerContent>
+                    <NoRecordsContent>
+                        <div class="d-flex flex-column align-center py-6">
+                            <MudAvatar Size="Size.Large" Color="Color.Default" Variant="Variant.Outlined" Class="mb-3">
+                                <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Large" />
+                            </MudAvatar>
+                            <MudText Typo="Typo.subtitle1" Class="font-weight-bold mb-1">Sin usuarios</MudText>
+                            <MudText Typo="Typo.body2" Class="mud-text-secondary">No se encontraron usuarios en el sistema</MudText>
+                        </div>
+                    </NoRecordsContent>
+                </MudTable>
+            </div>
+        </div>
+
+        @if (_selectedItem is not null)
+        {
+            <div class="iam-inspector" style="width:380px;min-width:380px;">
+                <div class="inspector-header">
+                    <div class="inspector-title-row">
+                        <div class="inspector-title">@_selectedItem.NomUsuario</div>
+                        <span class="badge @(!_selectedItem.Eliminado ? "badge-active" : "badge-inactive")">
+                            <span class="badge-dot"></span>@(!_selectedItem.Eliminado ? "Activo" : "Inactivo")
+                        </span>
+                    </div>
+                    <div class="inspector-tabs" role="tablist">
+                        <MudButton Variant="Variant.Text" Color="@(_inspectorTab == 0 ? Color.Primary : Color.Default)" @onclick="() => _inspectorTab = 0" Size="Size.Small">Info</MudButton>
+                        <MudButton Variant="Variant.Text" Color="@(_inspectorTab == 1 ? Color.Primary : Color.Default)" @onclick="() => _inspectorTab = 1" Size="Size.Small">Accesos</MudButton>
+                    </div>
+                </div>
+                <div class="inspector-body">
+                    @if (_inspectorTab == 0)
+                    {
+                        <div class="insp-section">
+                            <div class="insp-section-title">Identidad</div>
+                            <div class="field-row"><div class="field-label">Usuario</div><div class="field-value mono">@_selectedItem.NomUsuario</div></div>
+                            <div class="field-row"><div class="field-label">Nombre</div><div class="field-value">@_selectedItem.Nombre @_selectedItem.Apellido</div></div>
+                            <div class="field-row"><div class="field-label">Email</div><div class="field-value mono">@_selectedItem.Email</div></div>
+                        </div>
+                        <div class="insp-section">
+                            <div class="insp-section-title">Estado</div>
+                            <div class="field-row"><div class="field-label">Estado</div><div class="field-value"><span class="badge @(!_selectedItem.Eliminado ? "badge-active" : "badge-inactive")"><span class="badge-dot"></span>@(!_selectedItem.Eliminado ? "Activo" : "Inactivo")</span></div></div>
+                        </div>
+                        <MudButton Variant="Variant.Outlined" @onclick="NavegarDetalle" Class="mt-2" FullWidth="true">
+                            Ver detalle completo
+                        </MudButton>
+                    }
+                    else if (_inspectorTab == 1)
+                    {
+                        <UsuarioAccesos UserId="_selectedItem.Id" IsActive="@(_inspectorTab == 1)" />
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+}
+
+@code {
+    private MudTable<UsuarioDto>? _table;
+    private IEnumerable<UsuarioDto> _items = [];
+    private string _searchString = "";
+    private UsuarioDto? _selectedItem;
+    private int _inspectorTab;
+    private string _totalCount = "0";
+    private UsuarioEstados _estados = new();
+
+    private async Task<TableData<UsuarioDto>> _serverReload(TableState state, CancellationToken ct)
+    {
+        try
+        {
+            var searchParam = string.IsNullOrEmpty(_searchString) ? "" : _searchString;
+            var idTenantParam = Auth.IdTenant.HasValue ? $"&idTenant={Auth.IdTenant}" : "";
+            var response = await Api.GetAsync<PagedResponse<UsuarioDto>>(
+                $"api/usuarios/page?pageNumber={state.Page + 1}&pageSize={state.PageSize}&search={Uri.EscapeDataString(searchParam)}{idTenantParam}");
+            if (response != null)
+            {
+                _items = response.Items;
+                return new TableData<UsuarioDto> { Items = response.Items, TotalItems = response.TotalCount };
+            }
+        }
+        catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error al cargar: {ex.Message}", Severity.Error); }
+        return new TableData<UsuarioDto> { Items = [], TotalItems = 0 };
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.TienePermiso("USUARIOS_VER")) return;
+        await CargarEstados();
+    }
+
+    private async Task OnSearchChanged(string value)
+    {
+        _searchString = value;
+        if (_table is not null) await _table.ReloadServerData();
+    }
+
+    private async Task RefrescarTodo()
+    {
+        if (_table is not null) await _table.ReloadServerData();
+        await CargarEstados();
+    }
+
+    private async Task CargarEstados()
+    {
+        try
+        {
+            var todos = await Api.GetAsync<List<UsuarioDto>>("api/usuarios") ?? [];
+            _totalCount = todos.Count.ToString();
+            _estados = new UsuarioEstados
+            {
+                Activos = todos.Count(u => !u.Eliminado).ToString(),
+                ConMFA = todos.Count.ToString(),
+                Bloqueados = todos.Count(u => u.EstadoNombre == "Bloqueado").ToString(),
+                Pendientes = todos.Count(u => u.EstadoNombre == "Pendiente").ToString()
+            };
+        }
+        catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error al cargar conteos: {ex.Message}", Severity.Error); }
+    }
+
+    private void NavegarDetalle()
+    {
+        if (_selectedItem is not null)
+            Navigation.NavigateTo($"/usuario/{_selectedItem.Id}");
+    }
+
+    private void OnSelectedItemChanged(UsuarioDto? item)
+    {
+        _selectedItem = item;
+        _inspectorTab = 0;
+    }
+
+    private static readonly DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Large, FullWidth = true, CloseButton = true };
+
+    private async Task OpenCreateDialog()
+    {
+        var dialog = await Dialog.ShowAsync<UsuarioDialog>("Nuevo Usuario", _dialogOptions);
+        var result = await dialog.Result;
+        if (!result.Canceled && _table != null) { await _table.ReloadServerData(); await CargarEstados(); }
+    }
+
+    private async Task OpenEditDialog(UsuarioDto usuario)
+    {
+        var parameters = new DialogParameters { ["Usuario"] = usuario };
+        var dialog = await Dialog.ShowAsync<UsuarioDialog>("Editar Usuario", parameters, _dialogOptions);
+        var result = await dialog.Result;
+        if (!result.Canceled && _table != null) { await _table.ReloadServerData(); await CargarEstados(); }
+    }
+
+    private async Task ConfirmDelete(UsuarioDto usuario)
+    {
+        var parameters = new DialogParameters { ["Title"] = "Confirmar", ["Message"] = $"Eliminar usuario {usuario.NomUsuario}?", ["ConfirmText"] = "Si", ["CancelText"] = "Cancelar" };
+        var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parameters);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            var ok = await Api.DeleteAsync($"api/usuarios/{usuario.Id}");
+            if (ok) { Snackbar.Add("Usuario eliminado", Severity.Success); if (_table != null) await _table.ReloadServerData(); await CargarEstados(); }
+            else Snackbar.Add(Api.LastError ?? "Error al eliminar", Severity.Error);
+        }
+    }
+
+    private class UsuarioEstados
+    {
+        public string Activos { get; set; } = "0";
+        public string ConMFA { get; set; } = "0";
+        public string Bloqueados { get; set; } = "0";
+        public string Pendientes { get; set; } = "0";
+    }
+}

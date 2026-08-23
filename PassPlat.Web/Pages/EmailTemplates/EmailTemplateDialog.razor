@@ -1,0 +1,271 @@
+<style>
+    #email-template-editor {
+        height: 350px;
+        min-height: 350px;
+        border: 1px solid var(--mud-palette-lines-default);
+        border-radius: 4px;
+    }
+</style>
+
+@using BlazorMonaco.Editor
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+@inject IDialogService DialogService
+
+<MudDialog Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(IsEdit ? "Editar" : "Nueva") Plantilla de Email</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudGrid>
+            <MudItem xs="12" sm="8">
+                <MudTextField @bind-Value="_nombre" Label="Nombre (código interno)" Variant="Variant.Outlined" Class="mb-3"
+                              Disabled="@IsEdit" Required="true" HelperText="Solo minúsculas, números, guiones y guión bajo"
+                              Error="@(_submitted && !EsNombreValido(_nombre))" ErrorText="@GetNombreError(_nombre)" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="_cultura" Label="Cultura" Variant="Variant.Outlined" Class="mb-3"
+                              Disabled="@IsEdit" Required="true" HelperText="Ej: es, en, pt-BR" MaxLength="10" />
+            </MudItem>
+        </MudGrid>
+        <MudTextField @bind-Value="_asunto" Label="Asunto" Variant="Variant.Outlined" Class="mb-3" Required="true"
+                      Error="@(_submitted && string.IsNullOrWhiteSpace(_asunto))" ErrorText="El asunto es requerido" MaxLength="500" />
+        <MudTextField @bind-Value="_descripcion" Label="Descripción" Variant="Variant.Outlined" Class="mb-3" MaxLength="500"
+                      HelperText="Descripción interna del propósito de la plantilla" />
+        <MudSelect T="string" @bind-Value="_categoria" Label="Categoría" Variant="Variant.Outlined" Class="mb-3" Required="true">
+            <MudSelectItem Value="@("transaccional")">Transaccional</MudSelectItem>
+            <MudSelectItem Value="@("marketing")">Marketing</MudSelectItem>
+            <MudSelectItem Value="@("sistema")">Sistema</MudSelectItem>
+            <MudSelectItem Value="@("alerta")">Alerta</MudSelectItem>
+        </MudSelect>
+        <MudText Typo="Typo.subtitle2" Class="mb-1">Cuerpo HTML <MudText Color="Color.Error" Inline="true">*</MudText></MudText>
+        <MudPaper Outlined="true" Class="mb-3" Style="padding:0; overflow:hidden;">
+            <StandaloneCodeEditor @ref="_editor" Id="email-template-editor" ConstructionOptions="EditorOptions" OnDidInit="OnEditorInit" OnDidChangeModelContent="OnEditorChanged" />
+        </MudPaper>
+        @if (_submitted && string.IsNullOrWhiteSpace(_cuerpoHtml))
+        {
+            <MudText Color="Color.Error" Typo="Typo.caption" Class="mb-3">El cuerpo HTML es requerido</MudText>
+        }
+        <MudStack Row="true" Spacing="1" Class="mb-3">
+            <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="FormatHtml" StartIcon="@Icons.Material.Filled.AutoFixHigh">Formatear</MudButton>
+            <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="ValidateHtml" StartIcon="@Icons.Material.Filled.CheckCircle">Validar</MudButton>
+            <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Info" OnClick="OpenPreview" StartIcon="@Icons.Material.Filled.Preview">Vista previa</MudButton>
+            <MudText Typo="Typo.caption" Class="ml-auto">@(_placeholderInfo)</MudText>
+        </MudStack>
+        <MudTextField @bind-Value="_cuerpoTexto" Label="Cuerpo texto plano (opcional)" Variant="Variant.Outlined" Class="mb-3"
+                      Lines="5" HelperText="Versión de texto plano para clientes que no soportan HTML" />
+        <MudTextField @bind-Value="_variablesDoc" Label="Documentación de variables (opcional)" Variant="Variant.Outlined" Class="mb-3"
+                      Lines="3" HelperText="JSON o texto libre documentando las variables Liquid esperadas" />
+        @if (IsEdit)
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mb-3">
+                <MudText Typo="Typo.body2">
+                    Estado actual: <strong>@Template!.Estado</strong> · Versión: <strong>v@(Template.Version)</strong>
+                </MudText>
+            </MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@Save" Disabled="@(!CanSave() || _saving)">
+            @(IsEdit ? "Guardar" : "Crear")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Large, FullWidth = true, CloseButton = true };
+
+    [Parameter] public bool IsEdit { get; set; }
+    [Parameter] public EmailTemplateDto? Template { get; set; }
+
+    private string _nombre = "";
+    private string _cultura = "es";
+    private string _asunto = "";
+    private string _descripcion = "";
+    private string _categoria = "transaccional";
+    private string _cuerpoHtml = "";
+    private string _cuerpoTexto = "";
+    private string _variablesDoc = "";
+    private bool _saving;
+    private bool _submitted;
+    private StandaloneCodeEditor _editor = null!;
+    private bool _editorReady;
+    private string _placeholderInfo = "";
+
+    protected override void OnInitialized()
+    {
+        if (IsEdit && Template is not null)
+        {
+            _nombre = Template.Nombre;
+            _cultura = Template.Cultura;
+            _asunto = Template.Asunto;
+            _descripcion = Template.Descripcion ?? "";
+            _categoria = Template.Categoria;
+            _cuerpoHtml = Template.CuerpoHtml;
+            _cuerpoTexto = Template.CuerpoTexto ?? "";
+            _variablesDoc = Template.VariablesDoc ?? "";
+        }
+    }
+
+    private StandaloneEditorConstructionOptions EditorOptions(StandaloneCodeEditor editor) => new()
+    {
+        Language = "html",
+        Theme = "vs",
+        AutomaticLayout = true,
+        Minimap = new() { Enabled = false },
+        Folding = true,
+        WordWrap = "on",
+        TabSize = 2,
+        Value = _cuerpoHtml,
+        FormatOnType = true,
+        FormatOnPaste = true
+    };
+
+    private async Task OnEditorInit()
+    {
+        _editorReady = true;
+        await Task.Delay(150);
+        try { await _editor.Layout(); } catch { }
+        try { await _editor.Trigger("editor", "editor.action.formatDocument", null); } catch { }
+        await UpdatePlaceholderInfo();
+    }
+
+    private async Task OnEditorChanged(ModelContentChangedEvent e)
+    {
+        if (_editorReady)
+        {
+            _cuerpoHtml = await _editor.GetValue();
+            await UpdatePlaceholderInfo();
+        }
+    }
+
+    private async Task UpdatePlaceholderInfo()
+    {
+        try
+        {
+            var val = _editorReady ? await _editor.GetValue() : _cuerpoHtml;
+            var matches = System.Text.RegularExpressions.Regex.Matches(val, @"\{\{.*?\}\}");
+            _placeholderInfo = matches.Count > 0 ? $"Placeholders: {string.Join(" ", matches.Select(m => m.Value).Distinct())}" : "Sin placeholders";
+        }
+        catch { _placeholderInfo = ""; }
+        StateHasChanged();
+    }
+
+    private async Task FormatHtml()
+    {
+        if (_editorReady) await _editor.Trigger("editor", "editor.action.formatDocument", null);
+    }
+
+    private void ValidateHtml()
+    {
+        var val = _cuerpoHtml;
+        var placeholders = System.Text.RegularExpressions.Regex.Matches(val, @"\{\{(.*?)\}\}").Select(m => m.Groups[1].Value.Trim()).ToList();
+        var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "AppName", "UserName", "FechaHora", "MfaCode", "ExpiraMinutos", "ResetLink", "LoginUrl", "AlertMessage", "IP", "Minutes", "TipoCambio" };
+        var unknown = placeholders.Where(p => !allowed.Contains(p)).Distinct().ToList();
+        if (unknown.Any())
+            Snackbar.Add($"Placeholders desconocidos: {string.Join(", ", unknown)}", Severity.Warning);
+        else if (placeholders.Any())
+            Snackbar.Add($"Placeholders válidos: {string.Join(", ", placeholders.Distinct())}", Severity.Success);
+        else
+            Snackbar.Add("Sin placeholders detectados", Severity.Info);
+        if (!val.TrimStart().StartsWith("<")) Snackbar.Add("HTML no inicia con tag — verificar estructura", Severity.Warning);
+    }
+
+    private async Task OpenPreview()
+    {
+        if (_editorReady) _cuerpoHtml = await _editor.GetValue();
+        var parameters = new DialogParameters
+        {
+            ["ContentText"] = _cuerpoHtml,
+            ["Title"] = $"Vista previa — {(_nombre ?? "plantilla")} ({_cultura})",
+            ["ButtonText"] = "Cerrar"
+        };
+        await DialogService.ShowAsync<HtmlPreviewDialog>("", parameters, new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true });
+    }
+
+    private static bool EsNombreValido(string nombre) =>
+        !string.IsNullOrEmpty(nombre) && System.Text.RegularExpressions.Regex.IsMatch(nombre, @"^[a-z0-9\-_]+$");
+
+    private static string GetNombreError(string nombre)
+    {
+        if (string.IsNullOrWhiteSpace(nombre)) return "El nombre es requerido";
+        if (nombre.Length > 100) return "El nombre no puede exceder 100 caracteres";
+        return "Solo minúsculas, números, guiones y guión bajo";
+    }
+
+    private bool CanSave()
+    {
+        if (IsEdit)
+            return !string.IsNullOrWhiteSpace(_asunto) && !string.IsNullOrWhiteSpace(_cuerpoHtml);
+        return EsNombreValido(_nombre)
+            && !string.IsNullOrWhiteSpace(_cultura)
+            && !string.IsNullOrWhiteSpace(_asunto)
+            && !string.IsNullOrWhiteSpace(_categoria)
+            && !string.IsNullOrWhiteSpace(_cuerpoHtml);
+    }
+
+    private async Task Save()
+    {
+        _submitted = true;
+        if (_editorReady) _cuerpoHtml = await _editor.GetValue();
+        if (!CanSave()) return;
+        _saving = true;
+        try
+        {
+            if (IsEdit)
+            {
+                var payload = new
+                {
+                    id = Template!.Id,
+                    asunto = _asunto,
+                    cuerpoHtml = _cuerpoHtml,
+                    cuerpoTexto = string.IsNullOrWhiteSpace(_cuerpoTexto) ? null : _cuerpoTexto,
+                    descripcion = string.IsNullOrWhiteSpace(_descripcion) ? null : _descripcion,
+                    categoria = _categoria,
+                    variablesDoc = string.IsNullOrWhiteSpace(_variablesDoc) ? null : _variablesDoc
+                };
+                var result = await Api.PutAsync<EmailTemplateDto>($"api/emailtemplates/{Template.Id}", payload);
+                if (result is not null)
+                {
+                    Snackbar.Add("Plantilla actualizada", Severity.Success);
+                    MudDialog.Close(DialogResult.Ok(true));
+                }
+                else
+                    Snackbar.Add(Api.LastError ?? "Error al actualizar", Severity.Error);
+            }
+            else
+            {
+                var payload = new
+                {
+                    nombre = _nombre,
+                    cultura = _cultura,
+                    asunto = _asunto,
+                    cuerpoHtml = _cuerpoHtml,
+                    cuerpoTexto = string.IsNullOrWhiteSpace(_cuerpoTexto) ? null : _cuerpoTexto,
+                    descripcion = string.IsNullOrWhiteSpace(_descripcion) ? null : _descripcion,
+                    categoria = _categoria
+                };
+                var result = await Api.PostAsync<EmailTemplateDto>("api/emailtemplates", payload);
+                if (result is not null)
+                {
+                    Snackbar.Add("Plantilla creada", Severity.Success);
+                    MudDialog.Close(DialogResult.Ok(true));
+                }
+                else
+                    Snackbar.Add(Api.LastError ?? "Error al crear", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

@@ -1,0 +1,101 @@
+<!-- Diagrama ER: RolJerarquico -->
+```mermaid
+erDiagram
+    classDef default fill:#f9f,stroke:#333,stroke-width:2px
+    classDef key fill:#ccf,stroke:#333,stroke-width:2px
+    
+    entity "Roles" as R1 {
+        Id int PK
+        Codigo varchar
+        Nombre nvarchar
+        Descripcion nvarchar
+        IdTenant int FK -> Tenants
+        Activo bit
+        FecCrea datetime2
+    }
+    
+    entity "Permisos" as P1 {
+        Id int PK
+        Codigo varchar
+        Nombre nvarchar
+        Descripcion nvarchar
+        Modulo nvarchar
+        Activo bit
+        FecCrea datetime2
+    }
+    
+    entity "RolesPermisos" as RP {
+        Id int PK
+        IdRol int FK -> R1.Id
+        IdPermiso int FK -> P1.Id
+        Activo bit
+        FecCrea datetime2
+    }
+    
+    entity "RolJerarquico" as RJ {
+        Id int PK
+        IdRol int FK -> R1.Id
+        IdRolPadre int FK -> R1.Id (optional)
+        Activo bit
+        FecCrea datetime2
+    }
+    
+    entity "Accesos" as A {
+        Id int PK
+        IdUsuario int FK -> Usuarios.Id
+        IdTenant int FK -> Tenants.Id
+        IdApp int FK -> Apps.Id
+        IdRol int FK -> R1.Id
+        Activo bit
+        FecAsignacion datetime2
+    }
+    
+    entity "Usuarios" as U {
+        Id int PK
+        NomUsuario varchar
+        Email varchar
+        Nombre nvarchar
+        Apellido nvarchar
+        IdTenant int FK -> Tenants.Id
+        Activo bit
+        FecCrea datetime2
+    }
+    
+    entity "Tenants" as T {
+        Id int PK
+        Codigo varchar
+        Nombre nvarchar
+        Descripcion nvarchar
+        Activo bit
+        FecCrea datetime2
+    }
+    
+    entity "Apps" as App {
+        Id int PK
+        Codigo varchar
+        Nombre nvarchar
+        IdTenant int FK -> Tenants.Id
+        Activo bit
+        FecCrea datetime2
+    }
+    
+    R1 ||--o{ RP : "1:N"
+    RP ||--o{ RJ : "1:N"
+    RJ ||--o{ A : "1:N"
+    A ||--o{ U : "1:N"
+
+    style RJ fill:#ffcccb,stroke:#d32f2f,stroke-width:3px
+    style RJClasses fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    
+    %% Clases de nodos especiales para Jerarquía
+    class RJ roleNode
+    class A userNode
+    class T tenantNode
+    class App appNode
+    
+    %% Clase CSS para jerarquía
+    style roleNode fill:#fff3e0,stroke:#ff9800,stroke-width:2px,stroke-dasharray:5,5
+    style userNode fill:#e8f5e9,stroke:#4caf50,stroke-width:2px
+    style tenantNode fill:#ede7f6,stroke:#9c27b0,stroke-width:2px
+    style appNode fill:#fffde7,stroke:#ffc107,stroke-width:2px
+```

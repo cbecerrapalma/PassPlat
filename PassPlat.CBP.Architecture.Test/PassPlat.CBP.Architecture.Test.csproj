@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\CBP\CBP.Authentication\CBP.Authentication.Abstractions\CBP.Authentication.Abstractions.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Authentication\CBP.Authentication.JwtBearer\CBP.Authentication.JwtBearer.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Caching\CBP.Caching.Abstractions\CBP.Caching.Abstractions.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Caching\CBP.Caching.Memory\CBP.Caching.Memory.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Caching\CBP.Caching.NCache\CBP.Caching.NCache.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Caching\CBP.Caching.Redis\CBP.Caching.Redis.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Core\CBP.Events\CBP.Events.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Core\CBP.Results\CBP.Results.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Core\CBP\CBP.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Data\CBP.Data.Abstractions\CBP.Data.Abstractions.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Data\CBP.Data.Asynchronous\CBP.Data.Asynchronous.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Data\CBP.Data.Specifications\CBP.Data.Specifications.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Data\CBP.Data.Synchronous\CBP.Data.Synchronous.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Data\CBP.Data.Utilities\CBP.Data.Utilities.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Infraestructure\CBP.Emails\CBP.Emails.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Infraestructure\CBP.Excel\CBP.Excel.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Infraestructure\CBP.Logging\CBP.Logging.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Infraestructure\CBP.MultiTenant\CBP.MultiTenant.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Infraestructure\CBP.Security\CBP.Security.Cryptography\CBP.Security.Cryptography.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Service\CBP.Services.Abstractions\CBP.Services.Abstractions.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Service\CBP.Services.Async\CBP.Services.Async.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Service\CBP.Services.Sync\CBP.Services.Sync.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.WebApi\CBP.WebApi\CBP.WebApi.csproj" />
+  </ItemGroup>
+
+</Project>

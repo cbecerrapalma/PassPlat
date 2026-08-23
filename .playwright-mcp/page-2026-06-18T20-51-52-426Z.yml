@@ -1,0 +1,256 @@
+- generic [ref=e44]:
+  - banner [ref=e45]:
+    - toolbar [ref=e46]:
+      - button [ref=e47] [cursor=pointer]:
+        - img [ref=e49]
+      - generic [ref=e54]: AccessPlat
+      - heading "Config App" [level=6] [ref=e976]
+      - generic [ref=e59]:
+        - generic [ref=e60]: Buenas tardes
+        - generic [ref=e62]: 16:51:51
+      - separator [ref=e63]
+      - generic [ref=e64]:
+        - button [ref=e66] [cursor=pointer]:
+          - img [ref=e68]
+        - button [ref=e72] [cursor=pointer]:
+          - img [ref=e74]
+        - button [ref=e78] [cursor=pointer]:
+          - img [ref=e80]
+        - generic [ref=e85]:
+          - img [ref=e87]
+          - status [ref=e90]: "5"
+        - separator [ref=e91]
+        - generic [ref=e93] [cursor=pointer]:
+          - img [ref=e95]:
+            - generic [ref=e96]: SI
+          - paragraph [ref=e98]: sistema
+          - generic [ref=e101]: Plataforma
+          - img [ref=e102]
+  - complementary [ref=e105]:
+    - generic [ref=e106]:
+      - generic [ref=e107]:
+        - img [ref=e108]:
+          - paragraph [ref=e109]: SI
+        - generic [ref=e110]:
+          - paragraph [ref=e111]: sistema
+          - text: Administrador
+      - separator [ref=e112]
+      - navigation [ref=e113]:
+        - link "Panel Principal" [ref=e115] [cursor=pointer]:
+          - /url: /
+          - img [ref=e116]
+          - generic [ref=e119]: Panel Principal
+        - generic [ref=e120]: CATÁLOGOS
+        - navigation "Gestión" [ref=e121]:
+          - button "Toggle Gestión" [expanded]:
+            - img
+            - generic: Gestión
+            - img [ref=e122] [cursor=pointer]
+          - navigation [ref=e128]:
+            - link "Tenants" [ref=e130] [cursor=pointer]:
+              - /url: /tenants
+              - img [ref=e131]
+              - generic [ref=e134]: Tenants
+            - link "Apps" [ref=e136] [cursor=pointer]:
+              - /url: /apps
+              - img [ref=e137]
+              - generic [ref=e140]: Apps
+            - link "Roles y Permisos" [ref=e142] [cursor=pointer]:
+              - /url: /admin/roles
+              - img [ref=e143]
+              - generic [ref=e150]: Roles y Permisos
+            - link "Políticas de Contraseña" [ref=e152] [cursor=pointer]:
+              - /url: /politicas-pwd
+              - img [ref=e153]
+              - generic [ref=e156]: Políticas de Contraseña
+            - link "Config App" [active] [ref=e158] [cursor=pointer]:
+              - /url: /config-app
+              - img [ref=e159]
+              - generic [ref=e163]: Config App
+        - generic [ref=e164]: SEGURIDAD
+        - navigation "Control" [ref=e165]:
+          - button "Toggle Control" [expanded]:
+            - img
+            - generic: Control
+            - img [ref=e166] [cursor=pointer]
+          - navigation [ref=e172]:
+            - link "Usuarios" [ref=e174] [cursor=pointer]:
+              - /url: /usuarios
+              - img [ref=e175]
+              - generic [ref=e178]: Usuarios
+            - link "Accesos" [ref=e180] [cursor=pointer]:
+              - /url: /accesos
+              - img [ref=e181]
+              - generic [ref=e186]: Accesos
+        - generic [ref=e187]: IAM
+        - navigation "Permisos" [ref=e188]:
+          - button "Toggle Permisos":
+            - img
+            - generic: Permisos
+            - img [ref=e189] [cursor=pointer]
+        - generic [ref=e192]: MONITOREO
+        - navigation "Registros" [ref=e193]:
+          - button "Toggle Registros":
+            - img
+            - generic: Registros
+            - img [ref=e194] [cursor=pointer]
+        - generic [ref=e197]: COMUNICACIONES
+        - navigation "Email" [ref=e198]:
+          - button "Toggle Email" [expanded]:
+            - img
+            - generic: Email
+            - img [ref=e199] [cursor=pointer]
+          - navigation [ref=e205]:
+            - link "Providers" [ref=e207] [cursor=pointer]:
+              - /url: /email/providers
+              - img [ref=e208]
+              - generic [ref=e211]: Providers
+            - link "Cuentas de Correo" [ref=e213] [cursor=pointer]:
+              - /url: /email/accounts
+              - img [ref=e214]
+              - generic [ref=e217]: Cuentas de Correo
+            - link "Cuentas x Tenant" [ref=e219] [cursor=pointer]:
+              - /url: /email/tenant-accounts
+              - img [ref=e220]
+              - generic [ref=e223]: Cuentas x Tenant
+            - link "Cuentas x App" [ref=e225] [cursor=pointer]:
+              - /url: /email/app-accounts
+              - img [ref=e226]
+              - generic [ref=e229]: Cuentas x App
+            - link "Plantillas de Email" [ref=e231] [cursor=pointer]:
+              - /url: /email-templates
+              - img [ref=e232]
+              - generic [ref=e235]: Plantillas de Email
+      - generic [ref=e236]:
+        - separator [ref=e237]
+        - generic [ref=e238]: AccessPlat v1.0.0
+  - generic [ref=e239]:
+    - generic [ref=e978]:
+      - generic [ref=e979]:
+        - heading "Config App" [level=5] [ref=e980]
+        - button [ref=e981] [cursor=pointer]:
+          - img [ref=e983]
+        - button "Nueva Configuración" [ref=e986] [cursor=pointer]:
+          - generic [ref=e987]:
+            - img [ref=e989]
+            - text: Nueva Configuración
+      - generic [ref=e995]:
+        - generic [ref=e996]:
+          - textbox "Buscar..." [ref=e997]
+          - group "Buscar..."
+        - generic: Buscar...
+      - generic [ref=e998]:
+        - table [ref=e1000]:
+          - rowgroup [ref=e1011]:
+            - row "Id Grupo Clave Valor Tipo Descripción Encriptado Activo Acciones" [ref=e1012]:
+              - columnheader "Id" [ref=e1013]
+              - columnheader "Grupo" [ref=e1014]
+              - columnheader "Clave" [ref=e1015]
+              - columnheader "Valor" [ref=e1016]
+              - columnheader "Tipo" [ref=e1017]
+              - columnheader "Descripción" [ref=e1018]
+              - columnheader "Encriptado" [ref=e1019]
+              - columnheader "Activo" [ref=e1020]
+              - columnheader "Acciones" [ref=e1021]
+          - rowgroup [ref=e1022]:
+            - row "1 General AppName AccessPlat string Nombre de la aplicación No Sí" [ref=e1023]:
+              - cell "1" [ref=e1024]
+              - cell "General" [ref=e1025]
+              - cell "AppName" [ref=e1026]
+              - cell "AccessPlat" [ref=e1027]
+              - cell "string" [ref=e1028]:
+                - generic [ref=e1031]: string
+              - cell "Nombre de la aplicación" [ref=e1032]
+              - cell "No" [ref=e1033]:
+                - generic [ref=e1036]: "No"
+              - cell "Sí" [ref=e1037]:
+                - generic [ref=e1040]: Sí
+              - cell [ref=e1041]:
+                - button [ref=e1043] [cursor=pointer]:
+                  - img [ref=e1045]
+                - button [ref=e1049] [cursor=pointer]:
+                  - img [ref=e1051]
+            - row "2 General AppVersion 1.0.0 string Versión de la aplicación No Sí" [ref=e1054]:
+              - cell "2" [ref=e1055]
+              - cell "General" [ref=e1056]
+              - cell "AppVersion" [ref=e1057]
+              - cell "1.0.0" [ref=e1058]
+              - cell "string" [ref=e1059]:
+                - generic [ref=e1062]: string
+              - cell "Versión de la aplicación" [ref=e1063]
+              - cell "No" [ref=e1064]:
+                - generic [ref=e1067]: "No"
+              - cell "Sí" [ref=e1068]:
+                - generic [ref=e1071]: Sí
+              - cell [ref=e1072]:
+                - button [ref=e1074] [cursor=pointer]:
+                  - img [ref=e1076]
+                - button [ref=e1080] [cursor=pointer]:
+                  - img [ref=e1082]
+            - row "3 Seguridad MaxIntentosFallidos 5 int Intentos máximos antes de bloqueo No Sí" [ref=e1085]:
+              - cell "3" [ref=e1086]
+              - cell "Seguridad" [ref=e1087]
+              - cell "MaxIntentosFallidos" [ref=e1088]
+              - cell "5" [ref=e1089]
+              - cell "int" [ref=e1090]:
+                - generic [ref=e1093]: int
+              - cell "Intentos máximos antes de bloqueo" [ref=e1094]
+              - cell "No" [ref=e1095]:
+                - generic [ref=e1098]: "No"
+              - cell "Sí" [ref=e1099]:
+                - generic [ref=e1102]: Sí
+              - cell [ref=e1103]:
+                - button [ref=e1105] [cursor=pointer]:
+                  - img [ref=e1107]
+                - button [ref=e1111] [cursor=pointer]:
+                  - img [ref=e1113]
+            - row "4 Seguridad DuracionBloqueoMin 30 int Duración del bloqueo en minutos No Sí" [ref=e1116]:
+              - cell "4" [ref=e1117]
+              - cell "Seguridad" [ref=e1118]
+              - cell "DuracionBloqueoMin" [ref=e1119]
+              - cell "30" [ref=e1120]
+              - cell "int" [ref=e1121]:
+                - generic [ref=e1124]: int
+              - cell "Duración del bloqueo en minutos" [ref=e1125]
+              - cell "No" [ref=e1126]:
+                - generic [ref=e1129]: "No"
+              - cell "Sí" [ref=e1130]:
+                - generic [ref=e1133]: Sí
+              - cell [ref=e1134]:
+                - button [ref=e1136] [cursor=pointer]:
+                  - img [ref=e1138]
+                - button [ref=e1142] [cursor=pointer]:
+                  - img [ref=e1144]
+        - toolbar [ref=e1148]:
+          - generic [ref=e1149]:
+            - generic [ref=e1151]: "Rows per page:"
+            - generic [ref=e1155] [cursor=pointer]:
+              - generic [ref=e1156]: "10"
+              - img [ref=e1158]
+          - generic [ref=e1162]: 1-4 of 4
+          - generic [ref=e1163]:
+            - button "First page" [disabled]:
+              - generic:
+                - img
+            - button "Previous page" [disabled]:
+              - generic:
+                - img
+            - button "Next page" [disabled]:
+              - generic:
+                - img
+            - button "Last page" [disabled]:
+              - generic:
+                - img
+    - generic [ref=e431]:
+      - generic [ref=e432]:
+        - generic [ref=e433]: © 2026 Plataforma de Acceso
+        - generic [ref=e436]:
+          - img [ref=e437]
+          - text: Producción
+      - generic [ref=e440]:
+        - button [ref=e442] [cursor=pointer]:
+          - img [ref=e444]
+        - button [ref=e455] [cursor=pointer]:
+          - img [ref=e457]
+        - separator [ref=e460]
+        - generic [ref=e461]: v1.0.0

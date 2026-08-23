@@ -1,0 +1,897 @@
+- generic [ref=e44]:
+  - banner [ref=e45]:
+    - toolbar [ref=e46]:
+      - button [ref=e47] [cursor=pointer]:
+        - img [ref=e49]
+      - generic [ref=e54]: AccessPlat
+      - heading "Admin/matriz Permisos" [level=6] [ref=e2056]
+      - generic [ref=e59]:
+        - generic [ref=e60]: Buenas tardes
+        - generic [ref=e62]: 16:53:45
+      - separator [ref=e63]
+      - generic [ref=e64]:
+        - button [ref=e66] [cursor=pointer]:
+          - img [ref=e68]
+        - button [ref=e72] [cursor=pointer]:
+          - img [ref=e74]
+        - button [ref=e78] [cursor=pointer]:
+          - img [ref=e80]
+        - generic [ref=e85]:
+          - img [ref=e87]
+          - status [ref=e90]: "5"
+        - separator [ref=e91]
+        - generic [ref=e93] [cursor=pointer]:
+          - img [ref=e95]:
+            - generic [ref=e96]: SI
+          - paragraph [ref=e98]: sistema
+          - generic [ref=e101]: Plataforma
+          - img [ref=e102]
+  - complementary [ref=e105]:
+    - generic [ref=e106]:
+      - generic [ref=e107]:
+        - img [ref=e108]:
+          - paragraph [ref=e109]: SI
+        - generic [ref=e110]:
+          - paragraph [ref=e111]: sistema
+          - text: Administrador
+      - separator [ref=e112]
+      - navigation [ref=e113]:
+        - link "Panel Principal" [ref=e115] [cursor=pointer]:
+          - /url: /
+          - img [ref=e116]
+          - generic [ref=e119]: Panel Principal
+        - generic [ref=e120]: CATÁLOGOS
+        - navigation "Gestión" [ref=e121]:
+          - button "Toggle Gestión" [expanded]:
+            - img
+            - generic: Gestión
+            - img [ref=e122] [cursor=pointer]
+          - navigation [ref=e128]:
+            - link "Tenants" [ref=e130] [cursor=pointer]:
+              - /url: /tenants
+              - img [ref=e131]
+              - generic [ref=e134]: Tenants
+            - link "Apps" [ref=e136] [cursor=pointer]:
+              - /url: /apps
+              - img [ref=e137]
+              - generic [ref=e140]: Apps
+            - link "Roles y Permisos" [ref=e142] [cursor=pointer]:
+              - /url: /admin/roles
+              - img [ref=e143]
+              - generic [ref=e150]: Roles y Permisos
+            - link "Políticas de Contraseña" [ref=e152] [cursor=pointer]:
+              - /url: /politicas-pwd
+              - img [ref=e153]
+              - generic [ref=e156]: Políticas de Contraseña
+            - link "Config App" [ref=e158] [cursor=pointer]:
+              - /url: /config-app
+              - img [ref=e159]
+              - generic [ref=e163]: Config App
+        - generic [ref=e164]: SEGURIDAD
+        - navigation "Control" [ref=e165]:
+          - button "Toggle Control" [expanded]:
+            - img
+            - generic: Control
+            - img [ref=e166] [cursor=pointer]
+          - navigation [ref=e172]:
+            - link "Usuarios" [ref=e174] [cursor=pointer]:
+              - /url: /usuarios
+              - img [ref=e175]
+              - generic [ref=e178]: Usuarios
+            - link "Accesos" [ref=e180] [cursor=pointer]:
+              - /url: /accesos
+              - img [ref=e181]
+              - generic [ref=e186]: Accesos
+        - generic [ref=e187]: IAM
+        - navigation "Permisos" [ref=e188]:
+          - button "Toggle Permisos" [expanded]:
+            - img
+            - generic: Permisos
+            - img [ref=e189] [cursor=pointer]
+          - navigation [ref=e1435]:
+            - link "Roles" [ref=e1437] [cursor=pointer]:
+              - /url: /admin/roles
+              - img [ref=e1438]
+              - generic [ref=e1443]: Roles
+            - link "Permisos" [ref=e1445] [cursor=pointer]:
+              - /url: /admin/permisos
+              - img [ref=e1446]
+              - generic [ref=e1449]: Permisos
+            - link "Grupos" [ref=e1451] [cursor=pointer]:
+              - /url: /admin/grupos
+              - img [ref=e1452]
+              - generic [ref=e1455]: Grupos
+            - link "Permisos Directos" [ref=e1457] [cursor=pointer]:
+              - /url: /admin/roles-permisos
+              - img [ref=e1458]
+              - generic [ref=e1466]: Permisos Directos
+            - link "Matriz de Permisos" [ref=e1468] [cursor=pointer]:
+              - /url: /admin/matriz-permisos
+              - img [ref=e1469]
+              - generic [ref=e1472]: Matriz de Permisos
+        - generic [ref=e192]: MONITOREO
+        - navigation "Registros" [ref=e193]:
+          - button "Toggle Registros":
+            - img
+            - generic: Registros
+            - img [ref=e194] [cursor=pointer]
+        - generic [ref=e197]: COMUNICACIONES
+        - navigation "Email" [ref=e198]:
+          - button "Toggle Email" [expanded]:
+            - img
+            - generic: Email
+            - img [ref=e199] [cursor=pointer]
+          - navigation [ref=e205]:
+            - link "Providers" [ref=e207] [cursor=pointer]:
+              - /url: /email/providers
+              - img [ref=e208]
+              - generic [ref=e211]: Providers
+            - link "Cuentas de Correo" [ref=e213] [cursor=pointer]:
+              - /url: /email/accounts
+              - img [ref=e214]
+              - generic [ref=e217]: Cuentas de Correo
+            - link "Cuentas x Tenant" [ref=e219] [cursor=pointer]:
+              - /url: /email/tenant-accounts
+              - img [ref=e220]
+              - generic [ref=e223]: Cuentas x Tenant
+            - link "Cuentas x App" [ref=e225] [cursor=pointer]:
+              - /url: /email/app-accounts
+              - img [ref=e226]
+              - generic [ref=e229]: Cuentas x App
+            - link "Plantillas de Email" [ref=e231] [cursor=pointer]:
+              - /url: /email-templates
+              - img [ref=e232]
+              - generic [ref=e235]: Plantillas de Email
+      - generic [ref=e236]:
+        - separator [ref=e237]
+        - generic [ref=e238]: AccessPlat v1.0.0
+  - generic [ref=e239]:
+    - generic [ref=e2058]:
+      - generic [ref=e2061]:
+        - heading "Matriz de Permisos" [level=1] [ref=e2062]
+        - paragraph [ref=e2063]: Visualiza y gestiona la asignación de permisos por rol. Los permisos heredados se muestran con borde discontinuo.
+      - generic [ref=e2064]:
+        - img [ref=e2065]
+        - generic [ref=e2067]: Seleccione un rol para visualizar los permisos asignados.
+      - generic [ref=e2068]:
+        - generic [ref=e2069]: "Rol seleccionado:"
+        - combobox "Rol seleccionado:" [ref=e2070]:
+          - option "-- Seleccionar Rol --" [selected]
+          - option "Administrador"
+          - option "Editor"
+        - generic [ref=e2071]: La selección actualiza el resumen de permisos.
+      - table [ref=e2074]:
+        - rowgroup [ref=e2075]:
+          - row "Permiso Administrador Editor" [ref=e2076]:
+            - columnheader "Permiso" [ref=e2077]
+            - columnheader "Administrador" [ref=e2078]
+            - columnheader "Editor" [ref=e2079]
+        - rowgroup [ref=e2080]:
+          - row "Usuarios" [ref=e2081]:
+            - cell "Usuarios" [ref=e2082]
+          - row "Ver Usuarios USUARIOS_VER" [ref=e2083]:
+            - cell "Ver Usuarios USUARIOS_VER" [ref=e2084]:
+              - generic [ref=e2085]:
+                - generic [ref=e2086]: Ver Usuarios
+                - generic [ref=e2087]: USUARIOS_VER
+            - cell [ref=e2088]:
+              - generic "Asignado" [ref=e2089] [cursor=pointer]:
+                - img [ref=e2090]
+            - cell [ref=e2092]:
+              - generic "Asignado" [ref=e2093] [cursor=pointer]:
+                - img [ref=e2094]
+          - row "Crear Usuarios USUARIOS_CREAR" [ref=e2096]:
+            - cell "Crear Usuarios USUARIOS_CREAR" [ref=e2097]:
+              - generic [ref=e2098]:
+                - generic [ref=e2099]: Crear Usuarios
+                - generic [ref=e2100]: USUARIOS_CREAR
+            - cell [ref=e2101]:
+              - generic "Asignado" [ref=e2102] [cursor=pointer]:
+                - img [ref=e2103]
+            - cell [ref=e2105]:
+              - generic "Denegado" [ref=e2106] [cursor=pointer]:
+                - img [ref=e2107]
+          - row "Editar Usuarios USUARIOS_EDITAR" [ref=e2109]:
+            - cell "Editar Usuarios USUARIOS_EDITAR" [ref=e2110]:
+              - generic [ref=e2111]:
+                - generic [ref=e2112]: Editar Usuarios
+                - generic [ref=e2113]: USUARIOS_EDITAR
+            - cell [ref=e2114]:
+              - generic "Asignado" [ref=e2115] [cursor=pointer]:
+                - img [ref=e2116]
+            - cell [ref=e2118]:
+              - generic "Asignado" [ref=e2119] [cursor=pointer]:
+                - img [ref=e2120]
+          - row "Eliminar Usuarios USUARIOS_ELIMINAR" [ref=e2122]:
+            - cell "Eliminar Usuarios USUARIOS_ELIMINAR" [ref=e2123]:
+              - generic [ref=e2124]:
+                - generic [ref=e2125]: Eliminar Usuarios
+                - generic [ref=e2126]: USUARIOS_ELIMINAR
+            - cell [ref=e2127]:
+              - generic "Asignado" [ref=e2128] [cursor=pointer]:
+                - img [ref=e2129]
+            - cell [ref=e2131]:
+              - generic "Denegado" [ref=e2132] [cursor=pointer]:
+                - img [ref=e2133]
+          - row "Ver Sesiones USUARIOS_VERSESIONES" [ref=e2135]:
+            - cell "Ver Sesiones USUARIOS_VERSESIONES" [ref=e2136]:
+              - generic [ref=e2137]:
+                - generic [ref=e2138]: Ver Sesiones
+                - generic [ref=e2139]: USUARIOS_VERSESIONES
+            - cell [ref=e2140]:
+              - generic "Asignado" [ref=e2141] [cursor=pointer]:
+                - img [ref=e2142]
+            - cell [ref=e2144]:
+              - generic "Denegado" [ref=e2145] [cursor=pointer]:
+                - img [ref=e2146]
+          - row "Revocar Sesiones USUARIOS_REVOCARSESIONES" [ref=e2148]:
+            - cell "Revocar Sesiones USUARIOS_REVOCARSESIONES" [ref=e2149]:
+              - generic [ref=e2150]:
+                - generic [ref=e2151]: Revocar Sesiones
+                - generic [ref=e2152]: USUARIOS_REVOCARSESIONES
+            - cell [ref=e2153]:
+              - generic "Asignado" [ref=e2154] [cursor=pointer]:
+                - img [ref=e2155]
+            - cell [ref=e2157]:
+              - generic "Denegado" [ref=e2158] [cursor=pointer]:
+                - img [ref=e2159]
+          - row "Ver Bloqueos USUARIOS_VERBLOQUEOS" [ref=e2161]:
+            - cell "Ver Bloqueos USUARIOS_VERBLOQUEOS" [ref=e2162]:
+              - generic [ref=e2163]:
+                - generic [ref=e2164]: Ver Bloqueos
+                - generic [ref=e2165]: USUARIOS_VERBLOQUEOS
+            - cell [ref=e2166]:
+              - generic "Asignado" [ref=e2167] [cursor=pointer]:
+                - img [ref=e2168]
+            - cell [ref=e2170]:
+              - generic "Denegado" [ref=e2171] [cursor=pointer]:
+                - img [ref=e2172]
+          - row "Administrar Bloqueos USUARIOS_ADMINBLOQUEOS" [ref=e2174]:
+            - cell "Administrar Bloqueos USUARIOS_ADMINBLOQUEOS" [ref=e2175]:
+              - generic [ref=e2176]:
+                - generic [ref=e2177]: Administrar Bloqueos
+                - generic [ref=e2178]: USUARIOS_ADMINBLOQUEOS
+            - cell [ref=e2179]:
+              - generic "Asignado" [ref=e2180] [cursor=pointer]:
+                - img [ref=e2181]
+            - cell [ref=e2183]:
+              - generic "Denegado" [ref=e2184] [cursor=pointer]:
+                - img [ref=e2185]
+          - row "Ver MFA USUARIOS_VERMFA" [ref=e2187]:
+            - cell "Ver MFA USUARIOS_VERMFA" [ref=e2188]:
+              - generic [ref=e2189]:
+                - generic [ref=e2190]: Ver MFA
+                - generic [ref=e2191]: USUARIOS_VERMFA
+            - cell [ref=e2192]:
+              - generic "Asignado" [ref=e2193] [cursor=pointer]:
+                - img [ref=e2194]
+            - cell [ref=e2196]:
+              - generic "Denegado" [ref=e2197] [cursor=pointer]:
+                - img [ref=e2198]
+          - row "Administrar MFA USUARIOS_ADMINMFA" [ref=e2200]:
+            - cell "Administrar MFA USUARIOS_ADMINMFA" [ref=e2201]:
+              - generic [ref=e2202]:
+                - generic [ref=e2203]: Administrar MFA
+                - generic [ref=e2204]: USUARIOS_ADMINMFA
+            - cell [ref=e2205]:
+              - generic "Asignado" [ref=e2206] [cursor=pointer]:
+                - img [ref=e2207]
+            - cell [ref=e2209]:
+              - generic "Denegado" [ref=e2210] [cursor=pointer]:
+                - img [ref=e2211]
+          - row "Ver Dispositivos USUARIOS_VERDISP" [ref=e2213]:
+            - cell "Ver Dispositivos USUARIOS_VERDISP" [ref=e2214]:
+              - generic [ref=e2215]:
+                - generic [ref=e2216]: Ver Dispositivos
+                - generic [ref=e2217]: USUARIOS_VERDISP
+            - cell [ref=e2218]:
+              - generic "Asignado" [ref=e2219] [cursor=pointer]:
+                - img [ref=e2220]
+            - cell [ref=e2222]:
+              - generic "Denegado" [ref=e2223] [cursor=pointer]:
+                - img [ref=e2224]
+          - row "Roles" [ref=e2226]:
+            - cell "Roles" [ref=e2227]
+          - row "Ver Roles ROLES_VER" [ref=e2228]:
+            - cell "Ver Roles ROLES_VER" [ref=e2229]:
+              - generic [ref=e2230]:
+                - generic [ref=e2231]: Ver Roles
+                - generic [ref=e2232]: ROLES_VER
+            - cell [ref=e2233]:
+              - generic "Asignado" [ref=e2234] [cursor=pointer]:
+                - img [ref=e2235]
+            - cell [ref=e2237]:
+              - generic "Asignado" [ref=e2238] [cursor=pointer]:
+                - img [ref=e2239]
+          - row "Crear Roles ROLES_CREAR" [ref=e2241]:
+            - cell "Crear Roles ROLES_CREAR" [ref=e2242]:
+              - generic [ref=e2243]:
+                - generic [ref=e2244]: Crear Roles
+                - generic [ref=e2245]: ROLES_CREAR
+            - cell [ref=e2246]:
+              - generic "Asignado" [ref=e2247] [cursor=pointer]:
+                - img [ref=e2248]
+            - cell [ref=e2250]:
+              - generic "Denegado" [ref=e2251] [cursor=pointer]:
+                - img [ref=e2252]
+          - row "Editar Roles ROLES_EDITAR" [ref=e2254]:
+            - cell "Editar Roles ROLES_EDITAR" [ref=e2255]:
+              - generic [ref=e2256]:
+                - generic [ref=e2257]: Editar Roles
+                - generic [ref=e2258]: ROLES_EDITAR
+            - cell [ref=e2259]:
+              - generic "Asignado" [ref=e2260] [cursor=pointer]:
+                - img [ref=e2261]
+            - cell [ref=e2263]:
+              - generic "Denegado" [ref=e2264] [cursor=pointer]:
+                - img [ref=e2265]
+          - row "Eliminar Roles ROLES_ELIMINAR" [ref=e2267]:
+            - cell "Eliminar Roles ROLES_ELIMINAR" [ref=e2268]:
+              - generic [ref=e2269]:
+                - generic [ref=e2270]: Eliminar Roles
+                - generic [ref=e2271]: ROLES_ELIMINAR
+            - cell [ref=e2272]:
+              - generic "Asignado" [ref=e2273] [cursor=pointer]:
+                - img [ref=e2274]
+            - cell [ref=e2276]:
+              - generic "Denegado" [ref=e2277] [cursor=pointer]:
+                - img [ref=e2278]
+          - row "Ver Detalle Roles ROLES_DETAIL_VER" [ref=e2280]:
+            - cell "Ver Detalle Roles ROLES_DETAIL_VER" [ref=e2281]:
+              - generic [ref=e2282]:
+                - generic [ref=e2283]: Ver Detalle Roles
+                - generic [ref=e2284]: ROLES_DETAIL_VER
+            - cell [ref=e2285]:
+              - generic "Asignado" [ref=e2286] [cursor=pointer]:
+                - img [ref=e2287]
+            - cell [ref=e2289]:
+              - generic "Asignado" [ref=e2290] [cursor=pointer]:
+                - img [ref=e2291]
+          - row "Permisos" [ref=e2293]:
+            - cell "Permisos" [ref=e2294]
+          - row "Ver Permisos PERMISOS_VER" [ref=e2295]:
+            - cell "Ver Permisos PERMISOS_VER" [ref=e2296]:
+              - generic [ref=e2297]:
+                - generic [ref=e2298]: Ver Permisos
+                - generic [ref=e2299]: PERMISOS_VER
+            - cell [ref=e2300]:
+              - generic "Asignado" [ref=e2301] [cursor=pointer]:
+                - img [ref=e2302]
+            - cell [ref=e2304]:
+              - generic "Asignado" [ref=e2305] [cursor=pointer]:
+                - img [ref=e2306]
+          - row "Crear Permisos PERMISOS_CREAR" [ref=e2308]:
+            - cell "Crear Permisos PERMISOS_CREAR" [ref=e2309]:
+              - generic [ref=e2310]:
+                - generic [ref=e2311]: Crear Permisos
+                - generic [ref=e2312]: PERMISOS_CREAR
+            - cell [ref=e2313]:
+              - generic "Asignado" [ref=e2314] [cursor=pointer]:
+                - img [ref=e2315]
+            - cell [ref=e2317]:
+              - generic "Denegado" [ref=e2318] [cursor=pointer]:
+                - img [ref=e2319]
+          - row "Editar Permisos PERMISOS_EDITAR" [ref=e2321]:
+            - cell "Editar Permisos PERMISOS_EDITAR" [ref=e2322]:
+              - generic [ref=e2323]:
+                - generic [ref=e2324]: Editar Permisos
+                - generic [ref=e2325]: PERMISOS_EDITAR
+            - cell [ref=e2326]:
+              - generic "Asignado" [ref=e2327] [cursor=pointer]:
+                - img [ref=e2328]
+            - cell [ref=e2330]:
+              - generic "Denegado" [ref=e2331] [cursor=pointer]:
+                - img [ref=e2332]
+          - row "Ver Detalle Permisos PERMISOS_DETAIL_VER" [ref=e2334]:
+            - cell "Ver Detalle Permisos PERMISOS_DETAIL_VER" [ref=e2335]:
+              - generic [ref=e2336]:
+                - generic [ref=e2337]: Ver Detalle Permisos
+                - generic [ref=e2338]: PERMISOS_DETAIL_VER
+            - cell [ref=e2339]:
+              - generic "Asignado" [ref=e2340] [cursor=pointer]:
+                - img [ref=e2341]
+            - cell [ref=e2343]:
+              - generic "Asignado" [ref=e2344] [cursor=pointer]:
+                - img [ref=e2345]
+          - row "Grupos" [ref=e2347]:
+            - cell "Grupos" [ref=e2348]
+          - row "Ver Grupos GRUPOS_VER" [ref=e2349]:
+            - cell "Ver Grupos GRUPOS_VER" [ref=e2350]:
+              - generic [ref=e2351]:
+                - generic [ref=e2352]: Ver Grupos
+                - generic [ref=e2353]: GRUPOS_VER
+            - cell [ref=e2354]:
+              - generic "Asignado" [ref=e2355] [cursor=pointer]:
+                - img [ref=e2356]
+            - cell [ref=e2358]:
+              - generic "Asignado" [ref=e2359] [cursor=pointer]:
+                - img [ref=e2360]
+          - row "Accesos" [ref=e2362]:
+            - cell "Accesos" [ref=e2363]
+          - row "Ver Accesos ACCESOS_VER" [ref=e2364]:
+            - cell "Ver Accesos ACCESOS_VER" [ref=e2365]:
+              - generic [ref=e2366]:
+                - generic [ref=e2367]: Ver Accesos
+                - generic [ref=e2368]: ACCESOS_VER
+            - cell [ref=e2369]:
+              - generic "Asignado" [ref=e2370] [cursor=pointer]:
+                - img [ref=e2371]
+            - cell [ref=e2373]:
+              - generic "Asignado" [ref=e2374] [cursor=pointer]:
+                - img [ref=e2375]
+          - row "Asignar Accesos ACCESOS_ASIGNAR" [ref=e2377]:
+            - cell "Asignar Accesos ACCESOS_ASIGNAR" [ref=e2378]:
+              - generic [ref=e2379]:
+                - generic [ref=e2380]: Asignar Accesos
+                - generic [ref=e2381]: ACCESOS_ASIGNAR
+            - cell [ref=e2382]:
+              - generic "Asignado" [ref=e2383] [cursor=pointer]:
+                - img [ref=e2384]
+            - cell [ref=e2386]:
+              - generic "Denegado" [ref=e2387] [cursor=pointer]:
+                - img [ref=e2388]
+          - row "Revocar Accesos ACCESOS_REVOCAR" [ref=e2390]:
+            - cell "Revocar Accesos ACCESOS_REVOCAR" [ref=e2391]:
+              - generic [ref=e2392]:
+                - generic [ref=e2393]: Revocar Accesos
+                - generic [ref=e2394]: ACCESOS_REVOCAR
+            - cell [ref=e2395]:
+              - generic "Asignado" [ref=e2396] [cursor=pointer]:
+                - img [ref=e2397]
+            - cell [ref=e2399]:
+              - generic "Denegado" [ref=e2400] [cursor=pointer]:
+                - img [ref=e2401]
+          - row "Herencia Roles" [ref=e2403]:
+            - cell "Herencia Roles" [ref=e2404]
+          - row "Ver Herencia Roles ROLES_VERHERENCIA" [ref=e2405]:
+            - cell "Ver Herencia Roles ROLES_VERHERENCIA" [ref=e2406]:
+              - generic [ref=e2407]:
+                - generic [ref=e2408]: Ver Herencia Roles
+                - generic [ref=e2409]: ROLES_VERHERENCIA
+            - cell [ref=e2410]:
+              - generic "Asignado" [ref=e2411] [cursor=pointer]:
+                - img [ref=e2412]
+            - cell [ref=e2414]:
+              - generic "Denegado" [ref=e2415] [cursor=pointer]:
+                - img [ref=e2416]
+          - row "Administrar Herencia ROLES_ADMINHERENCIA" [ref=e2418]:
+            - cell "Administrar Herencia ROLES_ADMINHERENCIA" [ref=e2419]:
+              - generic [ref=e2420]:
+                - generic [ref=e2421]: Administrar Herencia
+                - generic [ref=e2422]: ROLES_ADMINHERENCIA
+            - cell [ref=e2423]:
+              - generic "Asignado" [ref=e2424] [cursor=pointer]:
+                - img [ref=e2425]
+            - cell [ref=e2427]:
+              - generic "Denegado" [ref=e2428] [cursor=pointer]:
+                - img [ref=e2429]
+          - row "Matriz Permisos" [ref=e2431]:
+            - cell "Matriz Permisos" [ref=e2432]
+          - row "Ver Matriz Permisos MATRIZ_PERMISOS_VER" [ref=e2433]:
+            - cell "Ver Matriz Permisos MATRIZ_PERMISOS_VER" [ref=e2434]:
+              - generic [ref=e2435]:
+                - generic [ref=e2436]: Ver Matriz Permisos
+                - generic [ref=e2437]: MATRIZ_PERMISOS_VER
+            - cell [ref=e2438]:
+              - generic "Asignado" [ref=e2439] [cursor=pointer]:
+                - img [ref=e2440]
+            - cell [ref=e2442]:
+              - generic "Asignado" [ref=e2443] [cursor=pointer]:
+                - img [ref=e2444]
+          - row "Apps" [ref=e2446]:
+            - cell "Apps" [ref=e2447]
+          - row "Ver Apps APPS_VER" [ref=e2448]:
+            - cell "Ver Apps APPS_VER" [ref=e2449]:
+              - generic [ref=e2450]:
+                - generic [ref=e2451]: Ver Apps
+                - generic [ref=e2452]: APPS_VER
+            - cell [ref=e2453]:
+              - generic "Asignado" [ref=e2454] [cursor=pointer]:
+                - img [ref=e2455]
+            - cell [ref=e2457]:
+              - generic "Denegado" [ref=e2458] [cursor=pointer]:
+                - img [ref=e2459]
+          - row "Crear Apps APPS_CREAR" [ref=e2461]:
+            - cell "Crear Apps APPS_CREAR" [ref=e2462]:
+              - generic [ref=e2463]:
+                - generic [ref=e2464]: Crear Apps
+                - generic [ref=e2465]: APPS_CREAR
+            - cell [ref=e2466]:
+              - generic "Asignado" [ref=e2467] [cursor=pointer]:
+                - img [ref=e2468]
+            - cell [ref=e2470]:
+              - generic "Denegado" [ref=e2471] [cursor=pointer]:
+                - img [ref=e2472]
+          - row "Editar Apps APPS_EDITAR" [ref=e2474]:
+            - cell "Editar Apps APPS_EDITAR" [ref=e2475]:
+              - generic [ref=e2476]:
+                - generic [ref=e2477]: Editar Apps
+                - generic [ref=e2478]: APPS_EDITAR
+            - cell [ref=e2479]:
+              - generic "Asignado" [ref=e2480] [cursor=pointer]:
+                - img [ref=e2481]
+            - cell [ref=e2483]:
+              - generic "Denegado" [ref=e2484] [cursor=pointer]:
+                - img [ref=e2485]
+          - row "Eliminar Apps APPS_ELIMINAR" [ref=e2487]:
+            - cell "Eliminar Apps APPS_ELIMINAR" [ref=e2488]:
+              - generic [ref=e2489]:
+                - generic [ref=e2490]: Eliminar Apps
+                - generic [ref=e2491]: APPS_ELIMINAR
+            - cell [ref=e2492]:
+              - generic "Asignado" [ref=e2493] [cursor=pointer]:
+                - img [ref=e2494]
+            - cell [ref=e2496]:
+              - generic "Denegado" [ref=e2497] [cursor=pointer]:
+                - img [ref=e2498]
+          - row "Módulos" [ref=e2500]:
+            - cell "Módulos" [ref=e2501]
+          - row "Ver Módulos MODULOS_VER" [ref=e2502]:
+            - cell "Ver Módulos MODULOS_VER" [ref=e2503]:
+              - generic [ref=e2504]:
+                - generic [ref=e2505]: Ver Módulos
+                - generic [ref=e2506]: MODULOS_VER
+            - cell [ref=e2507]:
+              - generic "Asignado" [ref=e2508] [cursor=pointer]:
+                - img [ref=e2509]
+            - cell [ref=e2511]:
+              - generic "Denegado" [ref=e2512] [cursor=pointer]:
+                - img [ref=e2513]
+          - row "Crear Módulos MODULOS_CREAR" [ref=e2515]:
+            - cell "Crear Módulos MODULOS_CREAR" [ref=e2516]:
+              - generic [ref=e2517]:
+                - generic [ref=e2518]: Crear Módulos
+                - generic [ref=e2519]: MODULOS_CREAR
+            - cell [ref=e2520]:
+              - generic "Asignado" [ref=e2521] [cursor=pointer]:
+                - img [ref=e2522]
+            - cell [ref=e2524]:
+              - generic "Denegado" [ref=e2525] [cursor=pointer]:
+                - img [ref=e2526]
+          - row "Editar Módulos MODULOS_EDITAR" [ref=e2528]:
+            - cell "Editar Módulos MODULOS_EDITAR" [ref=e2529]:
+              - generic [ref=e2530]:
+                - generic [ref=e2531]: Editar Módulos
+                - generic [ref=e2532]: MODULOS_EDITAR
+            - cell [ref=e2533]:
+              - generic "Asignado" [ref=e2534] [cursor=pointer]:
+                - img [ref=e2535]
+            - cell [ref=e2537]:
+              - generic "Denegado" [ref=e2538] [cursor=pointer]:
+                - img [ref=e2539]
+          - row "Apps × Módulos" [ref=e2541]:
+            - cell "Apps × Módulos" [ref=e2542]
+          - row "Ver Apps × Módulos APPSMODULOS_VER" [ref=e2543]:
+            - cell "Ver Apps × Módulos APPSMODULOS_VER" [ref=e2544]:
+              - generic [ref=e2545]:
+                - generic [ref=e2546]: Ver Apps × Módulos
+                - generic [ref=e2547]: APPSMODULOS_VER
+            - cell [ref=e2548]:
+              - generic "Asignado" [ref=e2549] [cursor=pointer]:
+                - img [ref=e2550]
+            - cell [ref=e2552]:
+              - generic "Denegado" [ref=e2553] [cursor=pointer]:
+                - img [ref=e2554]
+          - row "Asignar Módulos APPSMODULOS_ASIGNAR" [ref=e2556]:
+            - cell "Asignar Módulos APPSMODULOS_ASIGNAR" [ref=e2557]:
+              - generic [ref=e2558]:
+                - generic [ref=e2559]: Asignar Módulos
+                - generic [ref=e2560]: APPSMODULOS_ASIGNAR
+            - cell [ref=e2561]:
+              - generic "Asignado" [ref=e2562] [cursor=pointer]:
+                - img [ref=e2563]
+            - cell [ref=e2565]:
+              - generic "Denegado" [ref=e2566] [cursor=pointer]:
+                - img [ref=e2567]
+          - row "Tenants" [ref=e2569]:
+            - cell "Tenants" [ref=e2570]
+          - row "Ver Tenants TENANTS_VER" [ref=e2571]:
+            - cell "Ver Tenants TENANTS_VER" [ref=e2572]:
+              - generic [ref=e2573]:
+                - generic [ref=e2574]: Ver Tenants
+                - generic [ref=e2575]: TENANTS_VER
+            - cell [ref=e2576]:
+              - generic "Asignado" [ref=e2577] [cursor=pointer]:
+                - img [ref=e2578]
+            - cell [ref=e2580]:
+              - generic "Denegado" [ref=e2581] [cursor=pointer]:
+                - img [ref=e2582]
+          - row "Crear Tenants TENANTS_CREAR" [ref=e2584]:
+            - cell "Crear Tenants TENANTS_CREAR" [ref=e2585]:
+              - generic [ref=e2586]:
+                - generic [ref=e2587]: Crear Tenants
+                - generic [ref=e2588]: TENANTS_CREAR
+            - cell [ref=e2589]:
+              - generic "Asignado" [ref=e2590] [cursor=pointer]:
+                - img [ref=e2591]
+            - cell [ref=e2593]:
+              - generic "Denegado" [ref=e2594] [cursor=pointer]:
+                - img [ref=e2595]
+          - row "Editar Tenants TENANTS_EDITAR" [ref=e2597]:
+            - cell "Editar Tenants TENANTS_EDITAR" [ref=e2598]:
+              - generic [ref=e2599]:
+                - generic [ref=e2600]: Editar Tenants
+                - generic [ref=e2601]: TENANTS_EDITAR
+            - cell [ref=e2602]:
+              - generic "Asignado" [ref=e2603] [cursor=pointer]:
+                - img [ref=e2604]
+            - cell [ref=e2606]:
+              - generic "Denegado" [ref=e2607] [cursor=pointer]:
+                - img [ref=e2608]
+          - row "Eliminar Tenants TENANTS_ELIMINAR" [ref=e2610]:
+            - cell "Eliminar Tenants TENANTS_ELIMINAR" [ref=e2611]:
+              - generic [ref=e2612]:
+                - generic [ref=e2613]: Eliminar Tenants
+                - generic [ref=e2614]: TENANTS_ELIMINAR
+            - cell [ref=e2615]:
+              - generic "Asignado" [ref=e2616] [cursor=pointer]:
+                - img [ref=e2617]
+            - cell [ref=e2619]:
+              - generic "Denegado" [ref=e2620] [cursor=pointer]:
+                - img [ref=e2621]
+          - row "Configuración" [ref=e2623]:
+            - cell "Configuración" [ref=e2624]
+          - row "Ver Config App CONFIG_APP_VER" [ref=e2625]:
+            - cell "Ver Config App CONFIG_APP_VER" [ref=e2626]:
+              - generic [ref=e2627]:
+                - generic [ref=e2628]: Ver Config App
+                - generic [ref=e2629]: CONFIG_APP_VER
+            - cell [ref=e2630]:
+              - generic "Asignado" [ref=e2631] [cursor=pointer]:
+                - img [ref=e2632]
+            - cell [ref=e2634]:
+              - generic "Denegado" [ref=e2635] [cursor=pointer]:
+                - img [ref=e2636]
+          - row "Editar Config App CONFIG_APP_EDITAR" [ref=e2638]:
+            - cell "Editar Config App CONFIG_APP_EDITAR" [ref=e2639]:
+              - generic [ref=e2640]:
+                - generic [ref=e2641]: Editar Config App
+                - generic [ref=e2642]: CONFIG_APP_EDITAR
+            - cell [ref=e2643]:
+              - generic "Asignado" [ref=e2644] [cursor=pointer]:
+                - img [ref=e2645]
+            - cell [ref=e2647]:
+              - generic "Denegado" [ref=e2648] [cursor=pointer]:
+                - img [ref=e2649]
+          - row "Políticas Password" [ref=e2651]:
+            - cell "Políticas Password" [ref=e2652]
+          - row "Ver Políticas Pwd POLITICAS_PWD_VER" [ref=e2653]:
+            - cell "Ver Políticas Pwd POLITICAS_PWD_VER" [ref=e2654]:
+              - generic [ref=e2655]:
+                - generic [ref=e2656]: Ver Políticas Pwd
+                - generic [ref=e2657]: POLITICAS_PWD_VER
+            - cell [ref=e2658]:
+              - generic "Asignado" [ref=e2659] [cursor=pointer]:
+                - img [ref=e2660]
+            - cell [ref=e2662]:
+              - generic "Denegado" [ref=e2663] [cursor=pointer]:
+                - img [ref=e2664]
+          - row "Crear Políticas Pwd POLITICAS_PWD_CREAR" [ref=e2666]:
+            - cell "Crear Políticas Pwd POLITICAS_PWD_CREAR" [ref=e2667]:
+              - generic [ref=e2668]:
+                - generic [ref=e2669]: Crear Políticas Pwd
+                - generic [ref=e2670]: POLITICAS_PWD_CREAR
+            - cell [ref=e2671]:
+              - generic "Asignado" [ref=e2672] [cursor=pointer]:
+                - img [ref=e2673]
+            - cell [ref=e2675]:
+              - generic "Denegado" [ref=e2676] [cursor=pointer]:
+                - img [ref=e2677]
+          - row "Editar Políticas Pwd POLITICAS_PWD_EDITAR" [ref=e2679]:
+            - cell "Editar Políticas Pwd POLITICAS_PWD_EDITAR" [ref=e2680]:
+              - generic [ref=e2681]:
+                - generic [ref=e2682]: Editar Políticas Pwd
+                - generic [ref=e2683]: POLITICAS_PWD_EDITAR
+            - cell [ref=e2684]:
+              - generic "Asignado" [ref=e2685] [cursor=pointer]:
+                - img [ref=e2686]
+            - cell [ref=e2688]:
+              - generic "Denegado" [ref=e2689] [cursor=pointer]:
+                - img [ref=e2690]
+          - row "Mantenimiento" [ref=e2692]:
+            - cell "Mantenimiento" [ref=e2693]
+          - row "Ver Mantenimiento MANTENIMIENTO_VER" [ref=e2694]:
+            - cell "Ver Mantenimiento MANTENIMIENTO_VER" [ref=e2695]:
+              - generic [ref=e2696]:
+                - generic [ref=e2697]: Ver Mantenimiento
+                - generic [ref=e2698]: MANTENIMIENTO_VER
+            - cell [ref=e2699]:
+              - generic "Asignado" [ref=e2700] [cursor=pointer]:
+                - img [ref=e2701]
+            - cell [ref=e2703]:
+              - generic "Denegado" [ref=e2704] [cursor=pointer]:
+                - img [ref=e2705]
+          - row "Plantillas" [ref=e2707]:
+            - cell "Plantillas" [ref=e2708]
+          - row "Ver Plantillas EMAIL_TEMPLATES_VER" [ref=e2709]:
+            - cell "Ver Plantillas EMAIL_TEMPLATES_VER" [ref=e2710]:
+              - generic [ref=e2711]:
+                - generic [ref=e2712]: Ver Plantillas
+                - generic [ref=e2713]: EMAIL_TEMPLATES_VER
+            - cell [ref=e2714]:
+              - generic "Asignado" [ref=e2715] [cursor=pointer]:
+                - img [ref=e2716]
+            - cell [ref=e2718]:
+              - generic "Denegado" [ref=e2719] [cursor=pointer]:
+                - img [ref=e2720]
+          - row "Crear Plantillas EMAIL_TEMPLATES_CREAR" [ref=e2722]:
+            - cell "Crear Plantillas EMAIL_TEMPLATES_CREAR" [ref=e2723]:
+              - generic [ref=e2724]:
+                - generic [ref=e2725]: Crear Plantillas
+                - generic [ref=e2726]: EMAIL_TEMPLATES_CREAR
+            - cell [ref=e2727]:
+              - generic "Asignado" [ref=e2728] [cursor=pointer]:
+                - img [ref=e2729]
+            - cell [ref=e2731]:
+              - generic "Denegado" [ref=e2732] [cursor=pointer]:
+                - img [ref=e2733]
+          - row "Editar Plantillas EMAIL_TEMPLATES_EDITAR" [ref=e2735]:
+            - cell "Editar Plantillas EMAIL_TEMPLATES_EDITAR" [ref=e2736]:
+              - generic [ref=e2737]:
+                - generic [ref=e2738]: Editar Plantillas
+                - generic [ref=e2739]: EMAIL_TEMPLATES_EDITAR
+            - cell [ref=e2740]:
+              - generic "Asignado" [ref=e2741] [cursor=pointer]:
+                - img [ref=e2742]
+            - cell [ref=e2744]:
+              - generic "Denegado" [ref=e2745] [cursor=pointer]:
+                - img [ref=e2746]
+          - row "Eliminar Plantillas EMAIL_TEMPLATES_ELIMINAR" [ref=e2748]:
+            - cell "Eliminar Plantillas EMAIL_TEMPLATES_ELIMINAR" [ref=e2749]:
+              - generic [ref=e2750]:
+                - generic [ref=e2751]: Eliminar Plantillas
+                - generic [ref=e2752]: EMAIL_TEMPLATES_ELIMINAR
+            - cell [ref=e2753]:
+              - generic "Asignado" [ref=e2754] [cursor=pointer]:
+                - img [ref=e2755]
+            - cell [ref=e2757]:
+              - generic "Denegado" [ref=e2758] [cursor=pointer]:
+                - img [ref=e2759]
+          - row "Providers" [ref=e2761]:
+            - cell "Providers" [ref=e2762]
+          - row "Ver Providers EMAIL_PROVIDERS_VER" [ref=e2763]:
+            - cell "Ver Providers EMAIL_PROVIDERS_VER" [ref=e2764]:
+              - generic [ref=e2765]:
+                - generic [ref=e2766]: Ver Providers
+                - generic [ref=e2767]: EMAIL_PROVIDERS_VER
+            - cell [ref=e2768]:
+              - generic "Asignado" [ref=e2769] [cursor=pointer]:
+                - img [ref=e2770]
+            - cell [ref=e2772]:
+              - generic "Denegado" [ref=e2773] [cursor=pointer]:
+                - img [ref=e2774]
+          - row "Cuentas" [ref=e2776]:
+            - cell "Cuentas" [ref=e2777]
+          - row "Ver Cuentas de Correo EMAIL_ACCOUNTS_VER" [ref=e2778]:
+            - cell "Ver Cuentas de Correo EMAIL_ACCOUNTS_VER" [ref=e2779]:
+              - generic [ref=e2780]:
+                - generic [ref=e2781]: Ver Cuentas de Correo
+                - generic [ref=e2782]: EMAIL_ACCOUNTS_VER
+            - cell [ref=e2783]:
+              - generic "Asignado" [ref=e2784] [cursor=pointer]:
+                - img [ref=e2785]
+            - cell [ref=e2787]:
+              - generic "Denegado" [ref=e2788] [cursor=pointer]:
+                - img [ref=e2789]
+          - row "Cuentas × Tenant" [ref=e2791]:
+            - cell "Cuentas × Tenant" [ref=e2792]
+          - row "Ver Cuentas x Tenant EMAIL_TENANT_ACCOUNTS_VER" [ref=e2793]:
+            - cell "Ver Cuentas x Tenant EMAIL_TENANT_ACCOUNTS_VER" [ref=e2794]:
+              - generic [ref=e2795]:
+                - generic [ref=e2796]: Ver Cuentas x Tenant
+                - generic [ref=e2797]: EMAIL_TENANT_ACCOUNTS_VER
+            - cell [ref=e2798]:
+              - generic "Asignado" [ref=e2799] [cursor=pointer]:
+                - img [ref=e2800]
+            - cell [ref=e2802]:
+              - generic "Denegado" [ref=e2803] [cursor=pointer]:
+                - img [ref=e2804]
+          - row "Cuentas × App" [ref=e2806]:
+            - cell "Cuentas × App" [ref=e2807]
+          - row "Ver Cuentas x App EMAIL_APP_ACCOUNTS_VER" [ref=e2808]:
+            - cell "Ver Cuentas x App EMAIL_APP_ACCOUNTS_VER" [ref=e2809]:
+              - generic [ref=e2810]:
+                - generic [ref=e2811]: Ver Cuentas x App
+                - generic [ref=e2812]: EMAIL_APP_ACCOUNTS_VER
+            - cell [ref=e2813]:
+              - generic "Asignado" [ref=e2814] [cursor=pointer]:
+                - img [ref=e2815]
+            - cell [ref=e2817]:
+              - generic "Denegado" [ref=e2818] [cursor=pointer]:
+                - img [ref=e2819]
+          - row "Historial Envíos" [ref=e2821]:
+            - cell "Historial Envíos" [ref=e2822]
+          - row "Ver Historial Envíos EMAIL_LOG_VER" [ref=e2823]:
+            - cell "Ver Historial Envíos EMAIL_LOG_VER" [ref=e2824]:
+              - generic [ref=e2825]:
+                - generic [ref=e2826]: Ver Historial Envíos
+                - generic [ref=e2827]: EMAIL_LOG_VER
+            - cell [ref=e2828]:
+              - generic "Asignado" [ref=e2829] [cursor=pointer]:
+                - img [ref=e2830]
+            - cell [ref=e2832]:
+              - generic "Denegado" [ref=e2833] [cursor=pointer]:
+                - img [ref=e2834]
+          - row "Eventos" [ref=e2836]:
+            - cell "Eventos" [ref=e2837]
+          - row "Ver Auditoría AUDITORIA_VER" [ref=e2838]:
+            - cell "Ver Auditoría AUDITORIA_VER" [ref=e2839]:
+              - generic [ref=e2840]:
+                - generic [ref=e2841]: Ver Auditoría
+                - generic [ref=e2842]: AUDITORIA_VER
+            - cell [ref=e2843]:
+              - generic "Asignado" [ref=e2844] [cursor=pointer]:
+                - img [ref=e2845]
+            - cell [ref=e2847]:
+              - generic "Denegado" [ref=e2848] [cursor=pointer]:
+                - img [ref=e2849]
+          - row "Intentos Acceso" [ref=e2851]:
+            - cell "Intentos Acceso" [ref=e2852]
+          - row "Ver Intentos Acceso INTENTOS_ACCESO_VER" [ref=e2853]:
+            - cell "Ver Intentos Acceso INTENTOS_ACCESO_VER" [ref=e2854]:
+              - generic [ref=e2855]:
+                - generic [ref=e2856]: Ver Intentos Acceso
+                - generic [ref=e2857]: INTENTOS_ACCESO_VER
+            - cell [ref=e2858]:
+              - generic "Asignado" [ref=e2859] [cursor=pointer]:
+                - img [ref=e2860]
+            - cell [ref=e2862]:
+              - generic "Denegado" [ref=e2863] [cursor=pointer]:
+                - img [ref=e2864]
+          - row "Historial Password" [ref=e2866]:
+            - cell "Historial Password" [ref=e2867]
+          - row "Ver Historial Pwd HISTORIAL_PWD_VER" [ref=e2868]:
+            - cell "Ver Historial Pwd HISTORIAL_PWD_VER" [ref=e2869]:
+              - generic [ref=e2870]:
+                - generic [ref=e2871]: Ver Historial Pwd
+                - generic [ref=e2872]: HISTORIAL_PWD_VER
+            - cell [ref=e2873]:
+              - generic "Asignado" [ref=e2874] [cursor=pointer]:
+                - img [ref=e2875]
+            - cell [ref=e2877]:
+              - generic "Denegado" [ref=e2878] [cursor=pointer]:
+                - img [ref=e2879]
+          - row "Notificaciones" [ref=e2881]:
+            - cell "Notificaciones" [ref=e2882]
+          - row "Ver Notificaciones NOTIFICACIONES_VER" [ref=e2883]:
+            - cell "Ver Notificaciones NOTIFICACIONES_VER" [ref=e2884]:
+              - generic [ref=e2885]:
+                - generic [ref=e2886]: Ver Notificaciones
+                - generic [ref=e2887]: NOTIFICACIONES_VER
+            - cell [ref=e2888]:
+              - generic "Asignado" [ref=e2889] [cursor=pointer]:
+                - img [ref=e2890]
+            - cell [ref=e2892]:
+              - generic "Denegado" [ref=e2893] [cursor=pointer]:
+                - img [ref=e2894]
+          - row "Enviar Notificaciones AUD_NOTIFICACIONES_ENVIAR" [ref=e2896]:
+            - cell "Enviar Notificaciones AUD_NOTIFICACIONES_ENVIAR" [ref=e2897]:
+              - generic [ref=e2898]:
+                - generic [ref=e2899]: Enviar Notificaciones
+                - generic [ref=e2900]: AUD_NOTIFICACIONES_ENVIAR
+            - cell [ref=e2901]:
+              - generic "Asignado" [ref=e2902] [cursor=pointer]:
+                - img [ref=e2903]
+            - cell [ref=e2905]:
+              - generic "Denegado" [ref=e2906] [cursor=pointer]:
+                - img [ref=e2907]
+      - generic [ref=e2910]:
+        - generic [ref=e2911]:
+          - generic [ref=e2913]: Ninguno — Resumen de Permisos
+          - generic [ref=e2915]: Seleccione un rol para ver el resumen
+        - generic [ref=e2916]:
+          - generic [ref=e2918]: Distribución por Módulo
+          - generic [ref=e2920]: Seleccione un rol para ver la distribución
+    - generic [ref=e431]:
+      - generic [ref=e432]:
+        - generic [ref=e433]: © 2026 Plataforma de Acceso
+        - generic [ref=e436]:
+          - img [ref=e437]
+          - text: Producción
+      - generic [ref=e440]:
+        - button [ref=e442] [cursor=pointer]:
+          - img [ref=e444]
+        - button [ref=e455] [cursor=pointer]:
+          - img [ref=e457]
+        - separator [ref=e460]
+        - generic [ref=e461]: v1.0.0

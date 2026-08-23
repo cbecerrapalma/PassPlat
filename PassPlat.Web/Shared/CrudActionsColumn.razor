@@ -1,0 +1,71 @@
+@namespace PassPlat.Web.Shared
+@typeparam TItem
+
+@if (Mode == ActionMode.Menu)
+{
+    <div @onclick:stopPropagation="true" class="table-actions">
+        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true">
+            @if (OnView.HasDelegate)
+            {
+                <MudMenuItem OnClick="@(() => OnView.InvokeAsync(Item))">
+                    <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Class="mr-2" Color="Color.Info" />
+                    @ViewText
+                </MudMenuItem>
+            }
+            @if (OnEdit.HasDelegate)
+            {
+                <MudMenuItem OnClick="@(() => OnEdit.InvokeAsync(Item))">
+                    <MudIcon Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Class="mr-2" />
+                    @EditText
+                </MudMenuItem>
+            }
+            @ChildContent
+            @if (OnDelete.HasDelegate)
+            {
+                <MudMenuItem OnClick="@(() => OnDelete.InvokeAsync(Item))">
+                    <MudIcon Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Class="mr-2" Color="@DeleteColor" />
+                    @DeleteText
+                </MudMenuItem>
+            }
+        </MudMenu>
+    </div>
+}
+else
+{
+    <span class="table-actions">
+        @if (OnView.HasDelegate)
+        {
+            <MudTooltip Text="@ViewText">
+                <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Color="Color.Info" OnClick="@(() => OnView.InvokeAsync(Item))" />
+            </MudTooltip>
+        }
+        @if (OnEdit.HasDelegate)
+        {
+            <MudTooltip Text="@EditText">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => OnEdit.InvokeAsync(Item))" />
+            </MudTooltip>
+        }
+        @ChildContent
+        @if (OnDelete.HasDelegate)
+        {
+            <MudTooltip Text="@DeleteText">
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="@DeleteColor" OnClick="@(() => OnDelete.InvokeAsync(Item))" />
+            </MudTooltip>
+        }
+    </span>
+}
+
+@code {
+    [Parameter] public TItem? Item { get; set; }
+    [Parameter] public ActionMode Mode { get; set; } = ActionMode.Menu;
+    [Parameter] public EventCallback<TItem> OnEdit { get; set; }
+    [Parameter] public EventCallback<TItem> OnDelete { get; set; }
+    [Parameter] public EventCallback<TItem> OnView { get; set; }
+    [Parameter] public string EditText { get; set; } = "Editar";
+    [Parameter] public string DeleteText { get; set; } = "Eliminar";
+    [Parameter] public string ViewText { get; set; } = "Ver detalle";
+    [Parameter] public Color DeleteColor { get; set; } = Color.Error;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    public enum ActionMode { Individual, Menu }
+}

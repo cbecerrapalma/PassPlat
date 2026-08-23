@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AutoMapper" Version="16.2.0" />
+    <PackageReference Include="FluentValidation" Version="12.1.1" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
+    <PackageReference Include="Fluid.Core" Version="2.31.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PassPlat.Aplicacion.Dtos\PassPlat.Aplicacion.Dtos.csproj" />
+    <ProjectReference Include="..\PassPlat.Datos\PassPlat.Datos.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Authentication\CBP.Authentication.JwtBearer\CBP.Authentication.JwtBearer.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Infraestructure\CBP.Emails\CBP.Emails.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Infraestructure\CBP.Security\CBP.Security.Cryptography\CBP.Security.Cryptography.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Infraestructure\CBP.MultiTenant\CBP.MultiTenant.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Service\CBP.Services.Async\CBP.Services.Async.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Core\CBP.Events\CBP.Events.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Caching\CBP.Caching.Abstractions\CBP.Caching.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

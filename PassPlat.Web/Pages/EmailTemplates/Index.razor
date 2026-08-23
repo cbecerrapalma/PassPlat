@@ -1,0 +1,256 @@
+@page "/email-templates"
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@inject NavigationManager Navigation
+@inject AuthService Auth
+@using PassPlat.Web.Models
+@using PassPlat.Web.Shared
+
+@if (!Auth.TienePermiso("EMAIL_TEMPLATES_VER"))
+{
+    <SinPermiso PermisoRequerido="EMAIL_TEMPLATES_VER" />
+}
+else
+{
+<MudContainer>
+    <MudBreadcrumbs Class="mb-3">
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
+        <MudBreadcrumbItem>Comunicaciones</MudBreadcrumbItem>
+        <MudBreadcrumbItem>Plantillas de Email</MudBreadcrumbItem>
+    </MudBreadcrumbs>
+    <MudPaper Class="pa-4 mb-4 d-flex flex-wrap align-center gap-4" Elevation="0" Outlined="true">
+        <MudText Typo="Typo.h5" Class="flex-grow-1 mb-0">Plantillas de Email</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium"
+            OnClick="@(async () => { if (_table is not null) await _table.ReloadServerData(); })" Class="mr-2" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@OpenCreateDialog"
+            StartIcon="@Icons.Material.Filled.Add" Size="Size.Medium">
+            Nueva Plantilla
+        </MudButton>
+    </MudPaper>
+
+    <MudGrid Class="mb-4">
+        <MudItem xs="12" sm="6" md="4">
+            <MudTextField Value="@_searchString" ValueChanged="@(EventCallback.Factory.Create<string>(this, async (string value) => { _searchString = value; if (_table is not null) await _table.ReloadServerData(); }))" Label="Buscar..." Variant="Variant.Outlined"
+                Immediate="true" Clearable="true" FullWidth="true" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4">
+            <MudSelect T="string" Value="@_filterEstado" ValueChanged="@(EventCallback.Factory.Create<string>(this, async (string v) => { _filterEstado = v; if (_table is not null) await _table.ReloadServerData(); }))"
+                Label="Estado" Variant="Variant.Outlined" Clearable="true" FullWidth="true">
+                <MudSelectItem Value="@("borrador")">Borrador</MudSelectItem>
+                <MudSelectItem Value="@("publicado")">Publicado</MudSelectItem>
+                <MudSelectItem Value="@("desactivado")">Desactivado</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4">
+            <MudSelect T="string" Value="@_filterCategoria" ValueChanged="@(EventCallback.Factory.Create<string>(this, async (string v) => { _filterCategoria = v; if (_table is not null) await _table.ReloadServerData(); }))"
+                Label="Categoría" Variant="Variant.Outlined" Clearable="true" FullWidth="true">
+                <MudSelectItem Value="@("transaccional")">Transaccional</MudSelectItem>
+                <MudSelectItem Value="@("marketing")">Marketing</MudSelectItem>
+                <MudSelectItem Value="@("sistema")">Sistema</MudSelectItem>
+                <MudSelectItem Value="@("alerta")">Alerta</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+    </MudGrid>
+
+    <MudTable @ref="_table" T="EmailTemplateDto" ServerData="@_serverReload" Items="@_items" Hover="true" Breakpoint="Breakpoint.Sm" Class="mt-2">
+        <ColGroup>
+            <col style="width: 60px;" />
+            <col />
+            <col style="width: 80px;" />
+            <col />
+            <col style="width: 130px;" />
+            <col style="width: 120px;" />
+            <col style="width: 70px;" />
+            <col style="width: 140px;" />
+            <col style="width: 220px;" />
+        </ColGroup>
+        <HeaderContent>
+            <MudTh>Id</MudTh>
+            <MudTh>Nombre</MudTh>
+            <MudTh>Cultura</MudTh>
+            <MudTh>Asunto</MudTh>
+            <MudTh>Categoría</MudTh>
+            <MudTh>Estado</MudTh>
+            <MudTh>Versión</MudTh>
+            <MudTh>Modificado</MudTh>
+            <MudTh>Acciones</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Id">@context.Id</MudTd>
+            <MudTd DataLabel="Nombre"><code>@context.Nombre</code></MudTd>
+            <MudTd DataLabel="Cultura">@context.Cultura</MudTd>
+            <MudTd DataLabel="Asunto">@context.Asunto</MudTd>
+            <MudTd DataLabel="Categoría">
+                <MudChip T="string" Size="Size.Small" Color="Color.Info">@context.Categoria</MudChip>
+            </MudTd>
+            <MudTd DataLabel="Estado">
+                <MudChip T="string" Size="Size.Small" Color="@GetEstadoColor(context.Estado)">@context.Estado</MudChip>
+            </MudTd>
+            <MudTd DataLabel="Versión">v@(context.Version)</MudTd>
+            <MudTd DataLabel="Modificado">@(context.FecMod?.ToString("yyyy-MM-dd HH:mm") ?? "-")</MudTd>
+            <MudTd DataLabel="Acciones">
+                <MudTooltip Text="Editar">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => OpenEditDialog(context))" />
+                </MudTooltip>
+                <MudTooltip Text="Vista previa">
+                    <MudIconButton Icon="@Icons.Material.Filled.Preview" Size="Size.Small" Color="Color.Info" OnClick="@(() => OpenPreview(context))" />
+                </MudTooltip>
+                @if (context.Estado != "publicado")
+                {
+                    <MudTooltip Text="Publicar">
+                        <MudIconButton Icon="@Icons.Material.Filled.Publish" Size="Size.Small" Color="Color.Success" OnClick="@(() => Publicar(context))" />
+                    </MudTooltip>
+                }
+                @if (context.Estado != "desactivado")
+                {
+                    <MudTooltip Text="Desactivar">
+                        <MudIconButton Icon="@Icons.Material.Filled.Block" Size="Size.Small" Color="Color.Warning" OnClick="@(() => Desactivar(context))" />
+                    </MudTooltip>
+                }
+            </MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new int[]{10, 25, 50}" />
+        </PagerContent>
+        <NoRecordsContent>
+            <MudText Align="Align.Center" Class="py-6">
+                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Class="mr-2" />
+                No hay plantillas registradas
+            </MudText>
+        </NoRecordsContent>
+    </MudTable>
+</MudContainer>
+}
+
+@code {
+    private MudTable<EmailTemplateDto>? _table;
+    private IEnumerable<EmailTemplateDto> _items = [];
+    private string _searchString = "";
+    private string? _filterEstado;
+    private string? _filterCategoria;
+
+    private async Task<TableData<EmailTemplateDto>> _serverReload(TableState state, CancellationToken ct)
+    {
+        try
+        {
+            var searchParam = string.IsNullOrEmpty(_searchString) ? "" : _searchString;
+            var idTenant = Auth.IdTenant ?? 0;
+            var response = idTenant > 0
+                ? await Api.GetAsync<List<EmailTemplateDto>>($"api/emailtemplates/tenant/{idTenant}")
+                : await Api.GetAsync<List<EmailTemplateDto>>("api/emailtemplates");
+            if (response is not null)
+            {
+                var filtered = response.AsEnumerable();
+                if (!string.IsNullOrWhiteSpace(_searchString))
+                    filtered = filtered.Where(t =>
+                        t.Nombre.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ||
+                        t.Asunto.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ||
+                        t.Categoria.Contains(_searchString, StringComparison.OrdinalIgnoreCase));
+                if (!string.IsNullOrWhiteSpace(_filterEstado))
+                    filtered = filtered.Where(t => string.Equals(t.Estado, _filterEstado, StringComparison.OrdinalIgnoreCase));
+                if (!string.IsNullOrWhiteSpace(_filterCategoria))
+                    filtered = filtered.Where(t => string.Equals(t.Categoria, _filterCategoria, StringComparison.OrdinalIgnoreCase));
+
+                var items = filtered.ToList();
+                _items = items;
+                return new TableData<EmailTemplateDto> { Items = items, TotalItems = items.Count };
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar: {ex.Message}", Severity.Error);
+        }
+        return new TableData<EmailTemplateDto> { Items = [], TotalItems = 0 };
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var parameters = new DialogParameters { ["IsEdit"] = false };
+        var dialog = await Dialog.ShowAsync<EmailTemplateDialog>("Nueva Plantilla", parameters, _dialogOptions);
+        var result = await dialog.Result;
+        if (result is { Canceled: false } && _table is not null)
+            await _table.ReloadServerData();
+    }
+
+    private async Task OpenEditDialog(EmailTemplateDto item)
+    {
+        var parameters = new DialogParameters
+        {
+            ["IsEdit"] = true,
+            ["Template"] = item
+        };
+        var dialog = await Dialog.ShowAsync<EmailTemplateDialog>("Editar Plantilla", parameters, _dialogOptions);
+        var result = await dialog.Result;
+        if (result is { Canceled: false } && _table is not null)
+            await _table.ReloadServerData();
+    }
+
+    private async Task OpenPreview(EmailTemplateDto item)
+    {
+        var parameters = new DialogParameters
+        {
+            ["ContentText"] = item.CuerpoHtml,
+            ["Title"] = $"Vista previa — {item.Nombre} ({item.Cultura})",
+            ["ButtonText"] = "Cerrar"
+        };
+        var dialog = await Dialog.ShowAsync<HtmlPreviewDialog>("", parameters, new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true });
+        await dialog.Result;
+    }
+
+    private async Task Publicar(EmailTemplateDto item)
+    {
+        var parameters = new DialogParameters
+        {
+            ["Title"] = "Publicar plantilla",
+            ["Message"] = $"¿Publicar la plantilla '{item.Nombre}' ({item.Cultura})? Esto incrementará su versión y la dejará disponible para envío.",
+            ["ConfirmText"] = "Publicar",
+            ["CancelText"] = "Cancelar"
+        };
+        var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parameters);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled) return;
+
+        var ok = await Api.PostVoidAsync("api/emailtemplates/publicar", new { id = item.Id, motivo = (string?)null });
+        if (ok)
+        {
+            Snackbar.Add("Plantilla publicada", Severity.Success);
+            if (_table is not null) await _table.ReloadServerData();
+        }
+        else
+            Snackbar.Add(Api.LastError ?? "Error al publicar", Severity.Error);
+    }
+
+    private async Task Desactivar(EmailTemplateDto item)
+    {
+        var parameters = new DialogParameters
+        {
+            ["Title"] = "Desactivar plantilla",
+            ["Message"] = $"¿Desactivar la plantilla '{item.Nombre}' ({item.Cultura})?",
+            ["ConfirmText"] = "Desactivar",
+            ["CancelText"] = "Cancelar"
+        };
+        var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parameters);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled) return;
+
+        var ok = await Api.PostVoidAsync($"api/emailtemplates/{item.Id}/desactivar", null);
+        if (ok)
+        {
+            Snackbar.Add("Plantilla desactivada", Severity.Success);
+            if (_table is not null) await _table.ReloadServerData();
+        }
+        else
+            Snackbar.Add(Api.LastError ?? "Error al desactivar", Severity.Error);
+    }
+
+    private static Color GetEstadoColor(string estado) => estado switch
+    {
+        "publicado" => Color.Success,
+        "borrador" => Color.Warning,
+        "desactivado" => Color.Default,
+        _ => Color.Info
+    };
+
+    private static readonly DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Large, FullWidth = true, CloseButton = true };
+}

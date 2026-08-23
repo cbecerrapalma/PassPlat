@@ -1,0 +1,148 @@
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(IsEdit ? "Editar" : "Nueva") Configuración</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="_grupo" Label="Grupo" Variant="Variant.Outlined" Class="mb-3" Disabled="@IsEdit" Required="true"
+                      Error="@(_submitted && string.IsNullOrWhiteSpace(_grupo))" ErrorText="El grupo es requerido" />
+        <MudTextField @bind-Value="_clave" Label="Clave" Variant="Variant.Outlined" Class="mb-3" Disabled="@IsEdit" Required="true"
+                      Error="@(_submitted && string.IsNullOrWhiteSpace(_clave))" ErrorText="La clave es requerida" />
+        <MudTextField @bind-Value="_valor" Label="Valor" Variant="Variant.Outlined" Class="mb-3" Required="true"
+                      Error="@(_submitted && string.IsNullOrWhiteSpace(_valor))" ErrorText="El valor es requerido"
+                      Adornment="@(_esEncriptado ? Adornment.Start : Adornment.None)"
+                      AdornmentIcon="@(_esEncriptado ? Icons.Material.Filled.Lock : null)"
+                      AdornmentColor="Color.Warning" />
+        @if (_esEncriptado)
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Icon="@Icons.Material.Filled.Lock" Class="mb-3" Dense="true">
+                <MudText Typo="Typo.body2">
+                    El valor se cifrará con <strong>AES-256 (CBP.Security.Cryptography)</strong> antes de almacenar.
+                    @if (IsEdit && _originalEsEncriptado)
+                    {
+                        <span>Re-ingrese el valor en texto plano para reemplazarlo, o deje el actual.</span>
+                    }
+                </MudText>
+            </MudAlert>
+        }
+        <MudSelect T="string" Value="@_tipo" ValueChanged="@((string v) => OnTipoChanged(v))" Label="Tipo" Variant="Variant.Outlined" Class="mb-3" Required="true"
+                   Error="@(_submitted && string.IsNullOrWhiteSpace(_tipo))" ErrorText="Seleccione un tipo">
+            <MudSelectItem Value="@("string")">String</MudSelectItem>
+            <MudSelectItem Value="@("int")">Entero</MudSelectItem>
+            <MudSelectItem Value="@("bool")">Booleano</MudSelectItem>
+            <MudSelectItem Value="@("json")">JSON</MudSelectItem>
+            <MudSelectItem Value="@("encrypted")">Encriptado</MudSelectItem>
+        </MudSelect>
+        <MudTextField @bind-Value="_descripcion" Label="Descripción" Variant="Variant.Outlined" Class="mb-3" />
+        <MudSwitch T="bool" Value="@_esEncriptado" ValueChanged="@(v => OnEncriptadoChanged(v))" Label="Valor Encriptado" Color="Color.Primary" Class="mb-3" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@Save" Disabled="@(!CanSave() || _saving)">
+            @(IsEdit ? "Guardar" : "Crear")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+
+    [Parameter] public bool IsEdit { get; set; }
+    [Parameter] public ConfigAppDto? ConfigApp { get; set; }
+
+    private string _grupo = "";
+    private string _clave = "";
+    private string _valor = "";
+    private string _tipo = "string";
+    private string _descripcion = "";
+    private bool _esEncriptado;
+    private bool _originalEsEncriptado;
+    private bool _saving;
+    private bool _submitted;
+
+    protected override void OnInitialized()
+    {
+        if (IsEdit && ConfigApp is not null)
+        {
+            _grupo = ConfigApp.Grupo;
+            _clave = ConfigApp.Clave;
+            _valor = ConfigApp.Valor;
+            _tipo = ConfigApp.Tipo;
+            _descripcion = ConfigApp.Descripcion ?? "";
+            _esEncriptado = ConfigApp.EsEncriptado;
+            _originalEsEncriptado = ConfigApp.EsEncriptado;
+        }
+    }
+
+    private bool CanSave()
+    {
+        if (IsEdit)
+            return true;
+        return !string.IsNullOrWhiteSpace(_grupo) && !string.IsNullOrWhiteSpace(_clave) && !string.IsNullOrWhiteSpace(_valor) && !string.IsNullOrWhiteSpace(_tipo);
+    }
+
+    private void OnTipoChanged(string nuevoTipo)
+    {
+        _tipo = nuevoTipo;
+        _esEncriptado = nuevoTipo == "encrypted";
+        Console.WriteLine($"[ConfigAppDialog] OnTipoChanged -> tipo='{_tipo}', esEncriptado={_esEncriptado}");
+        StateHasChanged();
+    }
+
+    private void OnEncriptadoChanged(bool value)
+    {
+        _esEncriptado = value;
+        if (value && _tipo != "encrypted")
+            _tipo = "encrypted";
+        else if (!value && _tipo == "encrypted")
+            _tipo = "string";
+        Console.WriteLine($"[ConfigAppDialog] OnEncriptadoChanged -> esEncriptado={_esEncriptado}, tipo='{_tipo}'");
+        StateHasChanged();
+    }
+
+    private async Task Save()
+    {
+        _submitted = true;
+        if (!CanSave()) return;
+        _saving = true;
+        try
+        {
+            if (IsEdit)
+            {
+                var ok = await Api.PutVoidAsync($"api/configapp/{ConfigApp!.Id}",
+                    new { valor = _valor, descripcion = string.IsNullOrEmpty(_descripcion) ? null : _descripcion, activo = true, esEncriptado = _esEncriptado });
+                if (ok)
+                {
+                    Snackbar.Add("Configuración actualizada", Severity.Success);
+                    MudDialog.Close(DialogResult.Ok(true));
+                }
+                else
+                    Snackbar.Add(Api.LastError ?? "Error al actualizar", Severity.Error);
+            }
+            else
+            {
+                var result = await Api.PostAsync<ConfigAppDto>("api/configapp",
+                    new { grupo = _grupo, clave = _clave, valor = _valor, tipo = _tipo, descripcion = string.IsNullOrEmpty(_descripcion) ? null : _descripcion, esEncriptado = _esEncriptado });
+                if (result is not null)
+                {
+                    Snackbar.Add("Configuración creada", Severity.Success);
+                    MudDialog.Close(DialogResult.Ok(true));
+                }
+                else
+                    Snackbar.Add(Api.LastError ?? "Error al crear", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

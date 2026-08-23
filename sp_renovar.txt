@@ -1,0 +1,103 @@
+
+-- +----------------------------------------------------------+
+-- 2. SP_Auth_RenovarTokenProveedor (transaccional + RowVersion)
+-- +----------------------------------------------------------+
+CREATE   PROCEDURE dbo.SP_Auth_RenovarTokenProveedor
+    @IdI
+denExtTokens      BIGINT,
+    @IdIdenExt            BIGINT,
+    @AccessTokenEnc       VARBINARY(4000) = NULL,
+    @AccessTokenHash      NVARCHAR(128)  = NULL,
+    @AccessTokenExpires   DATETIME2(7)   = NULL,
+    @RefreshTokenEnc      VARBINARY(4000) = NUL
+L,
+    @RefreshTokenHash     NVARCHAR(128)  = NULL,
+    @RefreshTokenExpires  DATETIME2(7)   = NULL,
+    @IdTokenEnc           VARBINARY(8000) = NULL,
+    @IdTokenHash          NVARCHAR(128)  = NULL,
+    @Scope                NVARCHAR(1000) = NULL,
+    @T
+okenType            NVARCHAR(50)   = NULL,
+    @CorrelationId        NVARCHAR(50)   = NULL,
+    @RowVersion           BINARY(8),
+    @NuevoId              BIGINT          = NULL OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    BEGIN TRY
+   
+     BEGIN TRANSACTION;
+
+        -- 1. Validar concurrencia (RowVersion)
+        IF NOT EXISTS (SELECT 1 FROM [dbo].[IdenExtTokens]
+                       WHERE [Id] = @IdIdenExtTokens AND [RowVersion] = @RowVersion)
+        BEGIN
+            THROW 50000,
+ 'Conflicto de concurrencia: el token fue modificado por otro proceso.', 1;
+        END
+
+        -- 2. Revocar token anterior (lÃ³gico)
+        UPDATE [dbo].[IdenExtTokens]
+        SET [Activo] = 0,
+            [Revocado] = 1,
+            [FechaRevocaci
+on] = SYSUTCDATETIME(),
+            [MotivoRevocacion] = 'Renovado por SP_Auth_RenovarTokenProveedor'
+        WHERE [Id] = @IdIdenExtTokens AND [Activo] = 1;
+
+        -- 3. Insertar nuevo token con Version+1
+        INSERT INTO [dbo].[IdenExtTokens]
+     
+       ([IdIdenExt], [Version],
+             [AccessTokenEnc], [AccessTokenHash], [AccessTokenExpires],
+             [RefreshTokenEnc], [RefreshTokenHash], [RefreshTokenExpires],
+             [IdTokenEnc], [IdTokenHash],
+             [Scope], [TokenType],
+ [CorrelationId],
+             [Activo], [Revocado])
+        SELECT
+            @IdIdenExt, [Version] + 1,
+            @AccessTokenEnc, @AccessTokenHash, @AccessTokenExpires,
+            @RefreshTokenEnc, @RefreshTokenHash, @RefreshTokenExpires,
+         
+   @IdTokenEnc, @IdTokenHash,
+            @Scope, @TokenType, @CorrelationId,
+            1, 0
+        FROM [dbo].[IdenExtTokens]
+        WHERE [Id] = @IdIdenExtTokens;
+
+        SET @NuevoId = SCOPE_IDENTITY();
+
+        -- 4. Registrar auditorÃ­a
+      
+  INSERT INTO [dbo].[AudIdenExt]
+            ([IdTenant], [IdProvIden], [IdUsuario], [Evento], [Resultado],
+             [Detalle], [CorrelationId], [Origen], [Destino])
+        SELECT
+            i.[IdTenant], i.[IdProvIden], i.[IdUsuario], 'TOKEN_RENOVA
+DO', 'EXITOSO',
+            CONCAT('Token renovado: IdIdenExtTokens=', @IdIdenExtTokens, ' NuevoId=', @NuevoId),
+            @CorrelationId,
+            CONCAT('old_version=', t.[Version]), CONCAT('new_version=', t.[Version] + 1)
+        FROM [dbo].[IdenE
+xtTokens] t
+        INNER JOIN [dbo].[IdenExt] i ON i.[Id] = t.[IdIdenExt]
+        WHERE t.[Id] = @IdIdenExtTokens;
+
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+
+        DECLARE @Err
+orMessage NVARCHAR(4000) = ERROR_MESSAGE();
+        DECLARE @ErrorSeverity INT = ERROR_SEVERITY();
+        DECLARE @ErrorState INT = ERROR_STATE();
+
+        RAISERROR(@ErrorMessage, @ErrorSeverity, @ErrorState);
+    END CATCH
+END
+

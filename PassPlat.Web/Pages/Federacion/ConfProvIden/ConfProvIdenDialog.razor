@@ -1,0 +1,353 @@
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(IsEdit ? "Editar" : "Nueva") Configuración</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudSelect @bind-Value="_idTenant" @bind-Value:after="() => CargarRolesAsync(_idTenant)" Label="Tenant" Variant="Variant.Outlined" Class="mb-3" Required="true" Disabled="@IsEdit"
+                    Error="@(_submitted && _idTenant == 0)" ErrorText="El tenant es requerido">
+            @foreach (var t in _tenants)
+            {
+                <MudSelectItem Value="t.Id">@t.Nombre (@t.Codigo)</MudSelectItem>
+            }
+        </MudSelect>
+        <MudSelect @bind-Value="_idProvIden" @bind-Value:after="CargarInfoProveedor" Label="Proveedor" Variant="Variant.Outlined" Class="mb-3" Required="true" Disabled="@IsEdit"
+                    Error="@(_submitted && _idProvIden == 0)" ErrorText="El proveedor es requerido">
+            @foreach (var p in _providers)
+            {
+                <MudSelectItem Value="p.Id">@p.Nombre (@p.Codigo)</MudSelectItem>
+            }
+        </MudSelect>
+        <MudTextField @bind-Value="_clientId" Label="Client ID" Variant="Variant.Outlined" Class="mb-3" Required="true"
+                      Error="@(_submitted && string.IsNullOrWhiteSpace(_clientId))" ErrorText="El Client ID es requerido" />
+        @if (IsEdit)
+        {
+            <MudText Typo="Typo.body2" Class="mb-3">
+                <MudIcon Icon="@(_tieneClientSecret ? Icons.Material.Filled.Lock : Icons.Material.Filled.LockOpen)"
+                         Size="Size.Small" Color="@(_tieneClientSecret ? Color.Success : Color.Warning)" />
+                <span class="ml-1">Client Secret: @(_tieneClientSecret ? "Configurado" : "No configurado")</span>
+                @if (_tieneClientSecret && _fechaCambioSecret.HasValue)
+                {
+                    <span class="ml-2" style="color:var(--mud-palette-grey-default);font-size:0.85em;">
+                        (Actualizado: @_fechaCambioSecret.Value.ToString("dd/MM/yyyy"))
+                    </span>
+                }
+                <MudButton OnClick="@(() => _mostrarSecretEditor = !_mostrarSecretEditor)"
+                           Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" Class="ml-2">
+                    @(_mostrarSecretEditor ? "Cancelar" : "Reemplazar")
+                </MudButton>
+            </MudText>
+            @if (_mostrarSecretEditor)
+            {
+                <MudTextField @bind-Value="_nuevoClientSecret" Label="Nuevo Client Secret"
+                              Variant="Variant.Outlined" Class="mb-3" InputType="InputType.Password" />
+            }
+        }
+        else
+        {
+            <MudTextField @bind-Value="_clientSecret" Label="Client Secret" Variant="Variant.Outlined" Class="mb-3" Required="true" InputType="InputType.Text" />
+        }
+        <MudTextField @bind-Value="_callback" Label="Callback URL" Variant="Variant.Outlined" Class="mb-3" Required="true" HelperText="Ej: /api/auth/externo/{provider}/callback" />
+        <MudTextField @bind-Value="_redirectUri" Label="Redirect URI" Variant="Variant.Outlined" Class="mb-3" HelperText="Debe coincidir con el Callback. Se usará el Callback si se deja vacío" />
+        <MudTextField @bind-Value="_scopes" Label="Scopes" Variant="Variant.Outlined" Class="mb-3" HelperText="Separados por espacio: openid profile email" />
+        <MudSelect @bind-Value="_estado" Label="Estado" Variant="Variant.Outlined" Class="mb-3">
+            <MudSelectItem Value="@((byte)0)">Inactivo</MudSelectItem>
+            <MudSelectItem Value="@((byte)1)">Activo</MudSelectItem>
+            <MudSelectItem Value="@((byte)2)">Revocado</MudSelectItem>
+        </MudSelect>
+        <MudSelect @bind-Value="_rolDefecto" Label="Rol Defecto" Variant="Variant.Outlined" Class="mb-3" HelperText="Rol asignado al usuario al vincularse por primera vez">
+            <MudSelectItem Value="-1">Sin rol</MudSelectItem>
+            @foreach (var r in _roles)
+            {
+                <MudSelectItem Value="r.Id">@r.Nombre</MudSelectItem>
+            }
+        </MudSelect>
+        <MudSwitch @bind-Value="_guardarTokens" Color="Color.Primary" Class="mb-2">Guardar Tokens</MudSwitch>
+        <MudSwitch @bind-Value="_permitirAutoLink" Color="Color.Primary" Class="mb-2">Permitir Auto Link</MudSwitch>
+        <MudSwitch @bind-Value="_autoProvisionar" Color="Color.Primary" Class="mb-4">Auto Provisionar</MudSwitch>
+
+        <MudDivider Class="mb-4" />
+        <MudText Typo="Typo.subtitle2" Class="mb-2" Style="color:var(--mud-palette-primary);">Políticas de Acceso</MudText>
+        <MudSwitch @bind-Value="_permitirLogin" Color="Color.Primary" Class="mb-2">Permitir Login</MudSwitch>
+        <MudSwitch @bind-Value="_permitirCrearUsuario" Color="Color.Primary" Class="mb-2">Permitir Crear Usuario</MudSwitch>
+        <MudSwitch @bind-Value="_permitirVincular" Color="Color.Primary" Class="mb-2">Permitir Vincular</MudSwitch>
+        <MudSwitch @bind-Value="_permitirDesvincular" Color="Color.Primary" Class="mb-2">Permitir Desvincular</MudSwitch>
+        <MudSwitch @bind-Value="_permitirPasswordLocal" Color="Color.Primary" Class="mb-2">Permitir Password Local</MudSwitch>
+        <MudSwitch @bind-Value="_requiereMFALocal" Color="Color.Warning" Class="mb-2">Requerir MFA Local</MudSwitch>
+        <MudSwitch @bind-Value="_obligaMFA" Color="Color.Warning" Class="mb-2">Obligar MFA (proveedor)</MudSwitch>
+        <MudSwitch @bind-Value="_permitirCambioEmail" Color="Color.Primary" Class="mb-2">Permitir Cambio Email</MudSwitch>
+        <MudSwitch @bind-Value="_permitirCambioNombre" Color="Color.Primary" Class="mb-2">Permitir Cambio Nombre</MudSwitch>
+        <MudSwitch @bind-Value="_permitirSincronizarAvatar" Color="Color.Primary" Class="mb-2">Sincronizar Avatar</MudSwitch>
+        <MudSwitch @bind-Value="_permitirSincronizarPerfil" Color="Color.Primary" Class="mb-2">Sincronizar Perfil</MudSwitch>
+        <MudSelect @bind-Value="_frecuenciaSincronizacion" Label="Frecuencia Sincronización" Variant="Variant.Outlined" Class="mb-4"
+                    Disabled="@(!_permitirSincronizarPerfil)" HelperText="Cada cuánto sincronizar datos del perfil desde el proveedor">
+            <MudSelectItem Value="@("Siempre")">Siempre (cada login)</MudSelectItem>
+            <MudSelectItem Value="@("PrimerLogin")">Solo primer inicio de sesión</MudSelectItem>
+            <MudSelectItem Value="@("Diaria")">Una vez al día</MudSelectItem>
+            <MudSelectItem Value="@("Nunca")">Nunca</MudSelectItem>
+        </MudSelect>
+
+        <MudDivider Class="mb-4" />
+        <MudText Typo="Typo.subtitle2" Class="mb-2" Style="color:var(--mud-palette-primary);">Visualización</MudText>
+        <MudNumericField @bind-Value="_prioridad" Label="Prioridad" Variant="Variant.Outlined" Class="mb-3" Min="0" Max="100" />
+        <MudNumericField @bind-Value="_ordenVisual" Label="Orden Visual" Variant="Variant.Outlined" Class="mb-3" Min="0" />
+        <MudTextField @bind-Value="_logo" Label="Logo URL" Variant="Variant.Outlined" Class="mb-3" HelperText="URL del ícono del proveedor" />
+        <MudTextField @bind-Value="_color" Label="Color" Variant="Variant.Outlined" Class="mb-3" HelperText="Ej: #4285F4" />
+        <MudTextField @bind-Value="_tooltip" Label="Tooltip" Variant="Variant.Outlined" Class="mb-3" HelperText="Texto al pasar el mouse" />
+        <MudTextField @bind-Value="_descripcion" Label="Descripción" Variant="Variant.Outlined" Lines="3" HelperText="Descripción visible para el usuario" />
+
+        @if (_providerInfo is not null)
+        {
+            <MudDivider Class="mb-4" />
+            <MudText Typo="Typo.subtitle2" Class="mb-2" Style="color:var(--mud-palette-primary);">Configuración OAuth (solo lectura)</MudText>
+            <MudText Typo="Typo.body2" Class="mb-1"><strong>Authorization Endpoint:</strong> @_providerInfo.AuthorizationEndpoint</MudText>
+            <MudText Typo="Typo.body2" Class="mb-1"><strong>Token Endpoint:</strong> @_providerInfo.TokenEndpoint</MudText>
+            <MudText Typo="Typo.body2" Class="mb-1"><strong>JWKS URI:</strong> @_providerInfo.JwksUri</MudText>
+            <MudText Typo="Typo.body2" Class="mb-1"><strong>Issuer:</strong> @_providerInfo.Issuer</MudText>
+            <MudText Typo="Typo.body2" Class="mb-1"><strong>Response Type:</strong> @_providerInfo.ResponseType</MudText>
+            <MudText Typo="Typo.body2" Class="mb-1"><strong>Grant Type:</strong> @_providerInfo.GrantType</MudText>
+            <MudText Typo="Typo.body2" Class="mb-3">
+                <strong>Capacidades:</strong>
+                @( _providerInfo.SoportaPKCE ? "✅ PKCE" : "❌ PKCE" )
+                @( _providerInfo.SoportaRefreshToken ? "✅ Refresh Token" : "❌ Refresh Token" )
+                @( _providerInfo.SoportaMFA ? "✅ MFA" : "❌ MFA" )
+            </MudText>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@Save" Disabled="@(!CanSave() || _saving)">
+            @(IsEdit ? "Guardar" : "Crear")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+
+    [Parameter] public bool IsEdit { get; set; }
+    [Parameter] public ConfProvIdenDto? ConfProvIden { get; set; }
+
+    private List<TenantDto> _tenants = [];
+    private List<ProvIdenDto> _providers = [];
+    private List<RolLookupDto> _roles = [];
+    private int _idTenant;
+    private int _idProvIden;
+    private string _clientId = "";
+    private string _clientSecret = "";
+    private string _callback = "";
+    private string? _redirectUri;
+    private string? _scopes;
+    private byte _estado = 1;
+    private int _rolDefecto = -1;
+    private bool _guardarTokens;
+    private bool _permitirAutoLink;
+    private bool _autoProvisionar;
+    private bool _permitirLogin = true;
+    private bool _permitirCrearUsuario = true;
+    private bool _permitirVincular = true;
+    private bool _permitirDesvincular = true;
+    private bool _permitirPasswordLocal = true;
+    private bool _requiereMFALocal;
+    private bool _obligaMFA;
+    private bool _permitirCambioEmail = true;
+    private bool _permitirCambioNombre = true;
+    private bool _permitirSincronizarAvatar = true;
+    private bool _permitirSincronizarPerfil = true;
+    private string _frecuenciaSincronizacion = "Siempre";
+    private int _prioridad;
+    private int _ordenVisual;
+    private string? _logo;
+    private string? _color;
+    private string? _tooltip;
+    private string? _descripcion;
+    private ProviderConfigurationInfoDto? _providerInfo;
+    private bool _saving;
+    private bool _submitted;
+    private bool _tieneClientSecret;
+    private bool _mostrarSecretEditor;
+    private string? _nuevoClientSecret;
+    private DateTime? _fechaCambioSecret;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _tenants = (await Api.GetAsync<List<TenantDto>>("api/tenants")) ?? [];
+            _providers = (await Api.GetAsync<List<ProvIdenDto>>("api/providen")) ?? [];
+        }
+        catch { }
+
+        CargarInfoProveedor();
+
+        if (IsEdit && ConfProvIden is not null)
+        {
+            await CargarRolesAsync(ConfProvIden.IdTenant);
+            _idTenant = ConfProvIden.IdTenant;
+            _idProvIden = ConfProvIden.IdProvIden;
+            _clientId = ConfProvIden.ClientId;
+            _callback = ConfProvIden.Callback;
+            _redirectUri = ConfProvIden.RedirectUri ?? ConfProvIden.Callback;
+            _scopes = ConfProvIden.Scopes;
+            _estado = ConfProvIden.Estado;
+            _rolDefecto = ConfProvIden.RolDefecto ?? -1;
+            _guardarTokens = ConfProvIden.GuardarTokens;
+            _permitirAutoLink = ConfProvIden.PermitirAutoLink;
+            _autoProvisionar = ConfProvIden.AutoProvisionar;
+            _permitirLogin = ConfProvIden.PermitirLogin;
+            _permitirCrearUsuario = ConfProvIden.PermitirCrearUsuario;
+            _permitirVincular = ConfProvIden.PermitirVincular;
+            _permitirDesvincular = ConfProvIden.PermitirDesvincular;
+            _permitirPasswordLocal = ConfProvIden.PermitirPasswordLocal;
+            _requiereMFALocal = ConfProvIden.RequiereMFALocal;
+            _obligaMFA = ConfProvIden.ObligaMFA;
+            _permitirCambioEmail = ConfProvIden.PermitirCambioEmail;
+            _permitirCambioNombre = ConfProvIden.PermitirCambioNombre;
+            _permitirSincronizarAvatar = ConfProvIden.PermitirSincronizarAvatar;
+            _permitirSincronizarPerfil = ConfProvIden.PermitirSincronizarPerfil;
+            _frecuenciaSincronizacion = ConfProvIden.FrecuenciaSincronizacion;
+            _prioridad = ConfProvIden.Prioridad;
+            _ordenVisual = ConfProvIden.OrdenVisual;
+            _tieneClientSecret = ConfProvIden.TieneClientSecret;
+            _fechaCambioSecret = ConfProvIden.FechaCambioSecret;
+            _logo = ConfProvIden.Logo;
+            _color = ConfProvIden.Color;
+            _tooltip = ConfProvIden.Tooltip;
+            _descripcion = ConfProvIden.Descripcion;
+        }
+    }
+
+    private void CargarInfoProveedor()
+    {
+        var prov = _providers.FirstOrDefault(p => p.Id == _idProvIden);
+        _providerInfo = prov is not null ? new()
+        {
+            AuthorizationEndpoint = prov.EndpointAutorizacion,
+            TokenEndpoint = prov.EndpointToken,
+            JwksUri = prov.JwksUri,
+            Issuer = prov.UrlIssuer,
+            ResponseType = "code",
+            GrantType = "authorization_code",
+            SoportaPKCE = prov.SoportaPKCE,
+            SoportaRefreshToken = prov.SoportaRefreshToken,
+            SoportaMFA = prov.SoportaMFA
+        } : null;
+    }
+
+    private async Task CargarRolesAsync(int idTenant)
+    {
+        if (idTenant <= 0) return;
+        try
+        {
+            _roles = (await Api.GetAsync<List<RolLookupDto>>($"api/roles/lookup/{idTenant}")) ?? [];
+        }
+        catch { _roles = []; }
+
+        if (IsEdit && ConfProvIden?.RolDefecto.HasValue == true)
+        {
+            var rolId = ConfProvIden.RolDefecto.Value;
+            if (!_roles.Any(r => r.Id == rolId))
+            {
+                var fullRol = await Api.GetAsync<RolDto>($"api/roles/{rolId}");
+                if (fullRol is not null)
+                {
+                    var suffix = fullRol.Activo ? " (fuera del tenant)" : " (inactivo)";
+                    _roles.Insert(0, new RolLookupDto { Id = fullRol.Id, Nombre = fullRol.Nombre + suffix });
+                }
+            }
+        }
+    }
+
+    private bool CanSave() => _idTenant > 0 && _idProvIden > 0 && !string.IsNullOrWhiteSpace(_clientId)
+        && (IsEdit || !string.IsNullOrWhiteSpace(_clientSecret)) && !string.IsNullOrWhiteSpace(_callback);
+
+    private async Task Save()
+    {
+        _submitted = true;
+        if (!CanSave()) return;
+        _saving = true;
+        try
+        {
+            if (IsEdit)
+            {
+                var body = new Dictionary<string, object?>
+                {
+                    ["clientId"] = _clientId,
+                    ["callback"] = _callback,
+                    ["redirectUri"] = string.IsNullOrWhiteSpace(_redirectUri) ? _callback : _redirectUri,
+                    ["scopes"] = _scopes,
+                    ["estado"] = _estado,
+                    ["rolDefecto"] = _rolDefecto > 0 ? (int?)_rolDefecto : null,
+                    ["guardarTokens"] = _guardarTokens,
+                    ["permitirAutoLink"] = _permitirAutoLink,
+                    ["autoProvisionar"] = _autoProvisionar,
+                    ["permitirLogin"] = _permitirLogin,
+                    ["permitirCrearUsuario"] = _permitirCrearUsuario,
+                    ["permitirVincular"] = _permitirVincular,
+                    ["permitirDesvincular"] = _permitirDesvincular,
+                    ["permitirPasswordLocal"] = _permitirPasswordLocal,
+                    ["requiereMFALocal"] = _requiereMFALocal,
+                    ["obligaMFA"] = _obligaMFA,
+                    ["permitirCambioEmail"] = _permitirCambioEmail,
+                    ["permitirCambioNombre"] = _permitirCambioNombre,
+                    ["permitirSincronizarAvatar"] = _permitirSincronizarAvatar,
+                    ["permitirSincronizarPerfil"] = _permitirSincronizarPerfil,
+                    ["frecuenciaSincronizacion"] = _frecuenciaSincronizacion,
+                    ["prioridad"] = _prioridad,
+                    ["ordenVisual"] = _ordenVisual,
+                    ["logo"] = _logo,
+                    ["color"] = _color,
+                    ["tooltip"] = _tooltip,
+                    ["descripcion"] = _descripcion
+                };
+                if (_mostrarSecretEditor && !string.IsNullOrWhiteSpace(_nuevoClientSecret))
+                    body["clientSecret"] = _nuevoClientSecret;
+
+                var ok = await Api.PutAsync<ConfProvIdenDto>($"api/confproviden/{ConfProvIden!.Id}", body);
+                if (ok is not null)
+                {
+                    Snackbar.Add("Configuración actualizada", Severity.Success);
+                    MudDialog.Close(DialogResult.Ok(true));
+                }
+                else
+                    Snackbar.Add(Api.LastError ?? "Error al actualizar", Severity.Error);
+            }
+            else
+            {
+                var result = await Api.PostAsync<ConfProvIdenDto>("api/confproviden",
+                    new { idTenant = _idTenant, idProvIden = _idProvIden, clientId = _clientId,
+                        clientSecret = _clientSecret, callback = _callback, redirectUri = string.IsNullOrWhiteSpace(_redirectUri) ? _callback : _redirectUri,
+                        scopes = _scopes, estado = _estado, rolDefecto = _rolDefecto > 0 ? (int?)_rolDefecto : null,
+                        guardarTokens = _guardarTokens, permitirAutoLink = _permitirAutoLink,
+                        autoProvisionar = _autoProvisionar, requiereMFALocal = _requiereMFALocal,
+                        permitirLogin = _permitirLogin, permitirCrearUsuario = _permitirCrearUsuario,
+                        permitirVincular = _permitirVincular, permitirDesvincular = _permitirDesvincular,
+                        permitirPasswordLocal = _permitirPasswordLocal, obligaMFA = _obligaMFA,
+                        permitirCambioEmail = _permitirCambioEmail, permitirCambioNombre = _permitirCambioNombre,
+                        permitirSincronizarAvatar = _permitirSincronizarAvatar, permitirSincronizarPerfil = _permitirSincronizarPerfil,
+                        frecuenciaSincronizacion = _frecuenciaSincronizacion,
+                        prioridad = _prioridad, ordenVisual = _ordenVisual,
+                        logo = _logo, color = _color, tooltip = _tooltip, descripcion = _descripcion });
+                if (result is not null)
+                {
+                    Snackbar.Add("Configuración creada", Severity.Success);
+                    MudDialog.Close(DialogResult.Ok(true));
+                }
+                else
+                    Snackbar.Add(Api.LastError ?? "Error al crear", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

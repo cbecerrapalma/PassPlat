@@ -1,0 +1,30 @@
+=== FASE 14 V3: Columnas faltantes ===
+Agregando columnas V3 a ProvIden...
+
+(1 rows affected)
+
+(1 rows affected)
+
+(1 rows affected)
+
+(1 rows affected)
+
+(1 rows affected)
+Seed ProvIden actualizado con endpoints V3
+Msg 15233, Level 16, State 1, Server DESKTOP-LD40FI3, Procedure sp_addextendedproperty, Line 37
+Property cannot be added. Property 'MS_Description' already exists for 'dbo.ProvIden.Protocolo'.
+Agregando columnas V3 a ConfProvIden...
+
+(0 rows affected)
+
+(0 rows affected)
+Msg 15233, Level 16, State 1, Server DESKTOP-LD40FI3, Procedure sp_addextendedproperty, Line 37
+Property cannot be added. Property 'MS_Description' already exists for 'dbo.ConfProvIden.RedirectUri'.
+Agregando columnas V3 a IdentidadesExternas...
+
+(0 rows affected)
+Msg 15233, Level 16, State 1, Server DESKTOP-LD40FI3, Procedure sp_addextendedproperty, Line 37
+Property cannot be added. Property 'MS_Description' already exists for 'dbo.IdentidadesExternas.ProviderUserName'.
+=== Columnas V3 agregadas exitosamente ===
+Creando SP_IdentidadExterna_Desvincular...
+=== FASE 14 V3: Migración completada exitosamente ===

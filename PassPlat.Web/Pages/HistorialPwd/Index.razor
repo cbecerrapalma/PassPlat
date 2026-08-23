@@ -1,0 +1,137 @@
+@page "/historial-pwd"
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject AuthService Auth
+@using PassPlat.Web.Models
+@using PassPlat.Web.Shared
+
+@if (!Auth.TienePermiso("HISTORIAL_PWD_VER"))
+{
+    <SinPermiso PermisoRequerido="HISTORIAL_PWD_VER" />
+}
+else
+{
+<MudContainer>
+    <MudBreadcrumbs Class="mb-3">
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/auditoria"))">Auditoría</MudBreadcrumbItem>
+        <MudBreadcrumbItem>Historial de Contraseñas</MudBreadcrumbItem>
+    </MudBreadcrumbs>
+
+    <div class="mud-grid mud-grid-spacing-3 mb-4">
+        <IamKpiCard Valor="@_totalCountStr" Label="Total" Subtexto="Registros en sistema" Icon="@Icons.Material.Filled.History" ColorClass="primary" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_actualesStr" Label="Actuales" Subtexto="Passwords vigentes" Icon="@Icons.Material.Filled.CheckCircle" ColorClass="success" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_forzadosStr" Label="Forzados" Subtexto="Cambio obligatorio" Icon="@Icons.Material.Filled.Warning" ColorClass="warning" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_usuariosStr" Label="Usuarios" Subtexto="Con historial registrado" Icon="@Icons.Material.Filled.People" ColorClass="info" Xs="12" Sm="6" Md="3" />
+    </div>
+
+    <MudPaper Class="pa-4 mb-4 d-flex flex-wrap align-center gap-4" Elevation="0" Outlined="true">
+        <MudText Typo="Typo.h5" Class="flex-grow-1 mb-0">Historial de Contraseñas</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium"
+            OnClick="@Refrescar" />
+    </MudPaper>
+
+    <MudTable @ref="_table" T="HistorialPwdDto" ServerData="@_serverReload" Items="@_items" Hover="true" Breakpoint="Breakpoint.Sm">
+        <ColGroup>
+            <col style="width: 80px;" /><col /><col /><col style="width: 100px;" /><col style="width: 100px;" /><col style="width: 160px;" /><col style="width: 160px;" />
+        </ColGroup>
+        <HeaderContent>
+            <MudTh>Id</MudTh><MudTh>Usuario</MudTh><MudTh>Algoritmo</MudTh><MudTh>Es Actual</MudTh><MudTh>Es Forzado</MudTh><MudTh>Fec. Registro</MudTh><MudTh>Fec. Expira</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Id">@context.Id</MudTd>
+            <MudTd DataLabel="Usuario">@context.UsuarioNombre</MudTd>
+            <MudTd DataLabel="Algoritmo">@context.Algoritmo</MudTd>
+            <MudTd DataLabel="Es Actual">
+                <MudChip T="string" Size="Size.Small" Color="@(context.EsActual ? Color.Success : Color.Default)">
+                    @(context.EsActual ? "Sí" : "No")
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Es Forzado">
+                <MudChip T="string" Size="Size.Small" Color="@(context.EsForzado ? Color.Warning : Color.Default)">
+                    @(context.EsForzado ? "Sí" : "No")
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Fec. Registro">@context.FecRegistro?.ToLocalTime().ToString("g")</MudTd>
+            <MudTd DataLabel="Fec. Expira">@context.FecExpira?.ToLocalTime().ToString("g")</MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new int[]{10, 25, 50}" />
+        </PagerContent>
+        <NoRecordsContent>
+            <MudText Align="Align.Center" Class="py-6">
+                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Class="mr-2" />
+                No hay registros
+            </MudText>
+        </NoRecordsContent>
+    </MudTable>
+
+    <MudOverlay Visible="@_loading" />
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" Class="mt-4" />
+    }
+</MudContainer>
+}
+
+@code {
+    private MudTable<HistorialPwdDto> _table = default!;
+    private IEnumerable<HistorialPwdDto> _items = [];
+    private bool _loading;
+    private int _totalCount;
+    private string _totalCountStr = "0";
+    private string _actualesStr = "0";
+    private string _forzadosStr = "0";
+    private string _usuariosStr = "0";
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.TienePermiso("HISTORIAL_PWD_VER")) return;
+        await LoadKpis();
+    }
+
+    private async Task LoadKpis()
+    {
+        try
+        {
+            var data = await Api.GetAsync<List<HistorialPwdDto>>("api/historialpwd");
+            if (data is not null)
+            {
+                _totalCount = data.Count;
+                _totalCountStr = _totalCount.ToString();
+                _actualesStr = data.Count(h => h.EsActual).ToString();
+                _forzadosStr = data.Count(h => h.EsForzado).ToString();
+                _usuariosStr = data.Select(h => h.IdUsuario).Distinct().Count().ToString();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar KPIs: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task<TableData<HistorialPwdDto>> _serverReload(TableState state, CancellationToken ct)
+    {
+        _loading = true;
+        try
+        {
+            var response = await Api.GetAsync<PagedResponse<HistorialPwdDto>>(
+                $"api/historialpwd/page?pageNumber={state.Page + 1}&pageSize={state.PageSize}");
+            if (response != null)
+            {
+                _items = response.Items;
+                return new TableData<HistorialPwdDto> { Items = response.Items, TotalItems = response.TotalCount };
+            }
+        }
+        catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error al cargar: {ex.Message}", Severity.Error); }
+        finally { _loading = false; }
+        return new TableData<HistorialPwdDto> { Items = [], TotalItems = 0 };
+    }
+
+    private async Task Refrescar()
+    {
+        await LoadKpis();
+        if (_table is not null) await _table.ReloadServerData();
+    }
+}

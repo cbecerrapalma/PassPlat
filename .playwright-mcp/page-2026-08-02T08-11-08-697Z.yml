@@ -1,0 +1,33 @@
+- generic [ref=f3e17]:
+  - generic [ref=f3e18]:
+    - generic [ref=f3e19]: 🔒
+    - heading "AccessPlat" [level=5] [ref=f3e23]
+    - paragraph [ref=f3e24]: Inicia sesión para continuar
+  - paragraph [ref=f3e25]: Selecciona un tenant para continuar
+  - generic [ref=f3e28]:
+    - generic [ref=f3e29] [cursor=pointer]:
+      - combobox "Tenant" [active] [ref=f3e30]: Abarrotes del Sur
+      - group "Tenant"
+    - generic: Tenant
+  - button "Continuar" [ref=f3e51] [cursor=pointer]
+  - generic [ref=f3e53]:
+    - generic [ref=f3e55]:
+      - generic [ref=f3e56]:
+        - textbox "Usuario o email" [ref=f3e57]: sistema
+        - group "Usuario o email"
+      - generic: Usuario o email
+    - generic [ref=f3e58]:
+      - generic [ref=f3e60]:
+        - generic [ref=f3e61]:
+          - textbox "Contraseña" [ref=f3e62]: Admin@123
+          - group "Contraseña"
+        - generic: Contraseña
+      - button [ref=f3e63] [cursor=pointer]
+    - generic [ref=f3e68]:
+      - generic [ref=f3e71] [cursor=pointer]:
+        - switch "Recordarme" [ref=f3e75]
+        - generic [ref=f3e78]: Recordarme
+      - button "¿Olvidaste tu contraseña?" [ref=f3e79] [cursor=pointer]
+  - button "Iniciar Sesión" [ref=f3e81] [cursor=pointer]
+  - paragraph [ref=f3e84]: No hay proveedores externos disponibles para este tenant.
+  - generic [ref=f3e35]: Plataforma de Acceso — v1.0

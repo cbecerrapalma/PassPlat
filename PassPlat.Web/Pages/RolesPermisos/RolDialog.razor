@@ -1,0 +1,121 @@
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog Options="_dialogOptions">
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudAvatar Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled">
+                <MudIcon Icon="@(IsEdit ? Icons.Material.Filled.Edit : Icons.Material.Filled.Add)" Size="Size.Small" />
+            </MudAvatar>
+            <MudText Typo="Typo.h6">@(IsEdit ? "Editar" : "Nuevo") Rol</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.caption" Class="text-secondary mb-2 d-block">Información básica del rol</MudText>
+        <MudTextField @bind-Value="_codigo" Label="Código" Variant="Variant.Outlined" Class="mb-3"
+            Disabled="IsEdit" Required="true"
+            Error="@(_submitted && string.IsNullOrWhiteSpace(_codigo))" ErrorText="El código es requerido"
+            Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Code"
+            HelperText="Identificador único del rol (no se puede cambiar)" />
+        <MudTextField @bind-Value="_nombre" Label="Nombre" Variant="Variant.Outlined" Class="mb-3" Required="true"
+            Error="@(_submitted && string.IsNullOrWhiteSpace(_nombre))" ErrorText="El nombre es requerido"
+            Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Badge"
+            HelperText="Nombre descriptivo del rol" />
+        <MudTextField @bind-Value="_descripcion" Label="Descripción" Variant="Variant.Outlined" Class="mb-3"
+            Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Description"
+            HelperText="Opcional - descripción del propósito del rol" />
+        @if (IsEdit)
+        {
+            <MudDivider Class="my-3" />
+            <MudSwitch @bind-Value="_activo" Label="Rol activo" Color="Color.Primary" />
+            <MudText Typo="Typo.caption" Class="text-secondary ml-12">Los roles inactivos no se pueden asignar a usuarios</MudText>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@Save" Disabled="@(!CanSave() || _saving)">
+            @(IsEdit ? "Guardar" : "Crear")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private DialogOptions _dialogOptions = new() { FullWidth = true, CloseButton = true };
+
+    [Parameter] public bool IsEdit { get; set; }
+    [Parameter] public RolDto? Rol { get; set; }
+
+    private string _codigo = "";
+    private string _nombre = "";
+    private string _descripcion = "";
+    private bool _activo = true;
+    private bool _saving;
+    private bool _submitted;
+
+    protected override void OnInitialized()
+    {
+        if (IsEdit && Rol is not null)
+        {
+            _codigo = Rol.Codigo;
+            _nombre = Rol.Nombre;
+            _descripcion = Rol.Descripcion ?? "";
+            _activo = Rol.Activo;
+        }
+    }
+
+    private bool CanSave() => !string.IsNullOrWhiteSpace(_codigo) && !string.IsNullOrWhiteSpace(_nombre);
+
+    private async Task Save()
+    {
+        _submitted = true;
+        if (!CanSave()) return;
+        _saving = true;
+        try
+        {
+            if (IsEdit && Rol is not null)
+            {
+                var dto = new ActualizarRolDto
+                {
+                    Nombre = _nombre,
+                    Descripcion = _descripcion,
+                    Activo = _activo
+                };
+                var ok = await Api.PutAsync<RolDto>($"api/roles/{Rol.Id}", dto);
+                if (ok is not null)
+                {
+                    Snackbar.Add("Rol actualizado", Severity.Success);
+                    MudDialog.Close(DialogResult.Ok(true));
+                }
+                else
+                    Snackbar.Add(Api.LastError ?? "Error al actualizar rol", Severity.Error);
+            }
+            else
+            {
+                var dto = new CrearRolDto
+                {
+                    Codigo = _codigo,
+                    Nombre = _nombre,
+                    Descripcion = _descripcion
+                };
+                var result = await Api.PostAsync<RolDto>("api/roles", dto);
+                if (result is not null)
+                {
+                    Snackbar.Add("Rol creado", Severity.Success);
+                    MudDialog.Close(DialogResult.Ok(true));
+                }
+                else
+                    Snackbar.Add(Api.LastError ?? "Error al crear rol", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

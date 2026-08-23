@@ -1,0 +1,105 @@
+@page "/mantenimiento"
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@inject NavigationManager Navigation
+@inject AuthService Auth
+@using PassPlat.Web.Models
+@using PassPlat.Web.Shared
+
+@if (!Auth.TienePermiso("MANTENIMIENTO_VER"))
+{
+    <SinPermiso PermisoRequerido="MANTENIMIENTO_VER" />
+}
+else
+{
+<MudContainer>
+    <MudBreadcrumbs Class="mb-3">
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/auditoria"))">Auditoría</MudBreadcrumbItem>
+        <MudBreadcrumbItem>Mantenimiento</MudBreadcrumbItem>
+    </MudBreadcrumbs>
+    <MudPaper Class="pa-4 mb-4 d-flex flex-wrap align-center gap-4" Elevation="0" Outlined="true">
+        <MudText Typo="Typo.h5" Class="flex-grow-1 mb-0">Mantenimiento del Sistema</MudText>
+    </MudPaper>
+
+    <MudGrid>
+        <MudItem xs="12" md="6">
+            <MudCard>
+                <MudCardHeader>
+                    <MudText Typo="Typo.h6">Purgar Datos Antiguos</MudText>
+                    <MudText Typo="Typo.body2">Eliminar registros históricos con antigüedad mayor a la especificada</MudText>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudNumericField @bind-Value="_diasRetencion" Label="Días de Retención" Variant="Variant.Outlined"
+                        Min="30" Max="3650" Class="mb-3" HelperText="Registros más antiguos que esto serán eliminados" />
+                    <MudAlert Severity="Severity.Warning" Class="mb-3">
+                        Esta operación eliminará permanentemente registros de auditoría, intentos de acceso e historial de contraseñas
+                        con antigüedad superior a @_diasRetencion días.
+                    </MudAlert>
+                    <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="@EjecutarPurga" Disabled="@_purgando"
+                        FullWidth="true">
+                        @(_purgando ? "Purgando..." : "Ejecutar Purga")
+                    </MudButton>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudCard>
+                <MudCardHeader>
+                    <MudText Typo="Typo.h6">Información</MudText>
+                    <MudText Typo="Typo.body2">Tablas afectadas por la purga</MudText>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudText Typo="Typo.body2" Class="mb-2">Tablas afectadas:</MudText>
+                    <MudText Typo="Typo.body2"><MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Small" /> Auditoría de Contraseñas (AuditoriaPwd) — Retención por FecRetencion</MudText>
+                    <MudText Typo="Typo.body2"><MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Small" /> Historial de Contraseñas (HistorialPwd) — Retención por FecRetencion</MudText>
+                    <MudText Typo="Typo.body2"><MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Small" /> Intentos de Acceso (IntentosAcceso) — Retención por FecRetencion</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+
+    <MudOverlay Visible="@_purgando">
+        <MudProgressCircular Indeterminate="true" Size="Size.Large" Class="mt-8" />
+    </MudOverlay>
+</MudContainer>
+}
+
+@code {
+    private int _diasRetencion = 365;
+    private bool _purgando;
+
+    private async Task EjecutarPurga()
+    {
+        var confirm = await Dialog.ShowAsync<ConfirmDialog>("Confirmar Purga",
+            new DialogParameters
+            {
+                ["Title"] = "Confirmar Purga",
+                ["Message"] = $"¿Está seguro de purgar todos los registros con más de {_diasRetencion} días? Esta acción no se puede deshacer.",
+                ["ConfirmText"] = "Ejecutar",
+                ["CancelText"] = "Cancelar"
+            });
+        var result = await confirm.Result;
+        if (result.Canceled) return;
+
+        _purgando = true;
+        try
+        {
+            var ok = await Api.PostVoidAsync($"api/Maintenance/purge?diasRetencion={_diasRetencion}");
+            if (ok)
+                Snackbar.Add($"Purga completada exitosamente (retención: {_diasRetencion} días)", Severity.Success);
+            else
+                Snackbar.Add(Api.LastError ?? "Error al ejecutar la purga", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _purgando = false;
+        }
+    }
+}

@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>PassPlat.WebAPI-Secrets</UserSecretsId>
+    <NoWarn>NU1903</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.9.0" />
+    <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\CBP\CBP.Authentication\CBP.Authentication.JwtBearer\CBP.Authentication.JwtBearer.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Caching\CBP.Caching.Abstractions\CBP.Caching.Abstractions.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Caching\CBP.Caching.Memory\CBP.Caching.Memory.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Data\CBP.Data.Utilities\CBP.Data.Utilities.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Infraestructure\CBP.Logging\CBP.Logging.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Infraestructure\CBP.MultiTenant\CBP.MultiTenant.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.WebApi\CBP.WebApi\CBP.WebApi.csproj" />
+    <ProjectReference Include="..\PassPlat.Aplicacion\PassPlat.Aplicacion.csproj" />
+  </ItemGroup>
+
+</Project>

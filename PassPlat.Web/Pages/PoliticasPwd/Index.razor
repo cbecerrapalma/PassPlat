@@ -1,0 +1,178 @@
+@page "/politicas-pwd"
+@inject ApiClient Api
+@inject AuthService Auth
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@inject NavigationManager Navigation
+@using PassPlat.Web.Models
+@using PassPlat.Web.Shared
+
+@if (!Auth.TienePermiso("POLITICAS_PWD_VER"))
+{
+    <SinPermiso PermisoRequerido="POLITICAS_PWD_VER" />
+}
+else
+{
+<MudContainer>
+    <MudBreadcrumbs Class="mb-3">
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/tenants"))">Administración</MudBreadcrumbItem>
+        <MudBreadcrumbItem>Políticas de Contraseña</MudBreadcrumbItem>
+    </MudBreadcrumbs>
+
+    <div class="mud-grid mud-grid-spacing-3 mb-4">
+        <IamKpiCard Valor="@_items.Count.ToString()" Label="Políticas" Subtexto="Registradas en sistema" Icon="@Icons.Material.Filled.Security" ColorClass="primary" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_items.Count(p => p.Activa).ToString()" Label="Activas" Subtexto="Vigentes" Icon="@Icons.Material.Filled.CheckCircle" ColorClass="success" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_items.Count(p => !p.Activa).ToString()" Label="Inactivas" Subtexto="Deshabilitadas" Icon="@Icons.Material.Filled.Cancel" ColorClass="warning" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_items.Count(p => p.IdTenant is not null || p.IdApp is not null).ToString()" Label="Específicas" Subtexto="Por tenant/app" Icon="@Icons.Material.Filled.FilterAlt" ColorClass="info" Xs="12" Sm="6" Md="3" />
+    </div>
+
+    <MudPaper Class="pa-4 mb-4 d-flex flex-wrap align-center gap-4" Elevation="0" Outlined="true">
+        <MudText Typo="Typo.h5" Class="flex-grow-1 mb-0">Políticas de Contraseñas</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium"
+            OnClick="@LoadData" Class="mr-2" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@OpenCreateDialog"
+            StartIcon="@Icons.Material.Filled.Add" Size="Size.Medium">
+            Nueva Política
+        </MudButton>
+    </MudPaper>
+
+    <MudTable T="PoliticaPwdDto" Items="@_items" Hover="true" Breakpoint="Breakpoint.Sm">
+        <ColGroup>
+            <col style="width: 60px;" /><col /><col /><col /><col style="width: 140px;" /><col style="width: 90px;" /><col style="width: 60px;" />
+        </ColGroup>
+        <HeaderContent>
+            <MudTh></MudTh><MudTh>Código</MudTh><MudTh>Nombre</MudTh><MudTh>Tenant / App</MudTh><MudTh>Longitud</MudTh><MudTh>Activa</MudTh><MudTh></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>
+                <MudAvatar Size="Size.Small" Color="Color.Warning" Class="row-avatar">
+                    <MudText Typo="Typo.caption">@context.Nombre[..Math.Min(2, context.Nombre.Length)]</MudText>
+                </MudAvatar>
+            </MudTd>
+            <MudTd DataLabel="Código">@context.Codigo</MudTd>
+            <MudTd DataLabel="Nombre">
+                <MudText Typo="Typo.body2" Class="font-weight-bold">@context.Nombre</MudText>
+            </MudTd>
+            <MudTd DataLabel="Tenant / App">
+                @context.TenantNombre
+                @if (!string.IsNullOrEmpty(context.AppNombre))
+                {
+                    <span> / @context.AppNombre</span>
+                }
+            </MudTd>
+            <MudTd DataLabel="Longitud">
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@context.LongMin - @context.LongMax</MudChip>
+            </MudTd>
+            <MudTd DataLabel="Activa">
+                <MudChip T="string" Size="Size.Small" Color="@(context.Activa ? Color.Success : Color.Error)" Variant="Variant.Outlined">
+                    @(context.Activa ? "Activa" : "Inactiva")
+                </MudChip>
+            </MudTd>
+            <MudTd>
+                <div @onclick:stopPropagation="true" class="table-actions">
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true">
+                        <MudMenuItem OnClick="@(() => OpenEditDialog(context))">
+                            <MudIcon Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Class="mr-2" />
+                            Editar
+                        </MudMenuItem>
+                        @if (context.Activa)
+                        {
+                            <MudMenuItem OnClick="@(() => ConfirmDesactivar(context))">
+                                <MudIcon Icon="@Icons.Material.Filled.Block" Size="Size.Small" Class="mr-2" Color="Color.Error" />
+                                Desactivar
+                            </MudMenuItem>
+                        }
+                    </MudMenu>
+                </div>
+            </MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new int[]{10, 25, 50}" />
+        </PagerContent>
+        <NoRecordsContent>
+            <div class="d-flex flex-column align-center py-6">
+                <MudAvatar Size="Size.Large" Color="Color.Default" Variant="Variant.Outlined" Class="mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.Security" Size="Size.Large" />
+                </MudAvatar>
+                <MudText Typo="Typo.subtitle1" Class="font-weight-bold mb-1">Sin políticas</MudText>
+                <MudText Typo="Typo.body2" Class="text-secondary mb-3">Cree la primera política de contraseña para comenzar</MudText>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@OpenCreateDialog"
+                    StartIcon="@Icons.Material.Filled.Add">
+                    Nueva Política
+                </MudButton>
+            </div>
+        </NoRecordsContent>
+    </MudTable>
+
+    <MudOverlay Visible="@_loading" Class="d-flex align-center justify-center">
+        <MudProgressCircular Indeterminate="true" Size="Size.Large" />
+    </MudOverlay>
+</MudContainer>
+}
+
+@code {
+    private List<PoliticaPwdDto> _items = [];
+    private bool _loading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.TienePermiso("POLITICAS_PWD_VER")) return;
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        try
+        {
+            _items = await Api.GetAsync<List<PoliticaPwdDto>>("api/politicaspwd") ?? [];
+        }
+        catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error al cargar: {ex.Message}", Severity.Error); }
+        finally { _loading = false; }
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var parameters = new DialogParameters { ["IsEdit"] = false };
+        var dialog = await Dialog.ShowAsync<PoliticaPwdDialog>("Nueva Política", parameters);
+        var result = await dialog.Result;
+        if (!result.Canceled) await LoadData();
+    }
+
+    private async Task OpenEditDialog(PoliticaPwdDto item)
+    {
+        var parameters = new DialogParameters { ["IsEdit"] = true, ["Politica"] = item };
+        var dialog = await Dialog.ShowAsync<PoliticaPwdDialog>("Editar Política", parameters);
+        var result = await dialog.Result;
+        if (!result.Canceled) await LoadData();
+    }
+
+    private async Task ConfirmDesactivar(PoliticaPwdDto item)
+    {
+        var parameters = new DialogParameters
+        {
+            ["Title"] = "Confirmar",
+            ["Message"] = $"¿Desactivar la política '{item.Nombre}'? Las políticas desactivadas no se aplican a nuevos cambios de contraseña.",
+            ["ConfirmText"] = "Desactivar",
+            ["CancelText"] = "Cancelar"
+        };
+        var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parameters);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            try
+            {
+                var ok = await Api.PostAsync<object>($"api/politicaspwd/{item.Id}/desactivar", null);
+                if (ok is not null)
+                {
+                    Snackbar.Add("Política desactivada", Severity.Success);
+                    await LoadData();
+                }
+                else
+                    Snackbar.Add(Api.LastError ?? "Error al desactivar", Severity.Error);
+            }
+            catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error); }
+        }
+    }
+}

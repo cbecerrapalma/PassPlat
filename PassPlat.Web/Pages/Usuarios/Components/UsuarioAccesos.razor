@@ -1,0 +1,98 @@
+@using PassPlat.Aplicacion.Dtos.Core
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+
+@if (_loading)
+{
+    <MudSkeleton Width="100%" Height="200px" />
+}
+else if (_items.Count == 0)
+{
+    <MudContainer Class="mt-4">
+        <MudText Typo="Typo.subtitle2" Class="mb-3" Style="color:var(--mud-palette-text-secondary);">
+            Aplicaciones y roles asignados al usuario.
+        </MudText>
+        <MudText Align="Align.Center" Class="py-8">
+            <MudIcon Icon="@Icons.Material.Filled.KeyOff" Class="mb-2" /><br />Sin accesos asignados
+        </MudText>
+        <MudText Typo="Typo.caption" Style="color:var(--mud-palette-text-secondary);">
+            Para gestionar accesos (asignar o revocar), vaya a <a href="/accesos">Accesos</a>.
+        </MudText>
+    </MudContainer>
+}
+else
+{
+    <MudContainer Class="mt-4">
+        <MudText Typo="Typo.subtitle2" Class="mb-3" Style="color:var(--mud-palette-text-secondary);">
+            Aplicaciones y roles asignados al usuario.
+        </MudText>
+        <MudTable T="AccesoDto" Items="@_items" Hover="true" Breakpoint="Breakpoint.Sm">
+            <ColGroup>
+                <col style="width:80px;" /><col /><col /><col style="width:100px;" />
+            </ColGroup>
+            <HeaderContent>
+                <MudTh>Id</MudTh><MudTh>App</MudTh><MudTh>Rol</MudTh><MudTh>Activo</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Id">@context.Id</MudTd>
+                <MudTd DataLabel="App">@context.AppNombre</MudTd>
+                <MudTd DataLabel="Rol">@context.RolNombre</MudTd>
+                <MudTd DataLabel="Activo">
+                    <MudChip T="string" Size="Size.Small" Color="@(context.Activo ? Color.Success : Color.Error)">
+                        @(context.Activo ? "Sí" : "No")
+                    </MudChip>
+                </MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                <MudText Align="Align.Center" Class="py-8">
+                    <MudIcon Icon="@Icons.Material.Filled.KeyOff" Class="mb-2" /><br />Sin accesos asignados
+                </MudText>
+            </NoRecordsContent>
+        </MudTable>
+        <MudText Typo="Typo.caption" Class="mt-2" Style="color:var(--mud-palette-text-secondary);">
+            Para gestionar accesos (asignar o revocar), vaya a <a href="/accesos">Accesos</a>.
+        </MudText>
+    </MudContainer>
+}
+
+@code {
+    [Parameter] public int UserId { get; set; }
+    [Parameter] public bool IsActive { get; set; }
+    [Parameter] public EventCallback<int> CountChanged { get; set; }
+
+    private List<AccesoDto> _items = [];
+    private bool _loading = true;
+    private bool _loaded;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsActive && !_loaded)
+        {
+            _loaded = true;
+            await LoadData();
+        }
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        try
+        {
+            _items = await Api.GetAsync<List<AccesoDto>>($"api/accesos/usuario/{UserId}") ?? [];
+            if (Api.LastError != null)
+            {
+                Snackbar.Add(Api.LastError, Severity.Error);
+                _items = [];
+            }
+            await CountChanged.InvokeAsync(_items.Count);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar accesos: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

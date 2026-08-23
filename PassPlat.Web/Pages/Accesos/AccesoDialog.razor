@@ -1,0 +1,130 @@
+@inject ApiClient Api
+@inject AuthService Auth
+@inject ISnackbar Snackbar
+
+<MudDialog Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Asignar Acceso</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudAutocomplete T="UsuarioDto" @bind-Value="_usuarioSelected"
+            SearchFunc="@SearchUsuarios" ToStringFunc="@(u => u is null ? "" : $"{u.NomUsuario} ({u.Nombre} {u.Apellido})")"
+            Label="Usuario" Variant="Variant.Outlined" Class="mb-3" />
+        <MudAutocomplete T="TenantDto" @bind-Value="_tenantSelected"
+            SearchFunc="@SearchTenants" ToStringFunc="@(t => t is null ? "" : $"{t.Nombre} ({t.Codigo})")"
+            Label="Tenant" Variant="Variant.Outlined" Class="mb-3" />
+        <MudAutocomplete T="AppDto" @bind-Value="_appSelected"
+            SearchFunc="@SearchApps" ToStringFunc="@(a => a is null ? "" : $"{a.Nombre} ({a.Codigo})")"
+            Label="App" Variant="Variant.Outlined" Class="mb-3" />
+        <MudAutocomplete T="RolDto" @bind-Value="_rolSelected"
+            SearchFunc="@SearchRoles" ToStringFunc="@(r => r is null ? "" : $"{r.Nombre} ({r.Codigo})")"
+            Label="Rol" Variant="Variant.Outlined" Class="mb-3" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@Save" Disabled="@_saving">Asignar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+
+    private List<UsuarioDto> _usuarios = [];
+    private List<TenantDto> _tenants = [];
+    private List<AppDto> _apps = [];
+    private List<RolDto> _roles = [];
+    private UsuarioDto? _usuarioSelected;
+    private TenantDto? _tenantSelected;
+    private AppDto? _appSelected;
+    private RolDto? _rolSelected;
+    private bool _saving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var idUsr = Auth.IdUsuario ?? 0;
+        var idTen = Auth.IdTenant ?? 0;
+
+        var tUsuarios = Api.GetAsync<List<UsuarioDto>>("api/usuarios");
+        var tTenants = Api.GetAsync<List<TenantDto>>("api/tenants");
+        var tApps = Api.GetAsync<List<AppDto>>("api/apps");
+        var tRoles = Api.GetAsync<List<RolDto>>("api/roles");
+
+        await Task.WhenAll(tUsuarios, tTenants, tApps, tRoles);
+
+        _usuarios = tUsuarios.Result ?? [];
+        _tenants = tTenants.Result ?? [];
+        _apps = tApps.Result ?? [];
+        _roles = tRoles.Result ?? [];
+
+        _usuarioSelected = _usuarios.FirstOrDefault(u => u.Id == idUsr);
+        _tenantSelected = _tenants.FirstOrDefault(t => t.Id == idTen);
+    }
+
+    private Task<IEnumerable<UsuarioDto>> SearchUsuarios(string value, CancellationToken _)
+    {
+        if (string.IsNullOrEmpty(value))
+            return Task.FromResult(_usuarios.Take(20));
+        return Task.FromResult(_usuarios.Where(u =>
+            u.NomUsuario.Contains(value, StringComparison.OrdinalIgnoreCase) ||
+            u.Nombre.Contains(value, StringComparison.OrdinalIgnoreCase) ||
+            u.Email.Contains(value, StringComparison.OrdinalIgnoreCase)).Take(20));
+    }
+
+    private Task<IEnumerable<TenantDto>> SearchTenants(string value, CancellationToken _)
+    {
+        if (string.IsNullOrEmpty(value))
+            return Task.FromResult(_tenants.Take(20));
+        return Task.FromResult(_tenants.Where(t =>
+            t.Nombre.Contains(value, StringComparison.OrdinalIgnoreCase) ||
+            t.Codigo.Contains(value, StringComparison.OrdinalIgnoreCase)).Take(20));
+    }
+
+    private Task<IEnumerable<AppDto>> SearchApps(string value, CancellationToken _)
+    {
+        if (string.IsNullOrEmpty(value))
+            return Task.FromResult(_apps.Take(20));
+        return Task.FromResult(_apps.Where(a =>
+            a.Nombre.Contains(value, StringComparison.OrdinalIgnoreCase) ||
+            a.Codigo.Contains(value, StringComparison.OrdinalIgnoreCase)).Take(20));
+    }
+
+    private Task<IEnumerable<RolDto>> SearchRoles(string value, CancellationToken _)
+    {
+        if (string.IsNullOrEmpty(value))
+            return Task.FromResult(_roles.Take(20));
+        return Task.FromResult(_roles.Where(r =>
+            r.Nombre.Contains(value, StringComparison.OrdinalIgnoreCase) ||
+            r.Codigo.Contains(value, StringComparison.OrdinalIgnoreCase)).Take(20));
+    }
+
+    private async Task Save()
+    {
+        _saving = true;
+        try
+        {
+            var idUsuario = _usuarioSelected?.Id ?? 0;
+            var idTenant = _tenantSelected?.Id ?? 0;
+            var idApp = _appSelected?.Id ?? 0;
+            var idRol = _rolSelected?.Id ?? 0;
+            var result = await Api.PostAsync<AccesoDto>("api/accesos/asignar",
+                new { idUsuario, idTenant, idApp, idRol });
+            if (result is not null)
+            {
+                Snackbar.Add("Acceso asignado", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+                Snackbar.Add(Api.LastError ?? "Error al asignar acceso", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

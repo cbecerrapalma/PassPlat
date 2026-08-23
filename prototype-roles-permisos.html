@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prototipo: Rol Jerárquico en PassPlat</title>
+    <style>
+        :root {
+            --primary-color: #1976d2;
+            --primary-dark: #1565c0;
+            --secondary-color: #ff9800;
+            --success-color: #4caf50;
+            --danger-color: #f44336;
+            --warning-color: #ff9800;
+            --info-color: #2196f3;
+            --light-bg: #f5f5f5;
+            --white: #ffffff;
+            --text-dark: #212121;
+            --text-light: #757575;
+            --border-color: #e0e0e0;
+            --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            --tree-indent: 24px;
+            --header-height: 64px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: var(--text-dark);
+            background-color: #f8f9fa;
+            min-height: 100vh;
+        }
+
+        /* PassPlat Layout Pattern */
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 280px;
+            background: var(--white);
+            border-right: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        .header {
+            height: var(--header-height);
+            background: var(--white);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .content-wrapper {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+        }
+
+        /* Sidebar Navigation */
+        .sidebar-header {
+            padding: 24px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: var(--white);
+            text-align: center;
+        }
+
+        .sidebar-header h2 {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+        }
+
+        .sidebar-header p {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .sidebar-nav {
+            padding: 16px 0;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 24px;
+            color: var(--text-dark);
+            text-decoration: none;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+        }
+
+        .nav-item:hover {
+            background: rgba(25, 118, 210, 0.05);
+            border-left-color: var(--primary-color);
+        }
+
+        .nav-item.active {
+            background: rgba(25, 118, 210, 0.1);
+            border-left-color: var(--primary-color);
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        .nav-icon {
+            margin-right: 12px;
+            font-size: 1.2rem;
+        }
+
+        /* Main Content */
+        .page-header {
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .page-title {
+            font-size: 2rem;
+            color: var(--primary-dark);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .page-description {
+            color: var(--text-light);
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+
+        /* Role Hierarchy Tree */
+        .role-hierarchy-container {
+            background: var(--white);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .tree-controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--light-bg);
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        .control-label {
+            color: var(--text-light);
+            font-weight: 500;
+        }
+
+        .control-input {
+            padding: 6px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        .tree-wrapper {
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 20px;
+            background: var(--white);
+        }
+
+        .tree-node {
+            margin-bottom: 8px;
+        }
+
+        .tree-children {
+            margin-left: var(--tree-indent);
+            margin-top: 8px;
+            padding-left: 16px;
+            border-left: 2px solid var(--border-color);
+        }
+
+        .role-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: var(--white);
+            border-radius: 6px;
+            margin-bottom: 8px;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .role-item:hover {
+            background: #f8f9fa;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            border-color: var(--primary-color);
+        }
+
+        .role-item.parent {
+            border-left: 4px solid var(--warning-color);
+            background: rgba(255, 152, 0, 0.02);
+        }
+
+        .role-item.child {
+            border-left: 4px solid var(--info-color);
+            background: rgba(33, 150, 243, 0.02);
+        }
+
+        .role-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+
+        .icon-parent {
+            background: var(--warning-color);
+            color: var(--white);
+        }
+
+        .icon-child {
+            background: var(--info-color);
+            color: var(--white);
+        }
+
+        .role-content {
+            flex: 1;
+        }
+
+        .role-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .role-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .role-badges {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .role-badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--white);
+        }
+
+        .badge-parent {
+            background: var(--warning-color);
+        }
+
+        .badge-child {
+            background: var(--info-color);
+        }
+
+        .role-meta {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            display: flex;
+            gap: 16px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+
+        .role-permissions-summary {
+            margin-top: 12px;
+            padding: 12px;
+            background: rgba(76, 175, 80, 0.05);
+            border-left: 4px solid var(--success-color);
+            border-radius: 4px;
+        }
+
+        .permissions-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--success-color);
+            margin-bottom: 6px;
+        }
+
+        .permissions-list {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .permissions-list li {
+            padding: 4px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .permissions-list li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: var(--success-color);
+            font-weight: bold;
+        }
+
+        .role-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            justify-content: flex-end;
+        }
+
+        .btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: var(--white);
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background: var(--light-bg);
+            color: var(--text-dark);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .btn-icon {
+            padding: 6px;
+            border-radius: 4px;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-icon:hover {
+            background: var(--light-bg);
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--white);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background: rgba(25, 118, 210, 0.1);
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .stat-content {
+            flex: 1;
+        }
+
+        .stat-title {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-light);
+            background: var(--white);
+            border-radius: 8px;
+            border: 1px dashed var(--border-color);
+        }
+
+        .empty-icon {
+            font-size: 3rem;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .app-container {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: static;
+            }
+
+            .header {
+                padding: 16px;
+            }
+
+            .content-wrapper {
+                padding: 16px;
+            }
+
+            .page-title {
+                font-size: 1.5rem;
+            }
+
+            .tree-controls {
+                flex-direction: column;
+            }
+
+            .control-group {
+                width: 100%;
+                justify-content: space-between;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .role-item {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .tree-children {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        /* Tree Lines */
+        .tree-node {
+            position: relative;
+        }
+
+        .tree-node::before {
+            content: '';
+            position: absolute;
+            left: -16px;
+            top: 24px;
+            height: 100%;
+            border-left: 2px solid var(--border-color);
+        }
+
+        .tree-node:last-child::before {
+            height: calc(100% - 24px);
+        }
+
+        /* Code Blocks */
+        .code-block {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            overflow-x: auto;
+            margin: 16px 0;
+            white-space: pre-wrap;
+        }
+
+        .info-box {
+            background: rgba(33, 150, 243, 0.1);
+            border-left: 4px solid var(--info-color);
+            padding: 16px;
+            border-radius: 4px;
+            margin: 16px 0;
+        }
+
+        .info-box-title {
+            font-weight: 600;
+            color: var(--info-color);
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>PassPlat</h2>
+                <p>Sistema de Gestión de Accesos</p>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item">
+                    <span class="nav-icon">📊</span>
+                    Panel Principal
+                </a>
+                <a href="#" class="nav-item active">
+                    <span class="nav-icon">🔒</span>
+                    Roles y Permisos
+                </a>
+                <a href="#" class="nav-item">
+                    <span class="nav-icon">👥</span>
+                    Usuarios
+                </a>
+                <a href="#" class="nav-item">
+                    <span class="nav-icon">📋</span>
+                    Aplicaciones
+                </a>
+                <a href="#" class="nav-item">
+                    <span class="nav-icon">⚙️</span>
+                    Configuración
+                </a>
+                <a href="#" class="nav-item">
+                    <span class="nav-icon">📊</span>
+                    Auditoría
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Header -->
+            <header class="header">
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                    <div>
+                        <h1 class="page-title">
+                            <span>🗂️</span>
+                            Jerarquía de Roles
+                        </h1>
+                        <p class="page-description">
+                            Gestione la jerarquía de roles para herencia automática de permisos.<br>
+                            Los roles hijos heredan todos los permisos de sus roles padres automáticamente.
+                        </p>
+                    </div>
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        <button class="btn btn-secondary">
+                            <span>📤</span>
+                            Exportar Jerarquía
+                        </button>
+                        <button class="btn btn-primary">
+                            <span>+</span>
+                            Nuevo Rol
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Content -->
+            <div class="content-wrapper">
+                <!-- Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">💼</div>
+                        <div class="stat-content">
+                            <div class="stat-title">Total Roles</div>
+                            <div class="stat-value">24</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🔑</div>
+                        <div class="stat-content">
+                            <div class="stat-title">Permisos Totales</div>
+                            <div class="stat-value">187</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">👤</div>
+                        <div class="stat-content">
+                            <div class="stat-title">Roles con Hijos</div>
+                            <div class="stat-value">8</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📊</div>
+                        <div class="stat-content">
+                            <div class="stat-title">Profundidad Max</div>
+                            <div class="stat-value">4</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Role Hierarchy Section -->
+                <div class="role-hierarchy-container">
+                    <!-- Controls -->
+                    <div class="tree-controls">
+                        <div class="control-group">
+                            <label class="control-label">🔍 Buscar Rol:</label>
+                            <input type="text" class="control-input" placeholder="Escribir nombre...">
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label">📊 Filtrar por Módulo:</label>
+                            <select class="control-input">
+                                <option>Todos los módulos</option>
+                                <option>Soporte</option>
+                                <option>Supervisor</option>
+                                <option>Operador</option>
+                                <option>Seguridad</option>
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label">🔑 Estado:</label>
+                            <select class="control-input">
+                                <option>Todos</option>
+                                <option>Activo</option>
+                                <option>Inactivo</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Tree View -->
+                    <div class="tree-wrapper">
+                        <div class="tree-node">
+                            <div class="role-item parent">
+                                <div class="role-icon icon-parent">💼</div>
+                                <div class="role-content">
+                                    <div class="role-header">
+                                        <div class="role-name">
+                                            Soporte <span class="role-badges">
+                                                <span class="role-badge badge-parent">PADRE</span>
+                                            </span>
+                                        </div>
+                                        <div class="role-actions">
+                                            <button class="btn-icon" title="Editar">✏️</button>
+                                            <button class="btn-icon" title="Eliminar">🗑️</button>
+                                            <button class="btn-icon" title="Ver detalles">👁️</button>
+                                        </div>
+                                    </div>
+                                    <div class="role-meta">
+                                        <span>📧 Módulo: Soporte</span>
+                                        <span>🔑 12 Permisos</span>
+                                        <span>👥 3 usuarios asignados</span>
+                                        <span>📅 Creado: 15/01/2024</span>
+                                    </div>
+                                    <div class="role-permissions-summary">
+                                        <div class="permissions-title">▼ Permisos</div>
+                                        <ul class="permissions-list">
+                                            <li>🔑 VER_LOGIN</li>
+                                            <li>🔑 CREAR_USUARIO</li>
+                                            <li>🔑 ELIMINAR_USUARIO</li>
+                                            <li>🔑 VER_DASHBOARD</li>
+                                            <li>🔑 VER_REPORTES</li>
+                                            <li>🔑 CONFIGURACION</li>
+                                            <li>🔑 AUDITORIA</li>
+                                            <li>🔑 EMAIL_ENVIAR</li>
+                                            <li>🔑 NOTIFICACION_ENVIAR</li>
+                                            <li>🔑 ROL_GESTIONAR</li>
+                                            <li>🔑 PERMISO_GESTIONAR</li>
+                                            <li>🔑 ACCESO_GESTIONAR</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="tree-children">
+                                <div class="tree-node">
+                                    <div class="role-item parent">
+                                        <div class="role-icon icon-parent">👔</div>
+                                        <div class="role-content">
+                                            <div class="role-header">
+                                                <div class="role-name">
+                                                    Supervisor <span class="role-badges">
+                                                        <span class="role-badge badge-parent">PADRE</span>
+                                                    </span>
+                                                </div>
+                                                <div class="role-actions">
+                                                    <button class="btn-icon" title="Editar">✏️</button>
+                                                    <button class="btn-icon" title="Eliminar">🗑️</button>
+                                                    <button class="btn-icon" title="Ver detalles">👁️</button>
+                                                </div>
+                                            </div>
+                                            <div class="role-meta">
+                                                <span>📊 Módulo: Supervisor</span>
+                                                <span>🔑 15 Permisos</span>
+                                                <span>👥 5 usuarios asignados</span>
+                                                <span>📅 Creado: 10/02/2024</span>
+                                            </div>
+                                            <div class="role-permissions-summary">
+                                                <div class="permissions-title">▼ Permisos (12 heredados + 3 propios)</div>
+                                                <ul class="permissions-list">
+                                                    <li>🔑 VER_LOGIN</li>
+                                                    <li>🔑 CREAR_USUARIO</li>
+                                                    <li>🔑 ELIMINAR_USUARIO</li>
+                                                    <li>🔑 VER_DASHBOARD</li>
+                                                    <li>🔑 VER_REPORTES</li>
+                                                    <li>🔑 CONFIGURACION</li>
+                                                    <li>🔑 AUDITORIA</li>
+                                                    <li>🔑 EMAIL_ENVIAR</li>
+                                                    <li>🔑 NOTIFICACION_ENVIAR</li>
+                                                    <li>🔑 ROL_GESTIONAR</li>
+                                                    <li>🔑 PERMISO_GESTIONAR</li>
+                                                    <li>🔑 ACCESO_GESTIONAR</li>
+                                                    <li>🔑 SUPERVISAR_OPERACIONES</li>
+                                                    <li>🔑 REPORTES_ESPECIALES</li>
+                                                    <li>🔑 AUDITORIA_AVANZADA</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+
+                                        <div class="tree-children">
+                                            <div class="tree-node">
+                                                <div class="role-item child">
+                                                    <div class="role-icon icon-child">👤</div>
+                                                    <div class="role-content">
+                                                        <div class="role-header">
+                                                            <div class="role-name">
+                                                                Operador <span class="role-badges">
+                                                                    <span class="role-badge badge-child">HIJO</span>
+                                                                </span>
+                                                            </div>
+                                                            <div class="role-actions">
+                                                                <button class="btn-icon" title="Editar">✏️</button>
+                                                                <button class="btn-icon" title="Eliminar">🗑️</button>
+                                                                <button class="btn-icon" title="Ver detalles">👁️</button>
+                                                            </div>
+                                                        </div>
+                                                        <div class="role-meta">
+                                                            <span>🔧 Módulo: Operador</span>
+                                                            <span>🔑 17 Permisos</span>
+                                                            <span>👥 15 usuarios asignados</span>
+                                                            <span>📅 Creado: 05/03/2024</span>
+                                                        </div>
+                                                        <div class="role-permissions-summary">
+                                                            <div class="permissions-title">▼ Permisos (15 heredados + 2 propios)</div>
+                                                            <ul class="permissions-list">
+                                                                <li>🔑 VER_LOGIN</li>
+                                                                <li>🔑 CREAR_USUARIO</li>
+                                                                <li>🔑 ELIMINAR_USUARIO</li>
+                                                                <li>🔑 VER_DASHBOARD</li>
+                                                                <li>🔑 VER_REPORTES</li>
+                                                                <li>🔑 CONFIGURACION</li>
+                                                                <li>🔑 AUDITORIA</li>
+                                                                <li>🔑 EMAIL_ENVIAR</li>
+                                                                <li>🔑 NOTIFICACION_ENVIAR</li>
+                                                                <li>🔑 ROL_GESTIONAR</li>
+                                                                <li>🔑 PERMISO_GESTIONAR</li>
+                                                                <li>🔑 ACCESO_GESTIONAR</li>
+                                                                <li>🔑 SUPERVISAR_OPERACIONES</li>
+                                                                <li>🔑 REPORTES_ESPECIALES</li>
+                                                                <li>🔑 AUDITORIA_AVANZADA</li>
+                                                                <li>📊 REPORT_INCIDENTES</li>
+                                                                <li>📞 ATTEND_CALLS</li>
+                                                            </ul>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="tree-children">
+                                                    <div class="tree-node">
+                                                        <div class="role-item child">
+                                                            <div class="role-icon icon-child">📍</div>
+                                                            <div class="role-content">
+                                                                <div class="role-header">
+                                                                    <div class="role-name">
+                                                                        Asistente <span class="role-badges">
+                                                                            <span class="role-badge badge-child">HIJO</span>
+                                                                        </span>
+                                                                    </div>
+                                                                    <div class="role-actions">
+                                                                        <button class="btn-icon" title="Editar">✏️</button>
+                                                                        <button class="btn-icon" title="Eliminar">🗑️</button>
+                                                                        <button class="btn-icon" title="Ver detalles">👁️</button>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="role-meta">
+                                                                    <span>🎨 Módulo: Asistente</span>
+                                                                    <span>🔑 18 Permisos</span>
+                                                                    <span>👥 30 usuarios asignados</span>
+                                                                    <span>📅 Creado: 20/04/2024</span>
+                                                                </div>
+                                                                <div class="role-permissions-summary">
+                                                                    <div class="permissions-title">▼ Permisos (17 heredados + 1 propio)</div>
+                                                                    <ul class="permissions-list">
+                                                                        <li>🔑 VER_LOGIN</li>
+                                                                        <li>🔑 CREAR_USUARIO</li>
+                                                                        <li>🔑 ELIMINAR_USUARIO</li>
+                                                                        <li>🔑 VER_DASHBOARD</li>
+                                                                        <li>🔑 VER_REPORTES</li>
+                                                                        <li>🔑 CONFIGURACION</li>
+                                                                        <li>🔑 AUDITORIA</li>
+                                                                        <li>🔑 EMAIL_ENVIAR</li>
+                                                                        <li>🔑 NOTIFICACION_ENVIAR</li>
+                                                                        <li>🔑 ROL_GESTIONAR</li>
+                                                                        <li>🔑 PERMISO_GESTIONAR</li>
+                                                                        <li>🔑 ACCESO_GESTIONAR</li>
+                                                                        <li>🔑 SUPERVISAR_OPERACIONES</li>
+                                                                        <li>🔑 REPORTES_ESPECIALES</li>
+                                                                        <li>🔑 AUDITORIA_AVANZADA</li>
+                                                                        <li>📊 REPORT_INCIDENTES</li>
+                                                                        <li>📞 ATTEND_CALLS</li>
+                                                                        <li>💬 MANAGE_CHATS</li>
+                                                                    </ul>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Information Panel -->
+                <div class="info-box">
+                    <div class="info-box-title">💡 Cómo funciona la jerarquía de roles</div>
+                    <p><strong>Sin jerarquía:</strong> Un rol <code>Supervisor</code> necesita asignar manualmente los mismos 12 permisos base de <code>Soporte</code>, además de sus 3 permisos especiales = 15 permisos totales.</p>
+                    <p><strong>Con jerarquía:</strong> <code>Soporte</code> se convierte en padre de <code>Supervisor</code>, quien hereda los 12 permisos base automáticamente. <code>Supervisor</code> solo necesita agregar sus 3 permisos especiales = 15 permisos totales. ¡Mismo resultado, mucho menos trabajo!</p>
+                    <p><strong>Ventaja:</strong> Los permisos se asignan una sola vez en la raíz de la jerarquía. Los roles hijos heredan todo automáticamente.</p>
+                </div>
+
+                <!-- Implementation Details -->
+                <div style="margin-top: 32px;">
+                    <h2 style="font-size: 1.5rem; color: var(--primary-dark); margin-bottom: 16px;">📋 Detalles de Implementación</h2>
+                    
+                    <div class="code-block">
+CREATE TABLE dbo.RolJerarquico (
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+    IdRol INT NOT NULL,
+    IdRolPadre INT NULL,
+    Activo BIT NOT NULL DEFAULT 1,
+    CONSTRAINT FK_RolJerarquico_Rol FOREIGN KEY (IdRol)
+        REFERENCES dbo.Roles(Id) ON DELETE CASCADE,
+    CONSTRAINT FK_RolJerarquico_RolPadre FOREIGN KEY (IdRolPadre)
+        REFERENCES dbo.Roles(Id),
+    CONSTRAINT UQ_RolJerarquico UNIQUE (IdRol, IdRolPadre)
+);
+
+CREATE UNIQUE INDEX IX_RolJerarquico_NoCiclo
+ON dbo.RolJerarquico(IdRol, IdRolPadre)
+WHERE IdRolPadre IS NOT NULL AND IdRol <> IdRolPadre;
+                    </div>
+                    
+                    <div style="margin-top: 20px;">
+                        <h3 style="font-size: 1.2rem; color: var(--primary-dark); margin-bottom: 12px;">🗃️ Ejemplo de Datos</h3>
+                        <div style="overflow-x: auto;">
+                            <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                                <thead>
+                                    <tr style="border-bottom: 2px solid var(--border-color);">
+                                        <th style="padding: 12px; text-align: left;">IdRol</th>
+                                        <th style="padding: 12px; text-align: left;">IdRolPadre</th>
+                                        <th style="padding: 12px; text-align: left;">Activo</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom: 1px solid var(--border-color);">
+                                        <td style="padding: 12px; font-weight: 600;">2</td>
+                                        <td style="padding: 12px;">-</td>
+                                        <td style="padding: 12px;"><span style="color: var(--warning-color); font-weight: 600;">PADRE</span></td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid var(--border-color); background: rgba(255,152,0,0.05);">
+                                        <td style="padding: 12px; font-weight: 600;">3</td>
+                                        <td style="padding: 12px; color: var(--warning-color);">2 (Padre)</td>
+                                        <td style="padding: 12px;"><span style="color: var(--warning-color); font-weight: 600;">PADRE</span></td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid var(--border-color); background: rgba(33,150,243,0.05);">
+                                        <td style="padding: 12px; font-weight: 600;">4</td>
+                                        <td style="padding: 12px; color: var(--info-color);">3 (Padre)</td>
+                                        <td style="padding: 12px;"><span style="color: var(--info-color); font-weight: 600;">HIJO</span></td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid var(--border-color); background: rgba(33,150,243,0.05);">
+                                        <td style="padding: 12px; font-weight: 600;">5</td>
+                                        <td style="padding: 12px; color: var(--info-color);">4 (Padre)</td>
+                                        <td style="padding: 12px;"><span style="color: var(--info-color); font-weight: 600;">HIJO</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simple tab functionality for demonstration
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                // Remove active class from all tabs
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                // Add active class to clicked tab
+                this.classList.add('active');
+                
+                // Show corresponding content
+                const tabId = this.getAttribute('onclick').match(/'([^']+)'/)[1];
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+        
+        // Simulate tree expansion/collapse
+        document.querySelectorAll('.role-item').forEach(item => {
+            item.addEventListener('click', function(e) {
+                // Only expand/collapse if clicking on actions or meta info, not on the role item itself
+                if (e.target.closest('.role-actions') || e.target.closest('.role-meta')) {
+                    return;
+                }
+                
+                const children = this.closest('.tree-node').querySelector('.tree-children');
+                if (children) {
+                    children.style.display = children.style.display === 'none' ? 'block' : 'none';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

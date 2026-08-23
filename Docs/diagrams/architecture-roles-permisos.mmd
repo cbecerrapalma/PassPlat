@@ -1,0 +1,59 @@
+flowchart LR
+    subgraph DB["Base de Datos"]
+        ROLES_T[Roles]
+        PERMISOS_T[Permisos]
+        RP_T[RolesPermisos]
+        RPP_T[RolesPoliticasPwd]
+        ACC_T[Accesos]
+        USR_T[Usuarios]
+    end
+
+    subgraph API["API REST"]
+        RC[RolesController]
+        PC[PermisosController]
+        AC[AccesosController]
+        RPC[RolesPoliticasPwdController]
+    end
+
+    subgraph SVC["Servicios"]
+        RS[RolService]
+        PS[PermisoService]
+        RPS[RolPermisoService]
+        AS2[AccesoService]
+        RPPS[RolPoliticaPwdService]
+    end
+
+    subgraph UI["Frontend Blazor"]
+        TAB1[Tab: Roles]
+        TAB2[Tab: Permisos]
+        TAB3[Tab: Asignacion Usuarios]
+        DET[Detalle Rol Inline]
+    end
+
+    TAB1 -->|GET /api/roles| RC
+    TAB1 -->|POST /api/roles| RC
+    TAB2 -->|GET /api/permisos/activos| PC
+    TAB2 -->|POST /api/permisos| PC
+    TAB2 -->|PUT /api/permisos/:id| PC
+    TAB3 -->|GET /api/accesos/rol/:id| AC
+    TAB3 -->|POST /api/accesos/asignar| AC
+    DET -->|POST /api/permisos/rol| PC
+    DET -->|DELETE /api/permisos/rol/R/P| PC
+    DET -->|GET /api/rolespoliticaspwd/rol/:id| RPC
+
+    RC --> RS
+    PC --> PS
+    PC --> RPS
+    AC --> AS2
+    RPC --> RPPS
+
+    RS --> ROLES_T
+    PS --> PERMISOS_T
+    RPS --> RP_T
+    AS2 --> ACC_T
+    RPPS --> RPP_T
+
+    style DB fill:#e8eaf6,stroke:#283593
+    style API fill:#e3f2fd,stroke:#1565c0
+    style SVC fill:#e8f5e9,stroke:#2e7d32
+    style UI fill:#fff3e0,stroke:#e65100

@@ -1,0 +1,103 @@
+@page "/dominios-tenant"
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@inject AuthService Auth
+@inject NavigationManager Navigation
+@using PassPlat.Web.Models
+@using PassPlat.Web.Shared
+
+@if (!Auth.TienePermiso("TENANTS_VER"))
+{
+    <SinPermiso PermisoRequerido="TENANTS_VER" />
+}
+else
+{
+<MudContainer>
+    <MudBreadcrumbs Class="mb-3">
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
+        <MudBreadcrumbItem>Catálogos</MudBreadcrumbItem>
+        <MudBreadcrumbItem>Dominios por Tenant</MudBreadcrumbItem>
+    </MudBreadcrumbs>
+    <MudPaper Class="pa-4 mb-4 d-flex flex-wrap align-center gap-4" Elevation="0" Outlined="true">
+        <MudText Typo="Typo.h5" Class="flex-grow-1 mb-0">Dominios por Tenant</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium"
+            OnClick="@LoadData" Class="mr-2" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@OpenCreateDialog"
+            StartIcon="@Icons.Material.Filled.Add" Size="Size.Medium">
+            Agregar Dominio
+        </MudButton>
+    </MudPaper>
+
+    <MudTable T="DominioTenantDto" Items="@_items" Hover="true" Breakpoint="Breakpoint.Sm" Class="mt-2">
+        <ColGroup>
+            <col style="width: 80px;" />
+            <col style="width: 120px;" />
+            <col />
+        </ColGroup>
+        <HeaderContent>
+            <MudTh>Id</MudTh>
+            <MudTh>Tenant</MudTh>
+            <MudTh>Dominio</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Id">@context.Id</MudTd>
+            <MudTd DataLabel="Tenant">@context.TenantNombre</MudTd>
+            <MudTd DataLabel="Dominio">@context.Dominio</MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new int[]{10, 25, 50}" />
+        </PagerContent>
+        <NoRecordsContent>
+            <MudText Align="Align.Center" Class="py-6">
+                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Class="mr-2" />
+                No hay registros
+            </MudText>
+        </NoRecordsContent>
+    </MudTable>
+
+    <MudOverlay Visible="@_loading" />
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" Class="mt-4" />
+    }
+</MudContainer>
+}
+
+@code {
+    private List<DominioTenantDto> _items = [];
+    private bool _loading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.TienePermiso("TENANTS_VER")) return;
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        try
+        {
+            var tenantId = Auth.IdTenant ?? 1;
+            var data = await Api.GetAsync<List<DominioTenantDto>>($"api/DominiosTenant/tenant/{tenantId}");
+            _items = data ?? [];
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var dialog = await Dialog.ShowAsync<DominioTenantDialog>("Agregar Dominio");
+        var result = await dialog.Result;
+        if (!result.Canceled)
+            await LoadData();
+    }
+}

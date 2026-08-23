@@ -1,0 +1,276 @@
+
+--EXEC sys.sp_addextendedproperty N'MS_Description', N'Orquestador de login mediante proveedor externo. Implementa tres escenarios: A) Usuario ya vinculado, B) Auto-link por email, C) Auto-provisionamiento. Mismo contrato de salida que SP_Auth_Login.', '
+SCHEMA', N'dbo', 'PROCEDURE', N'SP_Auth_LoginExterno'
+--GO
+
+-- ============================================================================
+-- 8. Update SP_Auth_Login: add MetodoAutenticacion='Local' to INSERT statements
+--    ONLY modify the two INSERT I
+NTO IntentosAcceso statements
+-- ============================================================================
+CREATE   PROCEDURE dbo.SP_Auth_Login
+    @IdTenant          int,
+    @IdApp             int,
+    @HashPwdCalculado  nvarchar(512),
+    @NomUsuari
+o        nvarchar(100)  = NULL,
+    @Email             nvarchar(255)  = NULL,
+    @IdDisp            int            = NULL,
+    @IdIP              int            = NULL,
+    @IdAgente          int            = NULL
+AS
+BEGIN
+    SET NOCOUNT, XACT_ABORT ON;
+
+
+    IF @NomUsuario IS NULL AND @Email IS NULL
+    BEGIN
+        RAISERROR('Debe especificar @NomUsuario o @Email.', 16, 1);
+        RETURN;
+    END
+
+    DECLARE @FecInicio     datetime2(3)  = SYSUTCDATETIME();
+    DECLARE @NomUsuarioLog nvarchar(100) = 
+COALESCE(@NomUsuario, @Email, '');
+
+    DECLARE @IdUsuario int, @IdEstado int, @EsEliminado bit, @EsSistema bit;
+    DECLARE @IntentosActuales tinyint, @PepperVersionActual tinyint;
+    DECLARE @MaxIntentos tinyint, @DurBloqueo int;
+    DECLARE @HashPwdDB
+ nvarchar(512), @PepperVersionDB tinyint, @FecExpiraPwd datetime2(3);
+
+    DECLARE @Resultado        int,
+            @Mensaje          nvarchar(200),
+            @DetResultado     nvarchar(200) = NULL,
+            @Exitoso          bit           = 0,
+   
+         @ReqCambioPwd     bit           = NULL,
+            @PwdExpirada      bit           = NULL,
+            @RequiereReHash   bit           = NULL,
+            @IdMFAPrincipal   int           = NULL,
+            @IdBloqueo        int           = NULL
+,
+            @FecFinBloqueo    datetime2(3)  = NULL,
+            @IntentosRestantes int          = NULL;
+
+    DECLARE @ID_Exitoso int, @ID_CredInvalidas int, @ID_CuentaBloqueada int,
+            @ID_SinAccesoApp int, @ID_CuentaInactiva int, @ID_ErrorSist
+ema int;
+
+    SELECT
+        @ID_Exitoso         = MAX(CASE WHEN Nombre = 'Exitoso'               THEN Id END),
+        @ID_CredInvalidas   = MAX(CASE WHEN Nombre = 'CredencialesInvalidas' THEN Id END),
+        @ID_CuentaBloqueada = MAX(CASE WHEN Nombre =
+ 'CuentaBloqueada'       THEN Id END),
+        @ID_SinAccesoApp    = MAX(CASE WHEN Nombre = 'SinAccesoApp'         THEN Id END),
+        @ID_CuentaInactiva  = MAX(CASE WHEN Nombre = 'CuentaInactiva'       THEN Id END),
+        @ID_ErrorSistema    = MAX(CA
+SE WHEN Nombre = 'ErrorSistema'         THEN Id END)
+    FROM dbo.ResultadosAcceso;
+
+    BEGIN TRY
+
+        SELECT TOP 1
+            @IdUsuario           = u.Id,
+            @IdEstado            = u.IdEstado,
+            @EsEliminado         = u.Eliminado
+,
+            @EsSistema           = u.EsSistema,
+            @IntentosActuales    = u.IntentosFallidos,
+            @PepperVersionActual = ct.PepperVersionActual
+        FROM dbo.Usuarios u
+        JOIN dbo.Tenants t        ON u.IdTenant = t.Id
+        J
+OIN dbo.ConfigTenants ct ON u.IdTenant = ct.IdTenant
+        WHERE u.IdTenant = @IdTenant
+          AND u.Eliminado = 0
+          AND (u.NomUsuario = @NomUsuario OR u.Email = @Email)
+          AND t.Activo = 1;
+
+        IF @IdUsuario IS NULL
+        BEGIN
+
+            DECLARE @dummy nvarchar(512) = @HashPwdCalculado;
+            SET @Resultado = @ID_CredInvalidas; SET @Mensaje = 'Credenciales invalidas';
+            SET @DetResultado = 'Usuario no encontrado';
+            GOTO Finalizar;
+        END
+
+     
+   IF @IdEstado <> 1
+        BEGIN
+            SET @Resultado = @ID_CuentaInactiva; SET @Mensaje = 'Cuenta inactiva';
+            SET @DetResultado = 'Cuenta inactiva';
+       GOTO Finalizar;
+        END
+
+        IF EXISTS (
+            SELECT 1 FROM dbo.
+Bloqueos b
+            JOIN dbo.TiposBloqueo tb ON b.IdTipoBloqueo = tb.Id
+            WHERE b.IdUsuario = @IdUsuario AND b.IdTenant = @IdTenant
+              AND b.Activo = 1 AND (tb.EsTemporal = 0 OR b.FecFin > SYSUTCDATETIME())
+        )
+        BEGIN
+
+            SET @Resultado = @ID_CuentaBloqueada; SET @Mensaje = 'Cuenta bloqueada';
+            SET @DetResultado = 'Cuenta bloqueada'; SET @Exitoso = 0;
+            GOTO Finalizar;
+        END
+
+        IF @EsSistema = 0
+           AND NOT EXISTS (SELECT
+ 1 FROM dbo.Accesos a WHERE a.IdUsuario = @IdUsuario AND a.IdApp = @IdApp AND a.Activo = 1)
+        BEGIN
+            SET @Resultado = @ID_SinAccesoApp; SET @Mensaje = 'Sin acceso a la aplicacion';
+            SET @DetResultado = 'Sin acceso a la aplicaci
+on';
+            GOTO Finalizar;
+        END
+
+        ;WITH PoliticaCandidata AS (
+            SELECT pp.MaxIntentos, pp.DurBloqueoMin, 1 AS Prioridad
+            FROM dbo.Accesos a
+            JOIN dbo.RolesPoliticasPwd rp ON rp.IdTenant = a.IdTenant AND
+ rp.IdRol = a.IdRol AND rp.Activo = 1
+            JOIN dbo.PoliticasPwd pp ON pp.Id = rp.IdPolitica AND pp.Activa = 1
+            WHERE a.IdUsuario = @IdUsuario AND a.IdApp = @IdApp AND a.Activo = 1
+
+            UNION ALL
+            SELECT pp.MaxIntentos
+, pp.DurBloqueoMin, 2
+            FROM dbo.PoliticasPwd pp
+            WHERE pp.IdTenant = @IdTenant AND pp.IdApp = @IdApp AND pp.Activa = 1
+
+            UNION ALL
+            SELECT pp.MaxIntentos, pp.DurBloqueoMin, 3
+            FROM dbo.PoliticasPwd pp
+
+            WHERE pp.IdTenant = @IdTenant AND pp.IdApp IS NULL AND pp.Activa = 1
+
+            UNION ALL
+            SELECT pp.MaxIntentos, pp.DurBloqueoMin, 4
+            FROM dbo.PoliticasPwd pp
+            WHERE pp.IdTenant IS NULL AND pp.IdApp IS NULL
+ AND pp.Activa = 1
+        )
+        SELECT TOP 1 @MaxIntentos = MaxIntentos, @DurBloqueo = DurBloqueoMin
+        FROM PoliticaCandidata
+        ORDER BY Prioridad ASC, MaxIntentos ASC;
+
+        SET @MaxIntentos = ISNULL(@MaxIntentos, 5);
+        SET @Dur
+Bloqueo  = ISNULL(@DurBloqueo, 30);
+
+        SELECT @HashPwdDB = h.HashPwd, @PepperVersionDB = h.PepperVersion, @FecExpiraPwd = h.FecExpira
+        FROM dbo.HistorialPwd h
+        WHERE h.IdUsuario = @IdUsuario AND h.EsActual = 1;
+
+        IF @HashPwdDB I
+S NULL
+        BEGIN
+            SET @Resultado = @ID_CuentaInactiva; SET @Mensaje = 'Usuario sin contrasena configurada';
+            SET @DetResultado = 'Usuario sin contrasena configurada';
+            GOTO Finalizar;
+        END
+
+        IF @HashPwdDB
+ COLLATE Latin1_General_BIN2 = @HashPwdCalculado COLLATE Latin1_General_BIN2
+        BEGIN
+            UPDATE dbo.Usuarios
+            SET IntentosFallidos = 0, FecUltIntentoFallido = NULL
+            WHERE Id = @IdUsuario;
+
+            SELECT @ReqCambioP
+wd = ReqCambioPwd FROM dbo.Usuarios WHERE Id = @IdUsuario;
+            SET @PwdExpirada    = CASE WHEN @FecExpiraPwd IS NOT NULL AND @FecExpiraPwd <= SYSUTCDATETIME() THEN 1 ELSE 0 END;
+            SET @RequiereReHash = CASE WHEN @PepperVersionDB < @Peppe
+rVersionActual THEN 1 ELSE 0 END;
+            SELECT @IdMFAPrincipal = Id FROM dbo.MFA WHERE IdUsuario = @IdUsuario AND EsPrincipal = 1 AND IdEstado = (SELECT Id FROM dbo.EstadosMFA WHERE Codigo = 'ACTIVO');
+
+            SET @Resultado = @ID_Exitoso; SET 
+@Mensaje = NULL; SET @Exitoso = 1;
+            GOTO Finalizar;
+        END
+        ELSE
+        BEGIN
+            DECLARE @TablaIntentos TABLE (IntentosFallidos tinyint);
+
+            UPDATE dbo.Usuarios
+            SET IntentosFallidos = IntentosFallidos
+ + 1, FecUltIntentoFallido = SYSUTCDATETIME()
+            OUTPUT inserted.IntentosFallidos INTO @TablaIntentos
+            WHERE Id = @IdUsuario;
+
+            SELECT @IntentosActuales = IntentosFallidos FROM @TablaIntentos;
+
+            IF @IntentosActual
+es >= @MaxIntentos
+            BEGIN
+                DECLARE @TablaBloqueo TABLE (Id int, FecFin datetime2(3));
+
+                INSERT INTO dbo.Bloqueos (IdUsuario, IdTenant, IdTipoBloqueo, IdAgente, IdIP, Motivo, FecInicio, FecFin, Activo)
+             
+   OUTPUT inserted.Id, inserted.FecFin INTO @TablaBloqueo
+                VALUES (@IdUsuario, @IdTenant, 1, @IdAgente, @IdIP, 'Intentos fallidos superados', SYSUTCDATETIME(), DATEADD(MINUTE, @DurBloqueo, SYSUTCDATETIME()), 1);
+
+                SELECT @IdB
+loqueo = Id, @FecFinBloqueo = FecFin FROM @TablaBloqueo;
+
+                SET @Resultado = @ID_CuentaBloqueada; SET @Mensaje = 'Cuenta bloqueada por intentos fallidos';
+                SET @DetResultado = 'Cuenta bloqueada por intentos fallidos';
+        
+    END
+            ELSE
+            BEGIN
+                SET @IntentosRestantes = @MaxIntentos - @IntentosActuales;
+                SET @Resultado = @ID_CredInvalidas; SET @Mensaje = 'Credenciales invalidas';
+                SET @DetResultado = 'Credenc
+iales invalidas';
+            END
+
+            GOTO Finalizar;
+        END
+
+    END TRY
+    BEGIN CATCH
+        INSERT INTO dbo.IntentosAcceso
+            (IdUsuario, IdTenant, IdApp, IdResultado, IdDisp, IdAgente, IdIP,
+             DetResultado, NomUsua
+rioIntentado, Exitoso, TpoRespuesta, CodRespuesta, MetodoAutenticacion)
+        VALUES
+            (@IdUsuario, @IdTenant, @IdApp, @ID_ErrorSistema, @IdDisp, @IdAgente, @IdIP,
+             ERROR_MESSAGE(), @NomUsuarioLog, 0, DATEDIFF(MILLISECOND, @FecInic
+io, SYSUTCDATETIME()), ERROR_NUMBER(), 'Local');
+
+        THROW;
+    END CATCH
+
+    Finalizar:
+
+    INSERT INTO dbo.IntentosAcceso
+        (IdUsuario, IdTenant, IdApp, IdResultado, IdDisp, IdAgente, IdIP,
+         DetResultado, NomUsuarioIntentado, Exitos
+o, TpoRespuesta, CodRespuesta, MetodoAutenticacion)
+    VALUES
+        (@IdUsuario, @IdTenant, @IdApp, @Resultado, @IdDisp, @IdAgente, @IdIP,
+         @DetResultado, @NomUsuarioLog, @Exitoso, DATEDIFF(MILLISECOND, @FecInicio, SYSUTCDATETIME()), NULL, 'Loc
+al');
+
+    SELECT
+        @Resultado          AS Resultado,
+        @Mensaje             AS Mensaje,
+        @IdUsuario           AS IdUsuario,
+        @IdTenant            AS IdTenant,
+        @EsSistema           AS EsSistema,
+        @ReqCambioPwd     
+   AS ReqCambioPwd,
+        @PwdExpirada         AS PwdExpirada,
+        @RequiereReHash      AS RequiereReHash,
+        @IdMFAPrincipal      AS IdMFAPrincipal,
+        @IdBloqueo           AS IdBloqueo,
+        @FecFinBloqueo       AS FecFinBloqueo,
+    
+    @IntentosRestantes   AS IntentosRestantes;
+END;
+

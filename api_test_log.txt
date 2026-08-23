@@ -1,0 +1,364 @@
+Usando la configuración de inicio de D:\CODIGOS\PassPlat\PassPlat.WebAPI\Properties\launchSettings.json...
+No se ha podido aplicar el perfil de inicio "none".
+No existe ningún perfil de inicio con el nombre "none".
+D:\CODIGOS\PassPlat\PassPlat.WebAPI\PassPlat.WebAPI.csproj : warning NU1603: PassPlat.WebAPI depende de Microsoft.EntityFrameworkCore.Design (>= 10.0.0-preview.3.25171.1), pero no se encontró Microsoft.EntityFrameworkCore.Design 10.0.0-preview.3.25171.1. Microsoft.EntityFrameworkCore.Design 10.0.0-preview.3.25171.6 se resolvió en su lugar.
+D:\CODIGOS\PassPlat\PassPlat.WebAPI\PassPlat.WebAPI.csproj : warning NU1603: PassPlat.WebAPI depende de Microsoft.EntityFrameworkCore.Design (>= 10.0.0-preview.3.25171.1), pero no se encontró Microsoft.EntityFrameworkCore.Design 10.0.0-preview.3.25171.1. Microsoft.EntityFrameworkCore.Design 10.0.0-preview.3.25171.6 se resolvió en su lugar.
+[05:03:40 INF] Logger inicializado para: PassPlat.WebAPI
+info: PassPlat.Aplicacion.Services.Email.EmailBackgroundService[0]
+      EmailBackgroundService iniciado
+info: PassPlat.Aplicacion.Services.IdenExtTokensRotacionJob[0]
+      IdenExtTokensRotacionJob iniciado
+[05:03:46 INF] IdenExtTokensRotacionJob iniciado
+[05:03:46 INF] EmailBackgroundService iniciado
+info: PassPlat.Aplicacion.Services.Security.PasswordExpirationBackgroundService[0]
+      PasswordExpirationBackgroundService iniciado - Intervalo: 1.00:00:00
+[05:03:46 INF] PasswordExpirationBackgroundService iniciado - Intervalo: 1.00:00:00
+info: PassPlat.Aplicacion.Services.Security.PasswordExpirationBackgroundService[0]
+      Iniciando verificación de expiración de contraseñas
+[05:03:46 INF] Iniciando verificación de expiración de contraseñas
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://localhost:5000
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Development 
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: D:\CODIGOS\PassPlat\PassPlat.WebAPI
+warn: Microsoft.EntityFrameworkCore.Model.Validation[30001]
+      The property 'Id' on entity type 'EmailProvider' is of type 'byte', but is set up to use a SQL Server identity column; this requires that values starting at 255 and counting down will be used for temporary key values. A temporary key value is needed for every entity inserted in a single call to 'SaveChanges'. Care must be taken that these values do not collide with real key values.
+[05:03:55 WRN] The property 'Id' on entity type 'EmailProvider' is of type 'byte', but is set up to use a SQL Server identity column; this requires that values starting at 255 and counting down will be used for temporary key values. A temporary key value is needed for every entity inserted in a single call to 'SaveChanges'. Care must be taken that these values do not collide with real key values.
+warn: 30-07-2026 05:03:55.549 SqlServerEventId.ByteIdentityColumnWarning[30001] (Microsoft.EntityFrameworkCore.Model.Validation) 
+      The property 'Id' on entity type 'EmailProvider' is of type 'byte', but is set up to use a SQL Server identity column; this requires that values starting at 255 and counting down will be used for temporary key values. A temporary key value is needed for every entity inserted in a single call to 'SaveChanges'. Care must be taken that these values do not collide with real key values.
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (164ms) [Parameters=[@p='?' (DbType = Boolean)], CommandType='Text', CommandTimeout='30']
+      UPDATE [s]
+      SET [s].[EsActiva] = @p,
+          [s].[HashRefresh] = NULL
+      FROM [Sesiones] AS [s]
+      WHERE [s].[EsActiva] = CAST(1 AS bit) AND [s].[FecExpira] <= GETUTCDATE()
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (176ms) [Parameters=[@idTenant='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT [p].[Id], [p].[Activa], [p].[CaracteresEspeciales], [p].[Codigo], [p].[DiasVigencia], [p].[DurBloqueoMin], [p].[FecCrea], [p].[FecMod], [p].[IdApp], [p].[IdTenant], [p].[IdUsrMod], [p].[LongMax], [p].[LongMin], [p].[MaxIntentos], [p].[Nombre], [p].[PermitirEspacios], [p].[ProhInfoUsuario], [p].[ProhPatrones], [p].[ProhPwdComun], [p].[ProhRepetitivos], [p].[ProhSecuenciales], [p].[PwdRecordadas], [p].[ReqEspecial], [p].[ReqMayuscula], [p].[ReqMinuscula], [p].[ReqNumero], [p].[VerificarBrechas], [p].[Version]
+      FROM [PoliticasPwd] AS [p]
+      WHERE [p].[IdTenant] = @idTenant OR [p].[IdTenant] IS NULL
+      ORDER BY [p].[Activa] DESC, [p].[Codigo]
+info: 30-07-2026 05:03:58.005 RelationalEventId.CommandExecuted[20101] (Microsoft.EntityFrameworkCore.Database.Command) 
+      Executed DbCommand (164ms) [Parameters=[@p='?' (DbType = Boolean)], CommandType='Text', CommandTimeout='30']
+      UPDATE [s]
+      SET [s].[EsActiva] = @p,
+          [s].[HashRefresh] = NULL
+      FROM [Sesiones] AS [s]
+      WHERE [s].[EsActiva] = CAST(1 AS bit) AND [s].[FecExpira] <= GETUTCDATE()
+info: 30-07-2026 05:03:58.005 RelationalEventId.CommandExecuted[20101] (Microsoft.EntityFrameworkCore.Database.Command) 
+      Executed DbCommand (176ms) [Parameters=[@idTenant='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT [p].[Id], [p].[Activa], [p].[CaracteresEspeciales], [p].[Codigo], [p].[DiasVigencia], [p].[DurBloqueoMin], [p].[FecCrea], [p].[FecMod], [p].[IdApp], [p].[IdTenant], [p].[IdUsrMod], [p].[LongMax], [p].[LongMin], [p].[MaxIntentos], [p].[Nombre], [p].[PermitirEspacios], [p].[ProhInfoUsuario], [p].[ProhPatrones], [p].[ProhPwdComun], [p].[ProhRepetitivos], [p].[ProhSecuenciales], [p].[PwdRecordadas], [p].[ReqEspecial], [p].[ReqMayuscula], [p].[ReqMinuscula], [p].[ReqNumero], [p].[VerificarBrechas], [p].[Version]
+      FROM [PoliticasPwd] AS [p]
+      WHERE [p].[IdTenant] = @idTenant OR [p].[IdTenant] IS NULL
+      ORDER BY [p].[Activa] DESC, [p].[Codigo]
+warn: Microsoft.EntityFrameworkCore.Query[10102]
+      The query uses a row limiting operator ('Skip'/'Take') without an 'OrderBy' operator. This may lead to unpredictable results. If the 'Distinct' operator is used after 'OrderBy', then make sure to use the 'OrderBy' operator after 'Distinct' as the ordering would otherwise get erased.
+[05:03:58 WRN] The query uses a row limiting operator ('Skip'/'Take') without an 'OrderBy' operator. This may lead to unpredictable results. If the 'Distinct' operator is used after 'OrderBy', then make sure to use the 'OrderBy' operator after 'Distinct' as the ordering would otherwise get erased.
+warn: 30-07-2026 05:03:58.210 CoreEventId.RowLimitingOperationWithoutOrderByWarning[10102] (Microsoft.EntityFrameworkCore.Query) 
+      The query uses a row limiting operator ('Skip'/'Take') without an 'OrderBy' operator. This may lead to unpredictable results. If the 'Distinct' operator is used after 'OrderBy', then make sure to use the 'OrderBy' operator after 'Distinct' as the ordering would otherwise get erased.
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (40ms) [Parameters=[@p='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT TOP(@p) [u].[Id], [u].[Apellido], [u].[Eliminado], [u].[Email], [u].[EmailVerificado], [u].[EsSistema], [u].[FecCrea], [u].[FecEliminacion], [u].[FecMod], [u].[FecUltCambioPwd], [u].[FecUltIntentoFallido], [u].[FecVerifBrecha], [u].[IdEstado], [u].[IdTenant], [u].[IntentosFallidos], [u].[NomUsuario], [u].[Nombre], [u].[ReqCambioPwd], [u].[TienePasswordLocal]
+      FROM [Usuarios] AS [u]
+info: 30-07-2026 05:03:58.275 RelationalEventId.CommandExecuted[20101] (Microsoft.EntityFrameworkCore.Database.Command) 
+      Executed DbCommand (40ms) [Parameters=[@p='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT TOP(@p) [u].[Id], [u].[Apellido], [u].[Eliminado], [u].[Email], [u].[EmailVerificado], [u].[EsSistema], [u].[FecCrea], [u].[FecEliminacion], [u].[FecMod], [u].[FecUltCambioPwd], [u].[FecUltIntentoFallido], [u].[FecVerifBrecha], [u].[IdEstado], [u].[IdTenant], [u].[IntentosFallidos], [u].[NomUsuario], [u].[Nombre], [u].[ReqCambioPwd], [u].[TienePasswordLocal]
+      FROM [Usuarios] AS [u]
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (29ms) [Parameters=[@idUsuario='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT [u].[Id], [u].[Activo], [u].[FecAlta], [u].[FecMod], [u].[IdEstado], [u].[IdTenant], [u].[IdUsrMod], [u].[IdUsuario], [t].[Id], [t].[Activo], [t].[Codigo], [t].[EsSistema], [t].[FecCrea], [t].[Nombre], [e].[Id], [e].[Activo], [e].[Codigo], [e].[Descripcion], [e].[FecCrea], [e].[Nombre]
+      FROM [UsuarioTenant] AS [u]
+      INNER JOIN [Tenants] AS [t] ON [u].[IdTenant] = [t].[Id]
+      INNER JOIN [EstadosUsr] AS [e] ON [u].[IdEstado] = [e].[Id]
+      WHERE [u].[IdUsuario] = @idUsuario AND [u].[Activo] = CAST(1 AS bit)
+info: 30-07-2026 05:03:58.641 RelationalEventId.CommandExecuted[20101] (Microsoft.EntityFrameworkCore.Database.Command) 
+      Executed DbCommand (29ms) [Parameters=[@idUsuario='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT [u].[Id], [u].[Activo], [u].[FecAlta], [u].[FecMod], [u].[IdEstado], [u].[IdTenant], [u].[IdUsrMod], [u].[IdUsuario], [t].[Id], [t].[Activo], [t].[Codigo], [t].[EsSistema], [t].[FecCrea], [t].[Nombre], [e].[Id], [e].[Activo], [e].[Codigo], [e].[Descripcion], [e].[FecCrea], [e].[Nombre]
+      FROM [UsuarioTenant] AS [u]
+      INNER JOIN [Tenants] AS [t] ON [u].[IdTenant] = [t].[Id]
+      INNER JOIN [EstadosUsr] AS [e] ON [u].[IdEstado] = [e].[Id]
+      WHERE [u].[IdUsuario] = @idUsuario AND [u].[Activo] = CAST(1 AS bit)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (4ms) [Parameters=[@p='?' (DbType = Int32), @idUsuario='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT [h0].[Id], [h0].[Algoritmo], [h0].[AnioMes], [h0].[Complejidad], [h0].[EsActual], [h0].[EsComprometida], [h0].[EsForzado], [h0].[FecExpira], [h0].[FecRegistro], [h0].[FecRetencion], [h0].[Fortaleza], [h0].[HashPwd], [h0].[IdDisp], [h0].[IdPolitica], [h0].[IdTipoCambio], [h0].[IdUsuario], [h0].[OrigenRegistro], [h0].[ParametrosAlgoritmo], [h0].[PepperVersion], [p].[Id], [p].[Activa], [p].[CaracteresEspeciales], [p].[Codigo], [p].[DiasVigencia], [p].[DurBloqueoMin], [p].[FecCrea], [p].[FecMod], [p].[IdApp], [p].[IdTenant], [p].[IdUsrMod], [p].[LongMax], [p].[LongMin], [p].[MaxIntentos], [p].[Nombre], [p].[PermitirEspacios], [p].[ProhInfoUsuario], [p].[ProhPatrones], [p].[ProhPwdComun], [p].[ProhRepetitivos], [p].[ProhSecuenciales], [p].[PwdRecordadas], [p].[ReqEspecial], [p].[ReqMayuscula], [p].[ReqMinuscula], [p].[ReqNumero], [p].[VerificarBrechas], [p].[Version]
+      FROM (
+          SELECT TOP(@p) [h].[Id], [h].[Algoritmo], [h].[AnioMes], [h].[Complejidad], [h].[EsActual], [h].[EsComprometida], [h].[EsForzado], [h].[FecExpira], [h].[FecRegistro], [h].[FecRetencion], [h].[Fortaleza], [h].[HashPwd], [h].[IdDisp], [h].[IdPolitica], [h].[IdTipoCambio], [h].[IdUsuario], [h].[OrigenRegistro], [h].[ParametrosAlgoritmo], [h].[PepperVersion]
+          FROM [HistorialPwd] AS [h]
+          WHERE [h].[IdUsuario] = @idUsuario
+          ORDER BY [h].[FecRegistro] DESC
+      ) AS [h0]
+      INNER JOIN [PoliticasPwd] AS [p] ON [h0].[IdPolitica] = [p].[Id]
+      ORDER BY [h0].[FecRegistro] DESC
+info: 30-07-2026 05:03:58.818 RelationalEventId.CommandExecuted[20101] (Microsoft.EntityFrameworkCore.Database.Command) 
+      Executed DbCommand (4ms) [Parameters=[@p='?' (DbType = Int32), @idUsuario='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT [h0].[Id], [h0].[Algoritmo], [h0].[AnioMes], [h0].[Complejidad], [h0].[EsActual], [h0].[EsComprometida], [h0].[EsForzado], [h0].[FecExpira], [h0].[FecRegistro], [h0].[FecRetencion], [h0].[Fortaleza], [h0].[HashPwd], [h0].[IdDisp], [h0].[IdPolitica], [h0].[IdTipoCambio], [h0].[IdUsuario], [h0].[OrigenRegistro], [h0].[ParametrosAlgoritmo], [h0].[PepperVersion], [p].[Id], [p].[Activa], [p].[CaracteresEspeciales], [p].[Codigo], [p].[DiasVigencia], [p].[DurBloqueoMin], [p].[FecCrea], [p].[FecMod], [p].[IdApp], [p].[IdTenant], [p].[IdUsrMod], [p].[LongMax], [p].[LongMin], [p].[MaxIntentos], [p].[Nombre], [p].[PermitirEspacios], [p].[ProhInfoUsuario], [p].[ProhPatrones], [p].[ProhPwdComun], [p].[ProhRepetitivos], [p].[ProhSecuenciales], [p].[PwdRecordadas], [p].[ReqEspecial], [p].[ReqMayuscula], [p].[ReqMinuscula], [p].[ReqNumero], [p].[VerificarBrechas], [p].[Version]
+      FROM (
+          SELECT TOP(@p) [h].[Id], [h].[Algoritmo], [h].[AnioMes], [h].[Complejidad], [h].[EsActual], [h].[EsComprometida], [h].[EsForzado], [h].[FecExpira], [h].[FecRegistro], [h].[FecRetencion], [h].[Fortaleza], [h].[HashPwd], [h].[IdDisp], [h].[IdPolitica], [h].[IdTipoCambio], [h].[IdUsuario], [h].[OrigenRegistro], [h].[ParametrosAlgoritmo], [h].[PepperVersion]
+          FROM [HistorialPwd] AS [h]
+          WHERE [h].[IdUsuario] = @idUsuario
+          ORDER BY [h].[FecRegistro] DESC
+      ) AS [h0]
+      INNER JOIN [PoliticasPwd] AS [p] ON [h0].[IdPolitica] = [p].[Id]
+      ORDER BY [h0].[FecRegistro] DESC
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (7ms) [Parameters=[@idUsuario='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT [u].[Id], [u].[Activo], [u].[FecAlta], [u].[FecMod], [u].[IdEstado], [u].[IdTenant], [u].[IdUsrMod], [u].[IdUsuario], [t].[Id], [t].[Activo], [t].[Codigo], [t].[EsSistema], [t].[FecCrea], [t].[Nombre], [e].[Id], [e].[Activo], [e].[Codigo], [e].[Descripcion], [e].[FecCrea], [e].[Nombre]
+      FROM [UsuarioTenant] AS [u]
+      INNER JOIN [Tenants] AS [t] ON [u].[IdTenant] = [t].[Id]
+      INNER JOIN [EstadosUsr] AS [e] ON [u].[IdEstado] = [e].[Id]
+      WHERE [u].[IdUsuario] = @idUsuario AND [u].[Activo] = CAST(1 AS bit)
+info: 30-07-2026 05:03:58.840 RelationalEventId.CommandExecuted[20101] (Microsoft.EntityFrameworkCore.Database.Command) 
+      Executed DbCommand (7ms) [Parameters=[@idUsuario='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT [u].[Id], [u].[Activo], [u].[FecAlta], [u].[FecMod], [u].[IdEstado], [u].[IdTenant], [u].[IdUsrMod], [u].[IdUsuario], [t].[Id], [t].[Activo], [t].[Codigo], [t].[EsSistema], [t].[FecCrea], [t].[Nombre], [e].[Id], [e].[Activo], [e].[Codigo], [e].[Descripcion], [e].[FecCrea], [e].[Nombre]
+      FROM [UsuarioTenant] AS [u]
+      INNER JOIN [Tenants] AS [t] ON [u].[IdTenant] = [t].[Id]
+      INNER JOIN [EstadosUsr] AS [e] ON [u].[IdEstado] = [e].[Id]
+      WHERE [u].[IdUsuario] = @idUsuario AND [u].[Activo] = CAST(1 AS bit)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (4ms) [Parameters=[@idUsuario='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT [u].[Id], [u].[Activo], [u].[FecAlta], [u].[FecMod], [u].[IdEstado], [u].[IdTenant], [u].[IdUsrMod], [u].[IdUsuario], [t].[Id], [t].[Activo], [t].[Codigo], [t].[EsSistema], [t].[FecCrea], [t].[Nombre], [e].[Id], [e].[Activo], [e].[Codigo], [e].[Descripcion], [e].[FecCrea], [e].[Nombre]
+      FROM [UsuarioTenant] AS [u]
+      INNER JOIN [Tenants] AS [t] ON [u].[IdTenant] = [t].[Id]
+      INNER JOIN [EstadosUsr] AS [e] ON [u].[IdEstado] = [e].[Id]
+      WHERE [u].[IdUsuario] = @idUsuario AND [u].[Activo] = CAST(1 AS bit)
+info: 30-07-2026 05:03:58.846 RelationalEventId.CommandExecuted[20101] (Microsoft.EntityFrameworkCore.Database.Command) 
+      Executed DbCommand (4ms) [Parameters=[@idUsuario='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT [u].[Id], [u].[Activo], [u].[FecAlta], [u].[FecMod], [u].[IdEstado], [u].[IdTenant], [u].[IdUsrMod], [u].[IdUsuario], [t].[Id], [t].[Activo], [t].[Codigo], [t].[EsSistema], [t].[FecCrea], [t].[Nombre], [e].[Id], [e].[Activo], [e].[Codigo], [e].[Descripcion], [e].[FecCrea], [e].[Nombre]
+      FROM [UsuarioTenant] AS [u]
+      INNER JOIN [Tenants] AS [t] ON [u].[IdTenant] = [t].[Id]
+      INNER JOIN [EstadosUsr] AS [e] ON [u].[IdEstado] = [e].[Id]
+      WHERE [u].[IdUsuario] = @idUsuario AND [u].[Activo] = CAST(1 AS bit)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (11ms) [Parameters=[@p='?' (DbType = Int32), @idUsuario='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT [h0].[Id], [h0].[Algoritmo], [h0].[AnioMes], [h0].[Complejidad], [h0].[EsActual], [h0].[EsComprometida], [h0].[EsForzado], [h0].[FecExpira], [h0].[FecRegistro], [h0].[FecRetencion], [h0].[Fortaleza], [h0].[HashPwd], [h0].[IdDisp], [h0].[IdPolitica], [h0].[IdTipoCambio], [h0].[IdUsuario], [h0].[OrigenRegistro], [h0].[ParametrosAlgoritmo], [h0].[PepperVersion], [p].[Id], [p].[Activa], [p].[CaracteresEspeciales], [p].[Codigo], [p].[DiasVigencia], [p].[DurBloqueoMin], [p].[FecCrea], [p].[FecMod], [p].[IdApp], [p].[IdTenant], [p].[IdUsrMod], [p].[LongMax], [p].[LongMin], [p].[MaxIntentos], [p].[Nombre], [p].[PermitirEspacios], [p].[ProhInfoUsuario], [p].[ProhPatrones], [p].[ProhPwdComun], [p].[ProhRepetitivos], [p].[ProhSecuenciales], [p].[PwdRecordadas], [p].[ReqEspecial], [p].[ReqMayuscula], [p].[ReqMinuscula], [p].[ReqNumero], [p].[VerificarBrechas], [p].[Version]
+      FROM (
+          SELECT TOP(@p) [h].[Id], [h].[Algoritmo], [h].[AnioMes], [h].[Complejidad], [h].[EsActual], [h].[EsComprometida], [h].[EsForzado], [h].[FecExpira], [h].[FecRegistro], [h].[FecRetencion], [h].[Fortaleza], [h].[HashPwd], [h].[IdDisp], [h].[IdPolitica], [h].[IdTipoCambio], [h].[IdUsuario], [h].[OrigenRegistro], [h].[ParametrosAlgoritmo], [h].[PepperVersion]
+          FROM [HistorialPwd] AS [h]
+          WHERE [h].[IdUsuario] = @idUsuario
+          ORDER BY [h].[FecRegistro] DESC
+      ) AS [h0]
+      INNER JOIN [PoliticasPwd] AS [p] ON [h0].[IdPolitica] = [p].[Id]
+      ORDER BY [h0].[FecRegistro] DESC
+info: 30-07-2026 05:03:58.858 RelationalEventId.CommandExecuted[20101] (Microsoft.EntityFrameworkCore.Database.Command) 
+      Executed DbCommand (11ms) [Parameters=[@p='?' (DbType = Int32), @idUsuario='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT [h0].[Id], [h0].[Algoritmo], [h0].[AnioMes], [h0].[Complejidad], [h0].[EsActual], [h0].[EsComprometida], [h0].[EsForzado], [h0].[FecExpira], [h0].[FecRegistro], [h0].[FecRetencion], [h0].[Fortaleza], [h0].[HashPwd], [h0].[IdDisp], [h0].[IdPolitica], [h0].[IdTipoCambio], [h0].[IdUsuario], [h0].[OrigenRegistro], [h0].[ParametrosAlgoritmo], [h0].[PepperVersion], [p].[Id], [p].[Activa], [p].[CaracteresEspeciales], [p].[Codigo], [p].[DiasVigencia], [p].[DurBloqueoMin], [p].[FecCrea], [p].[FecMod], [p].[IdApp], [p].[IdTenant], [p].[IdUsrMod], [p].[LongMax], [p].[LongMin], [p].[MaxIntentos], [p].[Nombre], [p].[PermitirEspacios], [p].[ProhInfoUsuario], [p].[ProhPatrones], [p].[ProhPwdComun], [p].[ProhRepetitivos], [p].[ProhSecuenciales], [p].[PwdRecordadas], [p].[ReqEspecial], [p].[ReqMayuscula], [p].[ReqMinuscula], [p].[ReqNumero], [p].[VerificarBrechas], [p].[Version]
+      FROM (
+          SELECT TOP(@p) [h].[Id], [h].[Algoritmo], [h].[AnioMes], [h].[Complejidad], [h].[EsActual], [h].[EsComprometida], [h].[EsForzado], [h].[FecExpira], [h].[FecRegistro], [h].[FecRetencion], [h].[Fortaleza], [h].[HashPwd], [h].[IdDisp], [h].[IdPolitica], [h].[IdTipoCambio], [h].[IdUsuario], [h].[OrigenRegistro], [h].[ParametrosAlgoritmo], [h].[PepperVersion]
+          FROM [HistorialPwd] AS [h]
+          WHERE [h].[IdUsuario] = @idUsuario
+          ORDER BY [h].[FecRegistro] DESC
+      ) AS [h0]
+      INNER JOIN [PoliticasPwd] AS [p] ON [h0].[IdPolitica] = [p].[Id]
+      ORDER BY [h0].[FecRegistro] DESC
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (4ms) [Parameters=[@idUsuario='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT [u].[Id], [u].[Activo], [u].[FecAlta], [u].[FecMod], [u].[IdEstado], [u].[IdTenant], [u].[IdUsrMod], [u].[IdUsuario], [t].[Id], [t].[Activo], [t].[Codigo], [t].[EsSistema], [t].[FecCrea], [t].[Nombre], [e].[Id], [e].[Activo], [e].[Codigo], [e].[Descripcion], [e].[FecCrea], [e].[Nombre]
+      FROM [UsuarioTenant] AS [u]
+      INNER JOIN [Tenants] AS [t] ON [u].[IdTenant] = [t].[Id]
+      INNER JOIN [EstadosUsr] AS [e] ON [u].[IdEstado] = [e].[Id]
+      WHERE [u].[IdUsuario] = @idUsuario AND [u].[Activo] = CAST(1 AS bit)
+info: 30-07-2026 05:03:58.864 RelationalEventId.CommandExecuted[20101] (Microsoft.EntityFrameworkCore.Database.Command) 
+      Executed DbCommand (4ms) [Parameters=[@idUsuario='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT [u].[Id], [u].[Activo], [u].[FecAlta], [u].[FecMod], [u].[IdEstado], [u].[IdTenant], [u].[IdUsrMod], [u].[IdUsuario], [t].[Id], [t].[Activo], [t].[Codigo], [t].[EsSistema], [t].[FecCrea], [t].[Nombre], [e].[Id], [e].[Activo], [e].[Codigo], [e].[Descripcion], [e].[FecCrea], [e].[Nombre]
+      FROM [UsuarioTenant] AS [u]
+      INNER JOIN [Tenants] AS [t] ON [u].[IdTenant] = [t].[Id]
+      INNER JOIN [EstadosUsr] AS [e] ON [u].[IdEstado] = [e].[Id]
+      WHERE [u].[IdUsuario] = @idUsuario AND [u].[Activo] = CAST(1 AS bit)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (13ms) [Parameters=[@p='?' (DbType = Int32), @idUsuario='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT [h0].[Id], [h0].[Algoritmo], [h0].[AnioMes], [h0].[Complejidad], [h0].[EsActual], [h0].[EsComprometida], [h0].[EsForzado], [h0].[FecExpira], [h0].[FecRegistro], [h0].[FecRetencion], [h0].[Fortaleza], [h0].[HashPwd], [h0].[IdDisp], [h0].[IdPolitica], [h0].[IdTipoCambio], [h0].[IdUsuario], [h0].[OrigenRegistro], [h0].[ParametrosAlgoritmo], [h0].[PepperVersion], [p].[Id], [p].[Activa], [p].[CaracteresEspeciales], [p].[Codigo], [p].[DiasVigencia], [p].[DurBloqueoMin], [p].[FecCrea], [p].[FecMod], [p].[IdApp], [p].[IdTenant], [p].[IdUsrMod], [p].[LongMax], [p].[LongMin], [p].[MaxIntentos], [p].[Nombre], [p].[PermitirEspacios], [p].[ProhInfoUsuario], [p].[ProhPatrones], [p].[ProhPwdComun], [p].[ProhRepetitivos], [p].[ProhSecuenciales], [p].[PwdRecordadas], [p].[ReqEspecial], [p].[ReqMayuscula], [p].[ReqMinuscula], [p].[ReqNumero], [p].[VerificarBrechas], [p].[Version]
+      FROM (
+          SELECT TOP(@p) [h].[Id], [h].[Algoritmo], [h].[AnioMes], [h].[Complejidad], [h].[EsActual], [h].[EsComprometida], [h].[EsForzado], [h].[FecExpira], [h].[FecRegistro], [h].[FecRetencion], [h].[Fortaleza], [h].[HashPwd], [h].[IdDisp], [h].[IdPolitica], [h].[IdTipoCambio], [h].[IdUsuario], [h].[OrigenRegistro], [h].[ParametrosAlgoritmo], [h].[PepperVersion]
+          FROM [HistorialPwd] AS [h]
+          WHERE [h].[IdUsuario] = @idUsuario
+          ORDER BY [h].[FecRegistro] DESC
+      ) AS [h0]
+      INNER JOIN [PoliticasPwd] AS [p] ON [h0].[IdPolitica] = [p].[Id]
+      ORDER BY [h0].[FecRegistro] DESC
+info: 30-07-2026 05:03:58.878 RelationalEventId.CommandExecuted[20101] (Microsoft.EntityFrameworkCore.Database.Command) 
+      Executed DbCommand (13ms) [Parameters=[@p='?' (DbType = Int32), @idUsuario='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT [h0].[Id], [h0].[Algoritmo], [h0].[AnioMes], [h0].[Complejidad], [h0].[EsActual], [h0].[EsComprometida], [h0].[EsForzado], [h0].[FecExpira], [h0].[FecRegistro], [h0].[FecRetencion], [h0].[Fortaleza], [h0].[HashPwd], [h0].[IdDisp], [h0].[IdPolitica], [h0].[IdTipoCambio], [h0].[IdUsuario], [h0].[OrigenRegistro], [h0].[ParametrosAlgoritmo], [h0].[PepperVersion], [p].[Id], [p].[Activa], [p].[CaracteresEspeciales], [p].[Codigo], [p].[DiasVigencia], [p].[DurBloqueoMin], [p].[FecCrea], [p].[FecMod], [p].[IdApp], [p].[IdTenant], [p].[IdUsrMod], [p].[LongMax], [p].[LongMin], [p].[MaxIntentos], [p].[Nombre], [p].[PermitirEspacios], [p].[ProhInfoUsuario], [p].[ProhPatrones], [p].[ProhPwdComun], [p].[ProhRepetitivos], [p].[ProhSecuenciales], [p].[PwdRecordadas], [p].[ReqEspecial], [p].[ReqMayuscula], [p].[ReqMinuscula], [p].[ReqNumero], [p].[VerificarBrechas], [p].[Version]
+      FROM (
+          SELECT TOP(@p) [h].[Id], [h].[Algoritmo], [h].[AnioMes], [h].[Complejidad], [h].[EsActual], [h].[EsComprometida], [h].[EsForzado], [h].[FecExpira], [h].[FecRegistro], [h].[FecRetencion], [h].[Fortaleza], [h].[HashPwd], [h].[IdDisp], [h].[IdPolitica], [h].[IdTipoCambio], [h].[IdUsuario], [h].[OrigenRegistro], [h].[ParametrosAlgoritmo], [h].[PepperVersion]
+          FROM [HistorialPwd] AS [h]
+          WHERE [h].[IdUsuario] = @idUsuario
+          ORDER BY [h].[FecRegistro] DESC
+      ) AS [h0]
+      INNER JOIN [PoliticasPwd] AS [p] ON [h0].[IdPolitica] = [p].[Id]
+      ORDER BY [h0].[FecRegistro] DESC
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[@idUsuario='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT [u].[Id], [u].[Activo], [u].[FecAlta], [u].[FecMod], [u].[IdEstado], [u].[IdTenant], [u].[IdUsrMod], [u].[IdUsuario], [t].[Id], [t].[Activo], [t].[Codigo], [t].[EsSistema], [t].[FecCrea], [t].[Nombre], [e].[Id], [e].[Activo], [e].[Codigo], [e].[Descripcion], [e].[FecCrea], [e].[Nombre]
+      FROM [UsuarioTenant] AS [u]
+      INNER JOIN [Tenants] AS [t] ON [u].[IdTenant] = [t].[Id]
+      INNER JOIN [EstadosUsr] AS [e] ON [u].[IdEstado] = [e].[Id]
+      WHERE [u].[IdUsuario] = @idUsuario AND [u].[Activo] = CAST(1 AS bit)
+info: 30-07-2026 05:03:58.882 RelationalEventId.CommandExecuted[20101] (Microsoft.EntityFrameworkCore.Database.Command) 
+      Executed DbCommand (2ms) [Parameters=[@idUsuario='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT [u].[Id], [u].[Activo], [u].[FecAlta], [u].[FecMod], [u].[IdEstado], [u].[IdTenant], [u].[IdUsrMod], [u].[IdUsuario], [t].[Id], [t].[Activo], [t].[Codigo], [t].[EsSistema], [t].[FecCrea], [t].[Nombre], [e].[Id], [e].[Activo], [e].[Codigo], [e].[Descripcion], [e].[FecCrea], [e].[Nombre]
+      FROM [UsuarioTenant] AS [u]
+      INNER JOIN [Tenants] AS [t] ON [u].[IdTenant] = [t].[Id]
+      INNER JOIN [EstadosUsr] AS [e] ON [u].[IdEstado] = [e].[Id]
+      WHERE [u].[IdUsuario] = @idUsuario AND [u].[Activo] = CAST(1 AS bit)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (4ms) [Parameters=[@p='?' (DbType = Int32), @idUsuario='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT [h0].[Id], [h0].[Algoritmo], [h0].[AnioMes], [h0].[Complejidad], [h0].[EsActual], [h0].[EsComprometida], [h0].[EsForzado], [h0].[FecExpira], [h0].[FecRegistro], [h0].[FecRetencion], [h0].[Fortaleza], [h0].[HashPwd], [h0].[IdDisp], [h0].[IdPolitica], [h0].[IdTipoCambio], [h0].[IdUsuario], [h0].[OrigenRegistro], [h0].[ParametrosAlgoritmo], [h0].[PepperVersion], [p].[Id], [p].[Activa], [p].[CaracteresEspeciales], [p].[Codigo], [p].[DiasVigencia], [p].[DurBloqueoMin], [p].[FecCrea], [p].[FecMod], [p].[IdApp], [p].[IdTenant], [p].[IdUsrMod], [p].[LongMax], [p].[LongMin], [p].[MaxIntentos], [p].[Nombre], [p].[PermitirEspacios], [p].[ProhInfoUsuario], [p].[ProhPatrones], [p].[ProhPwdComun], [p].[ProhRepetitivos], [p].[ProhSecuenciales], [p].[PwdRecordadas], [p].[ReqEspecial], [p].[ReqMayuscula], [p].[ReqMinuscula], [p].[ReqNumero], [p].[VerificarBrechas], [p].[Version]
+      FROM (
+          SELECT TOP(@p) [h].[Id], [h].[Algoritmo], [h].[AnioMes], [h].[Complejidad], [h].[EsActual], [h].[EsComprometida], [h].[EsForzado], [h].[FecExpira], [h].[FecRegistro], [h].[FecRetencion], [h].[Fortaleza], [h].[HashPwd], [h].[IdDisp], [h].[IdPolitica], [h].[IdTipoCambio], [h].[IdUsuario], [h].[OrigenRegistro], [h].[ParametrosAlgoritmo], [h].[PepperVersion]
+          FROM [HistorialPwd] AS [h]
+          WHERE [h].[IdUsuario] = @idUsuario
+          ORDER BY [h].[FecRegistro] DESC
+      ) AS [h0]
+      INNER JOIN [PoliticasPwd] AS [p] ON [h0].[IdPolitica] = [p].[Id]
+      ORDER BY [h0].[FecRegistro] DESC
+info: 30-07-2026 05:03:58.893 RelationalEventId.CommandExecuted[20101] (Microsoft.EntityFrameworkCore.Database.Command) 
+      Executed DbCommand (4ms) [Parameters=[@p='?' (DbType = Int32), @idUsuario='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT [h0].[Id], [h0].[Algoritmo], [h0].[AnioMes], [h0].[Complejidad], [h0].[EsActual], [h0].[EsComprometida], [h0].[EsForzado], [h0].[FecExpira], [h0].[FecRegistro], [h0].[FecRetencion], [h0].[Fortaleza], [h0].[HashPwd], [h0].[IdDisp], [h0].[IdPolitica], [h0].[IdTipoCambio], [h0].[IdUsuario], [h0].[OrigenRegistro], [h0].[ParametrosAlgoritmo], [h0].[PepperVersion], [p].[Id], [p].[Activa], [p].[CaracteresEspeciales], [p].[Codigo], [p].[DiasVigencia], [p].[DurBloqueoMin], [p].[FecCrea], [p].[FecMod], [p].[IdApp], [p].[IdTenant], [p].[IdUsrMod], [p].[LongMax], [p].[LongMin], [p].[MaxIntentos], [p].[Nombre], [p].[PermitirEspacios], [p].[ProhInfoUsuario], [p].[ProhPatrones], [p].[ProhPwdComun], [p].[ProhRepetitivos], [p].[ProhSecuenciales], [p].[PwdRecordadas], [p].[ReqEspecial], [p].[ReqMayuscula], [p].[ReqMinuscula], [p].[ReqNumero], [p].[VerificarBrechas], [p].[Version]
+      FROM (
+          SELECT TOP(@p) [h].[Id], [h].[Algoritmo], [h].[AnioMes], [h].[Complejidad], [h].[EsActual], [h].[EsComprometida], [h].[EsForzado], [h].[FecExpira], [h].[FecRegistro], [h].[FecRetencion], [h].[Fortaleza], [h].[HashPwd], [h].[IdDisp], [h].[IdPolitica], [h].[IdTipoCambio], [h].[IdUsuario], [h].[OrigenRegistro], [h].[ParametrosAlgoritmo], [h].[PepperVersion]
+          FROM [HistorialPwd] AS [h]
+          WHERE [h].[IdUsuario] = @idUsuario
+          ORDER BY [h].[FecRegistro] DESC
+      ) AS [h0]
+      INNER JOIN [PoliticasPwd] AS [p] ON [h0].[IdPolitica] = [p].[Id]
+      ORDER BY [h0].[FecRegistro] DESC
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (11ms) [Parameters=[@idUsuario='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT [u].[Id], [u].[Activo], [u].[FecAlta], [u].[FecMod], [u].[IdEstado], [u].[IdTenant], [u].[IdUsrMod], [u].[IdUsuario], [t].[Id], [t].[Activo], [t].[Codigo], [t].[EsSistema], [t].[FecCrea], [t].[Nombre], [e].[Id], [e].[Activo], [e].[Codigo], [e].[Descripcion], [e].[FecCrea], [e].[Nombre]
+      FROM [UsuarioTenant] AS [u]
+      INNER JOIN [Tenants] AS [t] ON [u].[IdTenant] = [t].[Id]
+      INNER JOIN [EstadosUsr] AS [e] ON [u].[IdEstado] = [e].[Id]
+      WHERE [u].[IdUsuario] = @idUsuario AND [u].[Activo] = CAST(1 AS bit)
+info: 30-07-2026 05:03:58.906 RelationalEventId.CommandExecuted[20101] (Microsoft.EntityFrameworkCore.Database.Command) 
+      Executed DbCommand (11ms) [Parameters=[@idUsuario='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT [u].[Id], [u].[Activo], [u].[FecAlta], [u].[FecMod], [u].[IdEstado], [u].[IdTenant], [u].[IdUsrMod], [u].[IdUsuario], [t].[Id], [t].[Activo], [t].[Codigo], [t].[EsSistema], [t].[FecCrea], [t].[Nombre], [e].[Id], [e].[Activo], [e].[Codigo], [e].[Descripcion], [e].[FecCrea], [e].[Nombre]
+      FROM [UsuarioTenant] AS [u]
+      INNER JOIN [Tenants] AS [t] ON [u].[IdTenant] = [t].[Id]
+      INNER JOIN [EstadosUsr] AS [e] ON [u].[IdEstado] = [e].[Id]
+      WHERE [u].[IdUsuario] = @idUsuario AND [u].[Activo] = CAST(1 AS bit)
+info: PassPlat.Aplicacion.Services.Security.PasswordExpirationBackgroundService[0]
+      Verificación de expiración completada. Usuarios procesados: 0
+[05:03:58 INF] Verificación de expiración completada. Usuarios procesados: 0
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (13ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT [e].[Id], [e].[Asunto], [e].[CorrelationId], [e].[Destinatario], [e].[ErrorDetalle], [e].[Estado], [e].[ExtraJson], [e].[FecCrea], [e].[FecEnvio], [e].[FecUltIntento], [e].[IdApp], [e].[IdEmailAccount], [e].[IdTemplate], [e].[IdTenant], [e].[IdUsuario], [e].[Intentos], [e].[MsgIdExterno], [e].[Proveedor]
+      FROM [EmailLog] AS [e]
+      WHERE [e].[Estado] = 'pendiente' AND [e].[Intentos] < CAST(3 AS tinyint)
+      ORDER BY [e].[FecCrea]
+info: 30-07-2026 05:04:01.649 RelationalEventId.CommandExecuted[20101] (Microsoft.EntityFrameworkCore.Database.Command) 
+      Executed DbCommand (13ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT [e].[Id], [e].[Asunto], [e].[CorrelationId], [e].[Destinatario], [e].[ErrorDetalle], [e].[Estado], [e].[ExtraJson], [e].[FecCrea], [e].[FecEnvio], [e].[FecUltIntento], [e].[IdApp], [e].[IdEmailAccount], [e].[IdTemplate], [e].[IdTenant], [e].[IdUsuario], [e].[Intentos], [e].[MsgIdExterno], [e].[Proveedor]
+      FROM [EmailLog] AS [e]
+      WHERE [e].[Estado] = 'pendiente' AND [e].[Intentos] < CAST(3 AS tinyint)
+      ORDER BY [e].[FecCrea]
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT [e].[Id], [e].[Asunto], [e].[CorrelationId], [e].[Destinatario], [e].[ErrorDetalle], [e].[Estado], [e].[ExtraJson], [e].[FecCrea], [e].[FecEnvio], [e].[FecUltIntento], [e].[IdApp], [e].[IdEmailAccount], [e].[IdTemplate], [e].[IdTenant], [e].[IdUsuario], [e].[Intentos], [e].[MsgIdExterno], [e].[Proveedor]
+      FROM [EmailLog] AS [e]
+      WHERE [e].[Estado] = 'pendiente' AND [e].[Intentos] < CAST(3 AS tinyint)
+      ORDER BY [e].[FecCrea]
+info: 30-07-2026 05:04:16.668 RelationalEventId.CommandExecuted[20101] (Microsoft.EntityFrameworkCore.Database.Command) 
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT [e].[Id], [e].[Asunto], [e].[CorrelationId], [e].[Destinatario], [e].[ErrorDetalle], [e].[Estado], [e].[ExtraJson], [e].[FecCrea], [e].[FecEnvio], [e].[FecUltIntento], [e].[IdApp], [e].[IdEmailAccount], [e].[IdTemplate], [e].[IdTenant], [e].[IdUsuario], [e].[Intentos], [e].[MsgIdExterno], [e].[Proveedor]
+      FROM [EmailLog] AS [e]
+      WHERE [e].[Estado] = 'pendiente' AND [e].[Intentos] < CAST(3 AS tinyint)
+      ORDER BY [e].[FecCrea]
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (14ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT [e].[Id], [e].[Asunto], [e].[CorrelationId], [e].[Destinatario], [e].[ErrorDetalle], [e].[Estado], [e].[ExtraJson], [e].[FecCrea], [e].[FecEnvio], [e].[FecUltIntento], [e].[IdApp], [e].[IdEmailAccount], [e].[IdTemplate], [e].[IdTenant], [e].[IdUsuario], [e].[Intentos], [e].[MsgIdExterno], [e].[Proveedor]
+      FROM [EmailLog] AS [e]
+      WHERE [e].[Estado] = 'pendiente' AND [e].[Intentos] < CAST(3 AS tinyint)
+      ORDER BY [e].[FecCrea]
+info: 30-07-2026 05:04:31.724 RelationalEventId.CommandExecuted[20101] (Microsoft.EntityFrameworkCore.Database.Command) 
+      Executed DbCommand (14ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT [e].[Id], [e].[Asunto], [e].[CorrelationId], [e].[Destinatario], [e].[ErrorDetalle], [e].[Estado], [e].[ExtraJson], [e].[FecCrea], [e].[FecEnvio], [e].[FecUltIntento], [e].[IdApp], [e].[IdEmailAccount], [e].[IdTemplate], [e].[IdTenant], [e].[IdUsuario], [e].[Intentos], [e].[MsgIdExterno], [e].[Proveedor]
+      FROM [EmailLog] AS [e]
+      WHERE [e].[Estado] = 'pendiente' AND [e].[Intentos] < CAST(3 AS tinyint)
+      ORDER BY [e].[FecCrea]
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT [e].[Id], [e].[Asunto], [e].[CorrelationId], [e].[Destinatario], [e].[ErrorDetalle], [e].[Estado], [e].[ExtraJson], [e].[FecCrea], [e].[FecEnvio], [e].[FecUltIntento], [e].[IdApp], [e].[IdEmailAccount], [e].[IdTemplate], [e].[IdTenant], [e].[IdUsuario], [e].[Intentos], [e].[MsgIdExterno], [e].[Proveedor]
+      FROM [EmailLog] AS [e]
+      WHERE [e].[Estado] = 'pendiente' AND [e].[Intentos] < CAST(3 AS tinyint)
+      ORDER BY [e].[FecCrea]
+info: 30-07-2026 05:04:46.741 RelationalEventId.CommandExecuted[20101] (Microsoft.EntityFrameworkCore.Database.Command) 
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT [e].[Id], [e].[Asunto], [e].[CorrelationId], [e].[Destinatario], [e].[ErrorDetalle], [e].[Estado], [e].[ExtraJson], [e].[FecCrea], [e].[FecEnvio], [e].[FecUltIntento], [e].[IdApp], [e].[IdEmailAccount], [e].[IdTemplate], [e].[IdTenant], [e].[IdUsuario], [e].[Intentos], [e].[MsgIdExterno], [e].[Proveedor]
+      FROM [EmailLog] AS [e]
+      WHERE [e].[Estado] = 'pendiente' AND [e].[Intentos] < CAST(3 AS tinyint)
+      ORDER BY [e].[FecCrea]
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT [e].[Id], [e].[Asunto], [e].[CorrelationId], [e].[Destinatario], [e].[ErrorDetalle], [e].[Estado], [e].[ExtraJson], [e].[FecCrea], [e].[FecEnvio], [e].[FecUltIntento], [e].[IdApp], [e].[IdEmailAccount], [e].[IdTemplate], [e].[IdTenant], [e].[IdUsuario], [e].[Intentos], [e].[MsgIdExterno], [e].[Proveedor]
+      FROM [EmailLog] AS [e]
+      WHERE [e].[Estado] = 'pendiente' AND [e].[Intentos] < CAST(3 AS tinyint)
+      ORDER BY [e].[FecCrea]
+info: 30-07-2026 05:05:01.756 RelationalEventId.CommandExecuted[20101] (Microsoft.EntityFrameworkCore.Database.Command) 
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT [e].[Id], [e].[Asunto], [e].[CorrelationId], [e].[Destinatario], [e].[ErrorDetalle], [e].[Estado], [e].[ExtraJson], [e].[FecCrea], [e].[FecEnvio], [e].[FecUltIntento], [e].[IdApp], [e].[IdEmailAccount], [e].[IdTemplate], [e].[IdTenant], [e].[IdUsuario], [e].[Intentos], [e].[MsgIdExterno], [e].[Proveedor]
+      FROM [EmailLog] AS [e]
+      WHERE [e].[Estado] = 'pendiente' AND [e].[Intentos] < CAST(3 AS tinyint)
+      ORDER BY [e].[FecCrea]
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT [e].[Id], [e].[Asunto], [e].[CorrelationId], [e].[Destinatario], [e].[ErrorDetalle], [e].[Estado], [e].[ExtraJson], [e].[FecCrea], [e].[FecEnvio], [e].[FecUltIntento], [e].[IdApp], [e].[IdEmailAccount], [e].[IdTemplate], [e].[IdTenant], [e].[IdUsuario], [e].[Intentos], [e].[MsgIdExterno], [e].[Proveedor]
+      FROM [EmailLog] AS [e]
+      WHERE [e].[Estado] = 'pendiente' AND [e].[Intentos] < CAST(3 AS tinyint)
+      ORDER BY [e].[FecCrea]
+info: 30-07-2026 05:05:16.766 RelationalEventId.CommandExecuted[20101] (Microsoft.EntityFrameworkCore.Database.Command) 
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT [e].[Id], [e].[Asunto], [e].[CorrelationId], [e].[Destinatario], [e].[ErrorDetalle], [e].[Estado], [e].[ExtraJson], [e].[FecCrea], [e].[FecEnvio], [e].[FecUltIntento], [e].[IdApp], [e].[IdEmailAccount], [e].[IdTemplate], [e].[IdTenant], [e].[IdUsuario], [e].[Intentos], [e].[MsgIdExterno], [e].[Proveedor]
+      FROM [EmailLog] AS [e]
+      WHERE [e].[Estado] = 'pendiente' AND [e].[Intentos] < CAST(3 AS tinyint)
+      ORDER BY [e].[FecCrea]
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT [e].[Id], [e].[Asunto], [e].[CorrelationId], [e].[Destinatario], [e].[ErrorDetalle], [e].[Estado], [e].[ExtraJson], [e].[FecCrea], [e].[FecEnvio], [e].[FecUltIntento], [e].[IdApp], [e].[IdEmailAccount], [e].[IdTemplate], [e].[IdTenant], [e].[IdUsuario], [e].[Intentos], [e].[MsgIdExterno], [e].[Proveedor]
+      FROM [EmailLog] AS [e]
+      WHERE [e].[Estado] = 'pendiente' AND [e].[Intentos] < CAST(3 AS tinyint)
+      ORDER BY [e].[FecCrea]
+info: 30-07-2026 05:05:31.777 RelationalEventId.CommandExecuted[20101] (Microsoft.EntityFrameworkCore.Database.Command) 
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT [e].[Id], [e].[Asunto], [e].[CorrelationId], [e].[Destinatario], [e].[ErrorDetalle], [e].[Estado], [e].[ExtraJson], [e].[FecCrea], [e].[FecEnvio], [e].[FecUltIntento], [e].[IdApp], [e].[IdEmailAccount], [e].[IdTemplate], [e].[IdTenant], [e].[IdUsuario], [e].[Intentos], [e].[MsgIdExterno], [e].[Proveedor]
+      FROM [EmailLog] AS [e]
+      WHERE [e].[Estado] = 'pendiente' AND [e].[Intentos] < CAST(3 AS tinyint)
+      ORDER BY [e].[FecCrea]
+warn: Microsoft.AspNetCore.HttpsPolicy.HttpsRedirectionMiddleware[3]
+      Failed to determine the https port for redirect.
+[05:05:38 WRN] Failed to determine the https port for redirect.
+warn: PassPlat.WebAPI.Middleware.DiagnosticAuthMiddleware[0]
+      DIAGNOSTIC AUTH [BEFORE]: Path=/api/usuarios/1 NOT AUTHENTICATED
+[05:05:38 WRN] DIAGNOSTIC AUTH [BEFORE]: Path=/api/usuarios/1 NOT AUTHENTICATED
+warn: PassPlat.WebAPI.Services.LoggingAuthorizationMiddlewareResultHandler[0]
+      AUTHZ **FAIL**: Path=/api/usuarios/1 Endpoint=PassPlat.WebAPI.Controllers.UsuariosController.GetById (PassPlat.WebAPI)
+  FailureReasons=(null - possibly Challenge/Forbid result)
+  FailedRequirements=(null)
+  Policy Requirements:
+ClaimsAuthorizationRequirement [ClaimType='permiso', AllowedValues=['USUARIOS_VER']]
+[05:05:38 WRN] AUTHZ **FAIL**: Path=/api/usuarios/1 Endpoint=PassPlat.WebAPI.Controllers.UsuariosController.GetById (PassPlat.WebAPI)
+  FailureReasons=(null - possibly Challenge/Forbid result)
+  FailedRequirements=(null)
+  Policy Requirements:
+ClaimsAuthorizationRequirement [ClaimType='permiso', AllowedValues=['USUARIOS_VER']]
+info: PassPlat.WebAPI.Auth.CbpForbidHandler[12]
+      AuthenticationScheme: CbpFallback was challenged.
+[05:05:38 INF] AuthenticationScheme: CbpFallback was challenged.
+warn: PassPlat.WebAPI.Middleware.RequestLoggingMiddleware[0]
+      HTTP GET /api/usuarios/1 responded 401 in 118ms
+[05:05:38 WRN] HTTP GET /api/usuarios/1 responded 401 in 118ms
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT [e].[Id], [e].[Asunto], [e].[CorrelationId], [e].[Destinatario], [e].[ErrorDetalle], [e].[Estado], [e].[ExtraJson], [e].[FecCrea], [e].[FecEnvio], [e].[FecUltIntento], [e].[IdApp], [e].[IdEmailAccount], [e].[IdTemplate], [e].[IdTenant], [e].[IdUsuario], [e].[Intentos], [e].[MsgIdExterno], [e].[Proveedor]
+      FROM [EmailLog] AS [e]
+      WHERE [e].[Estado] = 'pendiente' AND [e].[Intentos] < CAST(3 AS tinyint)
+      ORDER BY [e].[FecCrea]
+info: 30-07-2026 05:05:46.785 RelationalEventId.CommandExecuted[20101] (Microsoft.EntityFrameworkCore.Database.Command) 
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT [e].[Id], [e].[Asunto], [e].[CorrelationId], [e].[Destinatario], [e].[ErrorDetalle], [e].[Estado], [e].[ExtraJson], [e].[FecCrea], [e].[FecEnvio], [e].[FecUltIntento], [e].[IdApp], [e].[IdEmailAccount], [e].[IdTemplate], [e].[IdTenant], [e].[IdUsuario], [e].[Intentos], [e].[MsgIdExterno], [e].[Proveedor]
+      FROM [EmailLog] AS [e]
+      WHERE [e].[Estado] = 'pendiente' AND [e].[Intentos] < CAST(3 AS tinyint)
+      ORDER BY [e].[FecCrea]

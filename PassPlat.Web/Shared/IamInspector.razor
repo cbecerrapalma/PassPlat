@@ -1,0 +1,54 @@
+@namespace PassPlat.Web.Shared
+
+@if (Visible)
+{
+    <MudPaper Class="mt-4" Elevation="0" Outlined="true" Style="@(_widthStyle)">
+        <div class="pa-4 d-flex align-center flex-wrap gap-4" Style="border-bottom:1px solid var(--mud-palette-lines-inputs);">
+            <div class="flex-grow-1">
+                <MudText Typo="Typo.h6">@Titulo</MudText>
+                @if (!string.IsNullOrEmpty(Subtitulo))
+                {
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">@Subtitulo</MudText>
+                }
+            </div>
+            @if (OnClose.HasDelegate)
+            {
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" OnClick="@OnClose" />
+            }
+        </div>
+        @if (Loading)
+        {
+            <div class="pa-4">
+                <MudSkeleton Width="60%" Height="20px" Class="mb-3" />
+                <MudSkeleton Width="80%" Height="20px" Class="mb-3" />
+                <MudSkeleton Width="40%" Height="20px" Class="mb-4" />
+                <MudSkeleton Width="70%" Height="20px" />
+            </div>
+        }
+        else
+        {
+            <div class="pa-0">
+                @ChildContent
+            </div>
+        }
+        @if (Actions is not null)
+        {
+            <div class="pa-3" Style="border-top:1px solid var(--mud-palette-lines-inputs);">
+                @Actions
+            </div>
+        }
+    </MudPaper>
+}
+
+@code {
+    [Parameter] public string Titulo { get; set; } = "";
+    [Parameter] public string? Subtitulo { get; set; }
+    [Parameter] public bool Visible { get; set; } = true;
+    [Parameter] public bool Loading { get; set; }
+    [Parameter] public string? Width { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? Actions { get; set; }
+
+    private string? _widthStyle => Width != null ? $"width:{Width};" : null;
+}

@@ -1,0 +1,76 @@
+SET XACT_ABORT ON;
+SET QUOTED_IDENTIFIER ON;
+GO
+
+PRINT '=== FASE 16 ETAPA 6 — Gestion de Dispositivos ===';
+GO
+
+-- STEP 1: Add new columns to Disp table
+IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Disp' AND COLUMN_NAME = 'CantidadLogins')
+BEGIN
+    ALTER TABLE Disp ADD CantidadLogins INT NOT NULL CONSTRAINT DF_Disp_CantidadLogins DEFAULT 0;
+    PRINT 'STEP 1a: Added CantidadLogins column to Disp';
+END
+ELSE
+    PRINT 'STEP 1a: CantidadLogins already exists -- SKIP';
+GO
+
+IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Disp' AND COLUMN_NAME = 'IP')
+BEGIN
+    ALTER TABLE Disp ADD IP NVARCHAR(45) NULL;
+    PRINT 'STEP 1b: Added IP column to Disp';
+END
+ELSE
+    PRINT 'STEP 1b: IP already exists -- SKIP';
+GO
+
+IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Disp' AND COLUMN_NAME = 'Pais')
+BEGIN
+    ALTER TABLE Disp ADD Pais NVARCHAR(100) NULL;
+    PRINT 'STEP 1c: Added Pais column to Disp';
+END
+ELSE
+    PRINT 'STEP 1c: Pais already exists -- SKIP';
+GO
+
+IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Disp' AND COLUMN_NAME = 'Navegador')
+BEGIN
+    ALTER TABLE Disp ADD Navegador NVARCHAR(255) NULL;
+    PRINT 'STEP 1d: Added Navegador column to Disp';
+END
+ELSE
+    PRINT 'STEP 1d: Navegador already exists -- SKIP';
+GO
+
+IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Disp' AND COLUMN_NAME = 'SO')
+BEGIN
+    ALTER TABLE Disp ADD SO NVARCHAR(255) NULL;
+    PRINT 'STEP 1e: Added SO column to Disp';
+END
+ELSE
+    PRINT 'STEP 1e: SO already exists -- SKIP';
+GO
+
+IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Disp' AND COLUMN_NAME = 'ProveedorAuth')
+BEGIN
+    ALTER TABLE Disp ADD ProveedorAuth NVARCHAR(50) NULL;
+    PRINT 'STEP 1f: Added ProveedorAuth column to Disp';
+END
+ELSE
+    PRINT 'STEP 1f: ProveedorAuth already exists -- SKIP';
+GO
+
+-- STEP 2: Update existing rows
+UPDATE Disp SET ProveedorAuth = 'Local' WHERE ProveedorAuth IS NULL;
+PRINT 'STEP 2: Set ProveedorAuth=Local for existing rows';
+GO
+
+-- STEP 3: Verify
+SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME = 'Disp'
+ORDER BY ORDINAL_POSITION;
+GO
+
+PRINT '=== FASE 16 ETAPA 6 -- COMPLETE ===';
+GO

@@ -1,0 +1,332 @@
+- generic [ref=e44]:
+  - banner [ref=e45]:
+    - toolbar [ref=e46]:
+      - button [ref=e47] [cursor=pointer]:
+        - img [ref=e49]
+      - generic [ref=e54]: AccessPlat
+      - generic [ref=e56]:
+        - heading "Roles y Permisos" [level=6] [ref=e1473]
+        - generic [ref=e58]: Administración de permisos
+      - generic [ref=e59]:
+        - generic [ref=e60]: Buenas tardes
+        - generic [ref=e62]: 16:52:48
+      - separator [ref=e63]
+      - generic [ref=e64]:
+        - button [ref=e66] [cursor=pointer]:
+          - img [ref=e68]
+        - button [ref=e72] [cursor=pointer]:
+          - img [ref=e74]
+        - button [ref=e78] [cursor=pointer]:
+          - img [ref=e80]
+        - generic [ref=e85]:
+          - img [ref=e87]
+          - status [ref=e90]: "5"
+        - separator [ref=e91]
+        - generic [ref=e93] [cursor=pointer]:
+          - img [ref=e95]:
+            - generic [ref=e96]: SI
+          - paragraph [ref=e98]: sistema
+          - generic [ref=e101]: Plataforma
+          - img [ref=e102]
+  - complementary [ref=e105]:
+    - generic [ref=e106]:
+      - generic [ref=e107]:
+        - img [ref=e108]:
+          - paragraph [ref=e109]: SI
+        - generic [ref=e110]:
+          - paragraph [ref=e111]: sistema
+          - text: Administrador
+      - separator [ref=e112]
+      - navigation [ref=e113]:
+        - link "Panel Principal" [ref=e115] [cursor=pointer]:
+          - /url: /
+          - img [ref=e116]
+          - generic [ref=e119]: Panel Principal
+        - generic [ref=e120]: CATÁLOGOS
+        - navigation "Gestión" [ref=e121]:
+          - button "Toggle Gestión" [expanded]:
+            - img
+            - generic: Gestión
+            - img [ref=e122] [cursor=pointer]
+          - navigation [ref=e128]:
+            - link "Tenants" [ref=e130] [cursor=pointer]:
+              - /url: /tenants
+              - img [ref=e131]
+              - generic [ref=e134]: Tenants
+            - link "Apps" [ref=e136] [cursor=pointer]:
+              - /url: /apps
+              - img [ref=e137]
+              - generic [ref=e140]: Apps
+            - link "Roles y Permisos" [ref=e142] [cursor=pointer]:
+              - /url: /admin/roles
+              - img [ref=e143]
+              - generic [ref=e150]: Roles y Permisos
+            - link "Políticas de Contraseña" [ref=e152] [cursor=pointer]:
+              - /url: /politicas-pwd
+              - img [ref=e153]
+              - generic [ref=e156]: Políticas de Contraseña
+            - link "Config App" [ref=e158] [cursor=pointer]:
+              - /url: /config-app
+              - img [ref=e159]
+              - generic [ref=e163]: Config App
+        - generic [ref=e164]: SEGURIDAD
+        - navigation "Control" [ref=e165]:
+          - button "Toggle Control" [expanded]:
+            - img
+            - generic: Control
+            - img [ref=e166] [cursor=pointer]
+          - navigation [ref=e172]:
+            - link "Usuarios" [ref=e174] [cursor=pointer]:
+              - /url: /usuarios
+              - img [ref=e175]
+              - generic [ref=e178]: Usuarios
+            - link "Accesos" [ref=e180] [cursor=pointer]:
+              - /url: /accesos
+              - img [ref=e181]
+              - generic [ref=e186]: Accesos
+        - generic [ref=e187]: IAM
+        - navigation "Permisos" [ref=e188]:
+          - button "Toggle Permisos" [expanded]:
+            - img
+            - generic: Permisos
+            - img [ref=e189] [cursor=pointer]
+          - navigation [ref=e1435]:
+            - link "Roles" [ref=e1437] [cursor=pointer]:
+              - /url: /admin/roles
+              - img [ref=e1438]
+              - generic [ref=e1443]: Roles
+            - link "Permisos" [ref=e1445] [cursor=pointer]:
+              - /url: /admin/permisos
+              - img [ref=e1446]
+              - generic [ref=e1449]: Permisos
+            - link "Grupos" [ref=e1451] [cursor=pointer]:
+              - /url: /admin/grupos
+              - img [ref=e1452]
+              - generic [ref=e1455]: Grupos
+            - link "Permisos Directos" [ref=e1457] [cursor=pointer]:
+              - /url: /admin/roles-permisos
+              - img [ref=e1458]
+              - generic [ref=e1466]: Permisos Directos
+            - link "Matriz de Permisos" [ref=e1468] [cursor=pointer]:
+              - /url: /admin/matriz-permisos
+              - img [ref=e1469]
+              - generic [ref=e1472]: Matriz de Permisos
+        - generic [ref=e192]: MONITOREO
+        - navigation "Registros" [ref=e193]:
+          - button "Toggle Registros":
+            - img
+            - generic: Registros
+            - img [ref=e194] [cursor=pointer]
+        - generic [ref=e197]: COMUNICACIONES
+        - navigation "Email" [ref=e198]:
+          - button "Toggle Email" [expanded]:
+            - img
+            - generic: Email
+            - img [ref=e199] [cursor=pointer]
+          - navigation [ref=e205]:
+            - link "Providers" [ref=e207] [cursor=pointer]:
+              - /url: /email/providers
+              - img [ref=e208]
+              - generic [ref=e211]: Providers
+            - link "Cuentas de Correo" [ref=e213] [cursor=pointer]:
+              - /url: /email/accounts
+              - img [ref=e214]
+              - generic [ref=e217]: Cuentas de Correo
+            - link "Cuentas x Tenant" [ref=e219] [cursor=pointer]:
+              - /url: /email/tenant-accounts
+              - img [ref=e220]
+              - generic [ref=e223]: Cuentas x Tenant
+            - link "Cuentas x App" [ref=e225] [cursor=pointer]:
+              - /url: /email/app-accounts
+              - img [ref=e226]
+              - generic [ref=e229]: Cuentas x App
+            - link "Plantillas de Email" [ref=e231] [cursor=pointer]:
+              - /url: /email-templates
+              - img [ref=e232]
+              - generic [ref=e235]: Plantillas de Email
+      - generic [ref=e236]:
+        - separator [ref=e237]
+        - generic [ref=e238]: AccessPlat v1.0.0
+  - generic [ref=e239]:
+    - generic [ref=e1475]:
+      - generic [ref=e1477]:
+        - generic [ref=e1478]:
+          - heading "Permisos" [level=1] [ref=e1479]
+          - paragraph [ref=e1480]: Administra los permisos del sistema organizados por módulo. Explora la jerarquía y revisa las asignaciones.
+        - button "Nuevo Permiso" [ref=e1482] [cursor=pointer]:
+          - img [ref=e1483]
+          - text: Nuevo Permiso
+      - generic [ref=e1485]:
+        - generic [ref=e1486]:
+          - generic [ref=e1487]:
+            - img [ref=e1489]
+            - generic [ref=e1492]: 60 total
+          - generic [ref=e1493]: "60"
+          - generic [ref=e1494]: Permisos Totales
+          - generic [ref=e1495]: En toda la plataforma
+        - generic [ref=e1496]:
+          - generic [ref=e1497]:
+            - img [ref=e1499]
+            - generic [ref=e1501]: 60 activos
+          - generic [ref=e1502]: "60"
+          - generic [ref=e1503]: Activos
+          - generic [ref=e1504]: Vigentes y asignables
+        - generic [ref=e1505]:
+          - generic [ref=e1506]:
+            - img [ref=e1508]
+            - generic [ref=e1512]: 24 módulos
+          - generic [ref=e1513]: "24"
+          - generic [ref=e1514]: Módulos
+          - generic [ref=e1515]: Agrupaciones funcionales
+        - generic [ref=e1516]:
+          - generic [ref=e1517]:
+            - img [ref=e1519]
+            - generic [ref=e1521]: 2 roles
+          - generic [ref=e1522]: "2"
+          - generic [ref=e1523]: Roles Asignados
+          - generic [ref=e1524]: Con al menos un permiso
+      - generic [ref=e1525]:
+        - region "Explorador de permisos" [ref=e1526]:
+          - generic [ref=e1527]:
+            - img [ref=e1528]
+            - generic [ref=e1530]: Explorador de Permisos
+            - generic [ref=e1531]: "60"
+          - generic [ref=e1532]:
+            - img [ref=e1533]
+            - searchbox "Filtrar permisos…" [ref=e1536]
+          - generic [ref=e1537]:
+            - generic [ref=e1538] [cursor=pointer]:
+              - img [ref=e1539]
+              - img [ref=e1541]
+              - generic [ref=e1545]: Accesos
+              - generic [ref=e1546]: "3"
+            - generic [ref=e1547] [cursor=pointer]:
+              - img [ref=e1548]
+              - img [ref=e1550]
+              - generic [ref=e1554]: Apps
+              - generic [ref=e1555]: "4"
+            - generic [ref=e1556] [cursor=pointer]:
+              - img [ref=e1557]
+              - img [ref=e1559]
+              - generic [ref=e1563]: Apps × Módulos
+              - generic [ref=e1564]: "2"
+            - generic [ref=e1565] [cursor=pointer]:
+              - img [ref=e1566]
+              - img [ref=e1568]
+              - generic [ref=e1572]: Configuración
+              - generic [ref=e1573]: "2"
+            - generic [ref=e1574] [cursor=pointer]:
+              - img [ref=e1575]
+              - img [ref=e1577]
+              - generic [ref=e1581]: Cuentas
+              - generic [ref=e1582]: "1"
+            - generic [ref=e1583] [cursor=pointer]:
+              - img [ref=e1584]
+              - img [ref=e1586]
+              - generic [ref=e1590]: Cuentas × App
+              - generic [ref=e1591]: "1"
+            - generic [ref=e1592] [cursor=pointer]:
+              - img [ref=e1593]
+              - img [ref=e1595]
+              - generic [ref=e1599]: Cuentas × Tenant
+              - generic [ref=e1600]: "1"
+            - generic [ref=e1601] [cursor=pointer]:
+              - img [ref=e1602]
+              - img [ref=e1604]
+              - generic [ref=e1608]: Eventos
+              - generic [ref=e1609]: "1"
+            - generic [ref=e1610] [cursor=pointer]:
+              - img [ref=e1611]
+              - img [ref=e1613]
+              - generic [ref=e1617]: Grupos
+              - generic [ref=e1618]: "1"
+            - generic [ref=e1619] [cursor=pointer]:
+              - img [ref=e1620]
+              - img [ref=e1622]
+              - generic [ref=e1626]: Herencia Roles
+              - generic [ref=e1627]: "2"
+            - generic [ref=e1628] [cursor=pointer]:
+              - img [ref=e1629]
+              - img [ref=e1631]
+              - generic [ref=e1635]: Historial Envíos
+              - generic [ref=e1636]: "1"
+            - generic [ref=e1637] [cursor=pointer]:
+              - img [ref=e1638]
+              - img [ref=e1640]
+              - generic [ref=e1644]: Historial Password
+              - generic [ref=e1645]: "1"
+            - generic [ref=e1646] [cursor=pointer]:
+              - img [ref=e1647]
+              - img [ref=e1649]
+              - generic [ref=e1653]: Intentos Acceso
+              - generic [ref=e1654]: "1"
+            - generic [ref=e1655] [cursor=pointer]:
+              - img [ref=e1656]
+              - img [ref=e1658]
+              - generic [ref=e1662]: Mantenimiento
+              - generic [ref=e1663]: "1"
+            - generic [ref=e1664] [cursor=pointer]:
+              - img [ref=e1665]
+              - img [ref=e1667]
+              - generic [ref=e1671]: Matriz Permisos
+              - generic [ref=e1672]: "1"
+            - generic [ref=e1673] [cursor=pointer]:
+              - img [ref=e1674]
+              - img [ref=e1676]
+              - generic [ref=e1680]: Módulos
+              - generic [ref=e1681]: "3"
+            - generic [ref=e1682] [cursor=pointer]:
+              - img [ref=e1683]
+              - img [ref=e1685]
+              - generic [ref=e1689]: Notificaciones
+              - generic [ref=e1690]: "2"
+            - generic [ref=e1691] [cursor=pointer]:
+              - img [ref=e1692]
+              - img [ref=e1694]
+              - generic [ref=e1698]: Permisos
+              - generic [ref=e1699]: "4"
+            - generic [ref=e1700] [cursor=pointer]:
+              - img [ref=e1701]
+              - img [ref=e1703]
+              - generic [ref=e1707]: Plantillas
+              - generic [ref=e1708]: "4"
+            - generic [ref=e1709] [cursor=pointer]:
+              - img [ref=e1710]
+              - img [ref=e1712]
+              - generic [ref=e1716]: Políticas Password
+              - generic [ref=e1717]: "3"
+            - generic [ref=e1718] [cursor=pointer]:
+              - img [ref=e1719]
+              - img [ref=e1721]
+              - generic [ref=e1725]: Providers
+              - generic [ref=e1726]: "1"
+            - generic [ref=e1727] [cursor=pointer]:
+              - img [ref=e1728]
+              - img [ref=e1730]
+              - generic [ref=e1734]: Roles
+              - generic [ref=e1735]: "5"
+            - generic [ref=e1736] [cursor=pointer]:
+              - img [ref=e1737]
+              - img [ref=e1739]
+              - generic [ref=e1743]: Tenants
+              - generic [ref=e1744]: "4"
+            - generic [ref=e1745] [cursor=pointer]:
+              - img [ref=e1746]
+              - img [ref=e1748]
+              - generic [ref=e1752]: Usuarios
+              - generic [ref=e1753]: "11"
+        - region "Detalle de permiso" [ref=e1754]:
+          - generic [ref=e1755]: Seleccione un permiso en el explorador para ver sus detalles
+    - generic [ref=e431]:
+      - generic [ref=e432]:
+        - generic [ref=e433]: © 2026 Plataforma de Acceso
+        - generic [ref=e436]:
+          - img [ref=e437]
+          - text: Producción
+      - generic [ref=e440]:
+        - button [ref=e442] [cursor=pointer]:
+          - img [ref=e444]
+        - button [ref=e455] [cursor=pointer]:
+          - img [ref=e457]
+        - separator [ref=e460]
+        - generic [ref=e461]: v1.0.0

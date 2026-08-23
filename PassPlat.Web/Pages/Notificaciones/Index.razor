@@ -1,0 +1,189 @@
+@page "/notificaciones"
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@inject AuthService Auth
+@inject NavigationManager Navigation
+@using PassPlat.Web.Models
+@using PassPlat.Web.Shared
+
+@if (!Auth.TienePermiso("NOTIFICACIONES_VER"))
+{
+    <SinPermiso PermisoRequerido="NOTIFICACIONES_VER" />
+}
+else
+{
+<MudContainer>
+    <MudBreadcrumbs Class="mb-3">
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
+        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/usuarios"))">Core</MudBreadcrumbItem>
+        <MudBreadcrumbItem>Notificaciones</MudBreadcrumbItem>
+    </MudBreadcrumbs>
+
+    <div class="mud-grid mud-grid-spacing-3 mb-4">
+        <IamKpiCard Valor="@_items.Count.ToString()" Label="Notificaciones" Subtexto="En página actual" Icon="@Icons.Material.Filled.Notifications" ColorClass="primary" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_items.Count(n => n.Leida).ToString()" Label="Leídas" Subtexto="Vistas por usuario" Icon="@Icons.Material.Filled.MarkEmailRead" ColorClass="success" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_items.Count(n => !n.Leida).ToString()" Label="No leídas" Subtexto="Pendientes" Icon="@Icons.Material.Filled.MarkEmailUnread" ColorClass="warning" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_items.Select(n => n.IdUsuario).Distinct().Count().ToString()" Label="Usuarios" Subtexto="Destinatarios" Icon="@Icons.Material.Filled.People" ColorClass="info" Xs="12" Sm="6" Md="3" />
+    </div>
+
+    <MudPaper Class="pa-4 mb-4 d-flex flex-wrap align-center gap-4" Elevation="0" Outlined="true">
+        <MudText Typo="Typo.h5" Class="flex-grow-1 mb-0">Notificaciones</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium"
+            OnClick="@LoadData" Class="mr-2" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@OpenCreateDialog"
+            StartIcon="@Icons.Material.Filled.Add" Size="Size.Medium">
+            Nueva Notificación
+        </MudButton>
+    </MudPaper>
+
+    <MudAutocomplete T="UsuarioDto" @bind-Value="_usuarioSelected" @bind-Value:after="@LoadData"
+        SearchFunc="@SearchUsuarios" ToStringFunc="@(u => u is null ? "" : $"{u.NomUsuario} ({u.Nombre} {u.Apellido})")"
+        Label="Filtrar por Usuario" Variant="Variant.Outlined" Clearable="true" Class="mb-3" />
+
+    <MudTable T="NotificacionDto" Items="@_items" Hover="true" Breakpoint="Breakpoint.Sm"
+        SelectedItem="_selectedItem" SelectedItemChanged="@OnSelectedItemChanged" RowStyle="cursor: pointer;">
+        <ColGroup>
+            <col style="width:100px;" /><col /><col /><col style="width:80px;" /><col style="width:160px;" /><col style="width:120px;" />
+        </ColGroup>
+        <HeaderContent>
+            <MudTh>Id</MudTh><MudTh>Título</MudTh><MudTh>Mensaje</MudTh><MudTh>Leída</MudTh><MudTh>Fecha</MudTh><MudTh>Acciones</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Id">@context.Id</MudTd>
+            <MudTd DataLabel="Título">@context.Asunto</MudTd>
+            <MudTd DataLabel="Mensaje">@context.Mensaje</MudTd>
+            <MudTd DataLabel="Leída">
+                <MudChip T="string" Size="Size.Small" Color="@(context.Leida ? Color.Default : Color.Warning)">
+                    @(context.Leida ? "Sí" : "No")
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Fecha">@context.FecCrea.ToLocalTime().ToString("g")</MudTd>
+            <MudTd DataLabel="Acciones">
+                @if (!context.Leida)
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.MarkEmailRead" Size="Size.Small" Color="Color.Primary"
+                                   OnClick="@(() => MarcarLeida(context.Id))" />
+                }
+            </MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new int[]{10,25,50}" />
+        </PagerContent>
+        <NoRecordsContent>
+            <MudText Align="Align.Center" Class="py-6">
+                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Class="mr-2" />
+                No hay registros
+            </MudText>
+        </NoRecordsContent>
+    </MudTable>
+
+    @if (_selectedItem is not null)
+    {
+        <IamInspector Titulo="Detalle de Notificación" Subtitulo="@_selectedItem.Asunto" Visible="_showInspector" OnClose="@(() => { _selectedItem = null; _showInspector = false; })">
+            <MudTabs @bind-ActivePanelIndex="_inspectorTab" KeepPanelsAlive="true" Class="detail-tabs">
+                <MudTabPanel Text="Info" Icon="@Icons.Material.Filled.Info">
+                    <div class="pa-3">
+                        <div class="d-flex align-center mb-2" style="gap:8px;">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="min-width:80px;">Asunto:</MudText>
+                            <MudText Typo="Typo.body2" Class="font-weight-medium">@_selectedItem.Asunto</MudText>
+                        </div>
+                        <div class="d-flex align-center mb-2" style="gap:8px;">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="min-width:80px;">Mensaje:</MudText>
+                            <MudText Typo="Typo.body2">@_selectedItem.Mensaje</MudText>
+                        </div>
+                        <div class="d-flex align-center mb-2" style="gap:8px;">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="min-width:80px;">Leída:</MudText>
+                            <MudChip T="string" Size="Size.Small" Color="@(_selectedItem.Leida ? Color.Default : Color.Warning)">
+                                @(_selectedItem.Leida ? "Sí" : "No")
+                            </MudChip>
+                        </div>
+                        <MudDivider Class="my-2" />
+                        <div class="d-flex align-center mb-2" style="gap:8px;">
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="min-width:80px;">Fecha:</MudText>
+                            <MudText Typo="Typo.body2">@_selectedItem.FecCrea.ToLocalTime().ToString("g")</MudText>
+                        </div>
+                    </div>
+                </MudTabPanel>
+            </MudTabs>
+        </IamInspector>
+    }
+
+    <MudOverlay Visible="@_loading" />
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" Class="mt-4" />
+    }
+</MudContainer>
+}
+
+@code {
+    private List<NotificacionDto> _items = [];
+    private bool _loading;
+    private int _idUsuario;
+    private UsuarioDto? _usuarioSelected;
+    private List<UsuarioDto> _usuarios = [];
+    private NotificacionDto? _selectedItem;
+    private bool _showInspector;
+    private int _inspectorTab;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.TienePermiso("NOTIFICACIONES_VER")) return;
+        _idUsuario = Auth.IdUsuario ?? 1;
+        if (_idUsuario > 0) { _usuarios = await Api.GetAsync<List<UsuarioDto>>("api/usuarios") ?? []; await LoadData(); }
+    }
+
+    private async Task<IEnumerable<UsuarioDto>> SearchUsuarios(string? text, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return _usuarios.Take(10);
+        return _usuarios.Where(u =>
+            u.NomUsuario.Contains(text, StringComparison.OrdinalIgnoreCase) ||
+            u.Nombre.Contains(text, StringComparison.OrdinalIgnoreCase) ||
+            u.Apellido?.Contains(text, StringComparison.OrdinalIgnoreCase) == true).Take(10);
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        try
+        {
+            _usuarios = await Api.GetAsync<List<UsuarioDto>>("api/usuarios") ?? [];
+            _idUsuario = _usuarioSelected?.Id ?? _idUsuario;
+            var data = await Api.GetAsync<List<NotificacionDto>>($"api/notificaciones/no-leidas/{_idUsuario}");
+            _items = data ?? [];
+        }
+        catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error al cargar: {ex.Message}", Severity.Error); }
+        finally { _loading = false; }
+    }
+
+    private void OnSelectedItemChanged(NotificacionDto? item)
+    {
+        _selectedItem = item;
+        _showInspector = item is not null;
+        _inspectorTab = 0;
+    }
+
+    private async Task MarcarLeida(long id)
+    {
+        var ok = await Api.PostVoidAsync($"api/notificaciones/{id}/marcar-leida");
+        if (ok)
+        {
+            Snackbar.Add("Notificación marcada como leída", Severity.Success);
+            await LoadData();
+        }
+        else
+            Snackbar.Add(Api.LastError ?? "Error al marcar como leída", Severity.Error);
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var parameters = new DialogParameters<NotificacionDialog>
+        {
+            { x => x.IdUsuario, _idUsuario }
+        };
+        var dialog = await Dialog.ShowAsync<NotificacionDialog>("Nueva Notificación", parameters);
+        var result = await dialog.Result;
+        if (!result.Canceled) await LoadData();
+    }
+}

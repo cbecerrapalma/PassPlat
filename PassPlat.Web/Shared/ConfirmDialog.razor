@@ -1,0 +1,40 @@
+<MudDialog Options="_dialogOptions">
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudAvatar Size="Size.Small" Color="@ConfirmColor" Variant="Variant.Filled">
+                <MudIcon Icon="@_icon" Size="Size.Small" />
+            </MudAvatar>
+            <MudText Typo="Typo.h6" Class="mb-0">@Title</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.body2">@Message</MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())" Variant="Variant.Outlined">@CancelText</MudButton>
+        <MudButton Variant="Variant.Filled" Color="@ConfirmColor" OnClick="@(() => MudDialog.Close(DialogResult.Ok(true)))"
+            StartIcon="@Icons.Material.Filled.Check">
+            @ConfirmText
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public string Title { get; set; } = "Confirmar";
+    [Parameter] public string Message { get; set; } = "";
+    [Parameter] public string ConfirmText { get; set; } = "Sí";
+    [Parameter] public string CancelText { get; set; } = "Cancelar";
+    [Parameter] public Color ConfirmColor { get; set; } = Color.Primary;
+    [Parameter] public string Icon { get; set; } = "";
+
+    private readonly DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, CloseButton = true };
+
+    private string _icon => ConfirmColor switch
+    {
+        Color.Error => Icons.Material.Filled.Warning,
+        Color.Warning => Icons.Material.Filled.ErrorOutline,
+        Color.Success => Icons.Material.Filled.CheckCircle,
+        _ => Icons.Material.Filled.HelpOutline
+    };
+}

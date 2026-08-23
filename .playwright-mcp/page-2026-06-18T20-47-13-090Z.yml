@@ -1,0 +1,28 @@
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - generic [ref=e9]: 🔒
+    - heading "AccessPlat" [level=5] [ref=e10]
+    - paragraph [ref=e11]: Inicia sesión para continuar
+  - generic [ref=e50]:
+    - generic [ref=e52]:
+      - generic [ref=e53]:
+        - textbox "Usuario o email" [ref=e54]: sistema
+        - group "Usuario o email"
+      - generic: Usuario o email
+    - generic [ref=e55]:
+      - generic [ref=e57]:
+        - generic [ref=e58]:
+          - textbox "Contraseña" [ref=e59]: Admin@123
+          - group "Contraseña"
+        - generic: Contraseña
+      - button [ref=e60] [cursor=pointer]:
+        - img [ref=e62]
+    - generic [ref=e65]:
+      - generic [ref=e68] [cursor=pointer]:
+        - switch "Recordarme" [ref=e72]
+        - generic [ref=e75]: Recordarme
+      - button "¿Olvidaste tu contraseña?" [ref=e76] [cursor=pointer]:
+        - generic [ref=e77]: ¿Olvidaste tu contraseña?
+  - button "Iniciar Sesión" [ref=e78] [cursor=pointer]:
+    - generic [ref=e80]: Iniciar Sesión
+  - generic [ref=e38]: Plataforma de Acceso — v1.0
