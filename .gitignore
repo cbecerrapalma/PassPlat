@@ -360,4 +360,10 @@ MigrationBackup/
 .ionide/
 
 # Fody - auto-generated XML schema
-FodyWeavers.xsd
+FodyWeavers.xsd# S48.1 — evitar re-entrada artefactos temporales (explícito, no genérico)
+.playwright-mcp/
+test-results/
+.tmp/
+NUL2
+PassPlat.slnLaunch.user
+prototype-roles-permisos*.html
