@@ -16,8 +16,8 @@ public class RolPoliticaPwdConfiguration : IEntityTypeConfiguration<RolPoliticaP
         builder.Property(r => r.IdRol).IsRequired();
         builder.Property(r => r.IdPolitica).IsRequired();
         builder.Property(r => r.Activo).HasDefaultValue(true).IsRequired();
-        builder.Property(r => r.FecCrea).HasDefaultValueSql("sysutcdatetime()").IsRequired();
-        builder.Property(r => r.FecMod).HasDefaultValueSql("sysutcdatetime()").IsRequired();
+        builder.Property(r => r.FecCrea).HasDefaultValueSql("sysdatetime()").IsRequired();
+        builder.Property(r => r.FecMod).HasDefaultValueSql("sysdatetime()").IsRequired();
 
         builder.HasOne(r => r.Tenant)
             .WithMany(t => t.RolesPoliticasPwd)

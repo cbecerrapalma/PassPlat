@@ -12,12 +12,11 @@ public interface IRolRepository : IRepositoryAsync<Rol>
     Task<Result<IReadOnlyList<Rol>>> ObtenerTodosAsync(CancellationToken ct = default);
     Task<Result<IReadOnlyList<Rol>>> ObtenerPorTenantAsync(int idTenant, CancellationToken ct = default);
     Task<Result<Rol?>> ObtenerPorCodigoAsync(int idTenant, string codigo, CancellationToken ct = default);
-    Task<Result<IReadOnlyList<Rol>>> ObtenerGlobalesAsync(CancellationToken ct = default);
     Task<Result<IReadOnlyList<Rol>>> ObtenerParaTenantAsync(int idTenant, CancellationToken ct = default);
-    Task<Result<Rol?>> ObtenerPorIdConAccesosAsync(int idRol, CancellationToken ct = default);
+    // S111 · D2 — roles con al menos un permiso activo de un módulo asignado a alguna de las apps
+    Task<Result<IReadOnlyList<Rol>>> ObtenerPorAppsAsync(int? idTenant, IReadOnlyCollection<int> idsApp, bool soloActivos, CancellationToken ct = default);
     Task<Result<CrearRolResult>> CrearConSPAsync(int? idTenant, string codigo, string nombre, string? descripcion, int? idPolitica, string? idsPermisos, CancellationToken ct = default);
-    Task<Result<ActualizarRolResult>> ActualizarConSPAsync(int idRol, string nombre, string? descripcion, bool activo, int? idUsrEjecutor, CancellationToken ct = default);
-    Task<Result<ActualizarRolResult>> DesactivarConSPAsync(int idRol, int? idUsrEjecutor, CancellationToken ct = default);
+
     Task<Result<(IReadOnlyList<Rol> Items, int TotalCount)>> BuscarPaginadoAsync(string search, int pageNumber, int pageSize, CancellationToken ct = default);
 }
 
@@ -37,7 +36,7 @@ public class RolRepository : RepositoryAsync<Rol>, IRolRepository
             var list = await DbSet.Include(r => r.Tenant).ToListAsync(ct);
             return Result<IReadOnlyList<Rol>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<Rol>>.Failure("DB_ERROR", ex.Message);
         }
@@ -50,7 +49,7 @@ public class RolRepository : RepositoryAsync<Rol>, IRolRepository
             var list = await DbSet.Include(r => r.Tenant).Where(r => r.IdTenant == idTenant && r.Activo).ToListAsync(ct);
             return Result<IReadOnlyList<Rol>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<Rol>>.Failure("DB_ERROR", ex.Message);
         }
@@ -63,22 +62,9 @@ public class RolRepository : RepositoryAsync<Rol>, IRolRepository
             var entity = await DbSet.Include(r => r.Tenant).FirstOrDefaultAsync(r => r.IdTenant == idTenant && r.Codigo == codigo && r.Activo, ct);
             return Result<Rol?>.Success(entity, allowNull: true);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<Rol?>.Failure("DB_ERROR", ex.Message);
-        }
-    }
-
-    public async Task<Result<IReadOnlyList<Rol>>> ObtenerGlobalesAsync(CancellationToken ct = default)
-    {
-        try
-        {
-            var list = await DbSet.Include(r => r.Tenant).Where(r => r.IdTenant == null && r.Activo).ToListAsync(ct);
-            return Result<IReadOnlyList<Rol>>.Success(list);
-        }
-        catch (Exception ex)
-        {
-            return Result<IReadOnlyList<Rol>>.Failure("DB_ERROR", ex.Message);
         }
     }
 
@@ -89,22 +75,32 @@ public class RolRepository : RepositoryAsync<Rol>, IRolRepository
             var list = await DbSet.Include(r => r.Tenant).Where(r => (r.IdTenant == idTenant || r.IdTenant == null) && r.Activo).ToListAsync(ct);
             return Result<IReadOnlyList<Rol>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<Rol>>.Failure("DB_ERROR", ex.Message);
         }
     }
 
-    public async Task<Result<Rol?>> ObtenerPorIdConAccesosAsync(int idRol, CancellationToken ct = default)
+    // S111 · D2 — alcance de tenant (propio + globales) y pertenencia a la app por permiso de rol
+    public async Task<Result<IReadOnlyList<Rol>>> ObtenerPorAppsAsync(int? idTenant, IReadOnlyCollection<int> idsApp, bool soloActivos, CancellationToken ct = default)
     {
         try
         {
-            var entity = await DbSet.Include(r => r.Tenant).FirstOrDefaultAsync(r => r.Id == idRol && r.Activo, ct);
-            return Result<Rol?>.Success(entity, allowNull: true);
+            var query = DbSet.Include(r => r.Tenant).AsNoTracking();
+            if (idTenant.HasValue)
+                query = query.Where(r => r.IdTenant == idTenant.Value || r.IdTenant == null);
+            if (soloActivos)
+                query = query.Where(r => r.Activo);
+            query = query.Where(r => r.RolesPermisos.Any(rp => rp.Activo
+                && rp.Permiso != null
+                && rp.Permiso.Modulo != null
+                && rp.Permiso.Modulo.AppsModulos.Any(am => am.Activo && idsApp.Contains(am.IdApp))));
+            var list = await query.ToListAsync(ct);
+            return Result<IReadOnlyList<Rol>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return Result<Rol?>.Failure("DB_ERROR", ex.Message);
+            return Result<IReadOnlyList<Rol>>.Failure("DB_ERROR", ex.Message);
         }
     }
 
@@ -123,30 +119,6 @@ public class RolRepository : RepositoryAsync<Rol>, IRolRepository
         return await SpHelper.ExecuteSPAsync<CrearRolResult>(_rawQuery, "SP_Rol_Crear", parameters, "Sin resultado del SP", ct);
     }
 
-    public async Task<Result<ActualizarRolResult>> ActualizarConSPAsync(int idRol, string nombre, string? descripcion, bool activo, int? idUsrEjecutor, CancellationToken ct = default)
-    {
-        var parameters = new[]
-        {
-            RawParameter.Int("@IdRol", idRol),
-            RawParameter.NVarChar("@Nombre", nombre, 50),
-            RawParameter.NVarChar("@Descripcion", descripcion, 200),
-            RawParameter.Bit("@Activo", activo),
-            RawParameter.Int("@IdUsrEjecutor", idUsrEjecutor)
-        };
-
-        return await SpHelper.ExecuteSPAsync<ActualizarRolResult>(_rawQuery, "SP_Rol_Actualizar", parameters, "Sin resultado del SP", ct);
-    }
-
-    public async Task<Result<ActualizarRolResult>> DesactivarConSPAsync(int idRol, int? idUsrEjecutor, CancellationToken ct = default)
-    {
-        var parameters = new[]
-        {
-            RawParameter.Int("@IdRol", idRol),
-            RawParameter.Int("@IdUsrEjecutor", idUsrEjecutor)
-        };
-
-        return await SpHelper.ExecuteSPAsync<ActualizarRolResult>(_rawQuery, "SP_Rol_Desactivar", parameters, "Sin resultado del SP", ct);
-    }
 
     public async Task<Result<(IReadOnlyList<Rol> Items, int TotalCount)>> BuscarPaginadoAsync(string search, int pageNumber, int pageSize, CancellationToken ct = default)
     {
@@ -165,7 +137,7 @@ public class RolRepository : RepositoryAsync<Rol>, IRolRepository
                 .ToListAsync(ct);
             return Result<(IReadOnlyList<Rol> Items, int TotalCount)>.Success((items, total));
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<(IReadOnlyList<Rol> Items, int TotalCount)>.Failure("DB_ERROR", ex.Message);
         }

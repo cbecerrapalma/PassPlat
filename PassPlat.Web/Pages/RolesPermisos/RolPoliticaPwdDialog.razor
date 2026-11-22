@@ -1,56 +1,50 @@
 @inject ApiClient Api
 @inject ISnackbar Snackbar
 
-<MudDialog Options="_dialogOptions">
+<MudDialog Options="@OpcionesDialogo.Dialogo(TamanoDialogo.Compacto)" Class="dialogo-formulario">
     <TitleContent>
-        <div class="d-flex align-center gap-2">
-            <MudAvatar Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled">
-                <MudIcon Icon="@Icons.Material.Filled.Policy" Size="Size.Small" />
-            </MudAvatar>
-            <MudText Typo="Typo.h6">Asignar Política de Contraseña a Rol</MudText>
-        </div>
+        <TituloDialogo Icono="@Icons.Material.Filled.Policy" Texto="Asignar Política de Contraseña a Rol" />
     </TitleContent>
     <DialogContent>
-        <MudText Typo="Typo.caption" Class="text-secondary mb-2 d-block">Seleccione el rol y la política a asignar</MudText>
-        <MudSelect T="RolDto" Label="Rol" @bind-Value="_rolSelected" Required="true"
-            Variant="Variant.Outlined" Class="mb-3"
-            Disabled="RolPreSeleccionado is not null" ToStringFunc="@(r => r?.Nombre ?? string.Empty)"
-            Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Badge"
-            Error="@(_submitted && _rolSelected is null)"
-            ErrorText="Debe seleccionar un rol">
-            @foreach (var rol in _roles)
-            {
-                <MudSelectItem @key="rol.Id" Value="rol">@rol.Nombre (@rol.Codigo)</MudSelectItem>
-            }
-        </MudSelect>
-        <MudSelect T="PoliticaPwdDto" Label="Política" @bind-Value="_politicaSelected" Required="true"
-            Variant="Variant.Outlined" Class="mb-3"
-            ToStringFunc="@(p => p?.Nombre ?? string.Empty)"
-            Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Security"
-            Error="@(_submitted && _politicaSelected is null)"
-            ErrorText="Debe seleccionar una política">
-            @foreach (var p in _politicas)
-            {
-                <MudSelectItem @key="p.Id" Value="p">@p.Nombre</MudSelectItem>
-            }
-        </MudSelect>
-        <MudAlert Severity="Severity.Info" Variant="Variant.Text" Class="mt-1">
-            <MudText Typo="Typo.caption">Solo una política activa puede estar asignada por rol por tenant.</MudText>
-        </MudAlert>
+        <AlertaErrorDialogo Mensaje="@_errorServidor" />
+        <MudForm @ref="_form">
+        <div class="dialogo-campos">
+            <MudText Typo="Typo.caption" Class="text-secondary d-block">Selecciona el rol y la política a asignar</MudText>
+            <MudSelect T="RolDto" Label="Rol" @bind-Value="_rolSelected" Required="true"
+                Variant="Variant.Outlined"
+                Disabled="RolPreSeleccionado is not null" ToStringFunc="@(r => r?.Nombre ?? string.Empty)"
+                Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Badge"
+                RequiredError="Debes seleccionar un rol">
+                @foreach (var rol in _roles)
+                {
+                    <MudSelectItem @key="rol.Id" Value="rol">@rol.Nombre (@rol.Codigo)</MudSelectItem>
+                }
+            </MudSelect>
+            <MudSelect T="PoliticaPwdDto" Label="Política" @bind-Value="_politicaSelected" Required="true"
+                Variant="Variant.Outlined"
+                ToStringFunc="@(p => p?.Nombre ?? string.Empty)"
+                Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Security"
+                RequiredError="Debes seleccionar una política">
+                @foreach (var p in _politicas)
+                {
+                    <MudSelectItem @key="p.Id" Value="p">@p.Nombre</MudSelectItem>
+                }
+            </MudSelect>
+            <MudAlert Severity="Severity.Info" Variant="Variant.Text">
+                <MudText Typo="Typo.caption">Solo una política activa puede estar asignada por rol por tenant.</MudText>
+            </MudAlert>
+        </div>
+        </MudForm>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="@(() => MudDialog.Cancel())" Variant="Variant.Outlined">Cancelar</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@Save" Disabled="@_cannotSave"
-            StartIcon="@Icons.Material.Filled.Check">
-            Asignar
-        </MudButton>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">Cancelar</MudButton>
+        <BotonGuardarDialogo Texto="Asignar" Guardando="@_saving" OnClick="@Save" />
     </DialogActions>
 </MudDialog>
 
 @code {
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
-
-    private DialogOptions _dialogOptions = new() { FullWidth = true, CloseButton = true };
+    private string? _errorServidor;
 
     [Parameter] public RolDto? RolPreSeleccionado { get; set; }
     [Parameter] public List<PoliticaPwdDto>? Politicas { get; set; }
@@ -61,10 +55,7 @@
     private RolDto? _rolSelected;
     private PoliticaPwdDto? _politicaSelected;
     private bool _saving;
-    private bool _submitted;
-
-    private bool CanSave() => _rolSelected is not null && _politicaSelected is not null;
-    private bool _cannotSave => _saving || !CanSave();
+    private MudForm _form = null!;
 
     protected override async Task OnInitializedAsync()
     {
@@ -79,8 +70,8 @@
 
     private async Task Save()
     {
-        _submitted = true;
-        if (!CanSave()) return;
+        await _form.ValidateAsync();
+        if (!_form.IsValid) return;
 
         _saving = true;
         try
@@ -88,8 +79,8 @@
             var dto = new CrearRolPoliticaPwdDto
             {
                 IdTenant = IdTenant ?? 0,
-                IdRol = _rolSelected.Id,
-                IdPolitica = _politicaSelected.Id
+                IdRol = _rolSelected!.Id,
+                IdPolitica = _politicaSelected!.Id
             };
             var result = await Api.PostAsync<RolPoliticaPwdDto>("api/rolespoliticaspwd", dto);
             if (result is not null)
@@ -98,11 +89,11 @@
                 MudDialog.Close(DialogResult.Ok(true));
             }
             else
-                Snackbar.Add(Api.LastError ?? "Error al asignar política", Severity.Error);
+                _errorServidor = Api.LastError ?? "Error al asignar política";
         }
         catch (Exception ex)
         {
-            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+            _errorServidor = Api.LastError ?? $"Error: {ex.Message}";
         }
         finally
         {

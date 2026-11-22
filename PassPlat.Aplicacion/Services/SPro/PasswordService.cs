@@ -20,8 +20,7 @@ namespace PassPlat.Aplicacion.Services;
 public interface IPasswordService : ICustomService
 {
     Task<Result<CambiarPwdResult>> CambiarPasswordAsync(int idUsuario, int idTenant, string hashPwdNuevo, byte pepperVersion, int idTipoCambio, int? idDisp, int? idIP, int? idAgente, CancellationToken ct = default);
-    Task<Result<bool>> ValidarPasswordRepetidaAsync(int idUsuario, string hashPwd, int historialCant, CancellationToken ct = default);
-    Task<Result> DesactivarPasswordActualAsync(int idUsuario, CancellationToken ct = default);
+    Task<Result<CambiarPwdResult>> CambiarPasswordValidadaAsync(int idUsuario, int idTenant, int? idApp, string passwordNueva, ETipoCambioPwd tipoCambio, CancellationToken ct = default);
     Task<Result<CambiarPwdResult>> AdminCambiarPasswordAsync(int idUsuario, int idTenant, string nuevaPassword, int? idUsrEjecutor = null, string? ipAddress = null, string? userAgent = null, string? correlationId = null, CancellationToken ct = default);
     Task<Result<string>> HashPasswordAsync(string password, CancellationToken ct = default);
     Task<Result<string>> HashPasswordAsync(string password, CBP.Security.Cryptography.Models.PoliticaPwd policy, CancellationToken ct = default);
@@ -32,7 +31,6 @@ public interface IPasswordService : ICustomService
 public class PasswordService : IPasswordService
 {
     private readonly PasswordRepository _passwordRepo;
-    private readonly IHistorialPwdRepository _historialRepo;
     private readonly AuthRepository _authRepo;
     private readonly CBP.Security.Cryptography.Services.IPasswordService _pwdService;
     private readonly IPassPlatPasswordSecurity _passwordSecurity;
@@ -43,10 +41,10 @@ public class PasswordService : IPasswordService
     private readonly ILogger<PasswordService> _logger;
     private readonly CBP.Logging.Interfaces.ILoggerService _olog;
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IPasswordNuevaService _passwordNueva;
 
     public PasswordService(
         PasswordRepository passwordRepo,
-        IHistorialPwdRepository historialRepo,
         AuthRepository authRepo,
         CBP.Security.Cryptography.Services.IPasswordService pwdService,
         IPassPlatPasswordSecurity passwordSecurity,
@@ -56,10 +54,10 @@ public class PasswordService : IPasswordService
         IUnitOfWorkAsync uow,
         ILogger<PasswordService> logger,
         CBP.Logging.Interfaces.ILoggerService olog,
-        IHttpContextAccessor httpContextAccessor)
+        IHttpContextAccessor httpContextAccessor,
+        IPasswordNuevaService passwordNueva)
     {
         _passwordRepo = passwordRepo;
-        _historialRepo = historialRepo;
         _authRepo = authRepo;
         _pwdService = pwdService;
         _passwordSecurity = passwordSecurity;
@@ -70,6 +68,7 @@ public class PasswordService : IPasswordService
         _logger = logger;
         _olog = olog;
         _httpContextAccessor = httpContextAccessor;
+        _passwordNueva = passwordNueva;
     }
 
     public async Task<Result<CambiarPwdResult>> CambiarPasswordAsync(int idUsuario, int idTenant, string hashPwdNuevo, byte pepperVersion, int idTipoCambio, int? idDisp, int? idIP, int? idAgente, CancellationToken ct = default)
@@ -111,18 +110,19 @@ public class PasswordService : IPasswordService
         return result;
     }
 
-    public async Task<Result<bool>> ValidarPasswordRepetidaAsync(int idUsuario, string hashPwd, int historialCant, CancellationToken ct = default)
+    public async Task<Result<CambiarPwdResult>> CambiarPasswordValidadaAsync(int idUsuario, int idTenant, int? idApp, string passwordNueva, ETipoCambioPwd tipoCambio, CancellationToken ct = default)
     {
-        var repetidaResult = await _historialRepo.PasswordRepetidaAsync(idUsuario, hashPwd, historialCant, ct);
-        if (repetidaResult.IsFailure) return Result<bool>.Failure(repetidaResult.Error!);
-        return Result<bool>.Success(repetidaResult.Value);
-    }
+        var validacion = await _passwordNueva.ValidarAsync(idUsuario, idTenant, idApp, passwordNueva, ct);
+        if (validacion.IsFailure) return Result<CambiarPwdResult>.Failure(validacion.Error!);
 
-    public async Task<Result> DesactivarPasswordActualAsync(int idUsuario, CancellationToken ct = default)
-    {
-        var repoResult = _historialRepo.DesactivarPasswordActual(idUsuario);
-        if (repoResult.IsFailure) return Result.Failure(repoResult.Error!);
-        return Result.Success();
+        var hash = await HashPasswordAsync(passwordNueva, ct);
+        if (hash.IsFailure) return Result<CambiarPwdResult>.Failure(hash.Error!);
+
+        var cambio = await CambiarPasswordAsync(idUsuario, idTenant, hash.Value, 1, (int)tipoCambio, null, null, null, ct);
+        if (cambio.IsFailure) return cambio;
+        if (cambio.Value.Exito != 1)
+            return Result<CambiarPwdResult>.Failure("PWD_CHANGE_FAILED", cambio.Value.Mensaje ?? "No se pudo cambiar la contraseña");
+        return cambio;
     }
 
     public async Task<Result<string>> HashPasswordAsync(string password, CancellationToken ct = default)

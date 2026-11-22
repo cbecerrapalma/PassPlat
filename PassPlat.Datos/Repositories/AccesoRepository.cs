@@ -9,13 +9,14 @@ namespace PassPlat.Datos.Repositories;
 public interface IAccesoRepository : IRepositoryAsync<Acceso>
 {
     Task<Result<bool>> TieneAccesoAsync(int idUsuario, int idApp, CancellationToken ct = default);
+    // S57.19 H-3: acceso tenant-scoped (usuario+tenant+app) para el gate EsSistema.
+    Task<Result<bool>> TieneAccesoTenantAsync(int idUsuario, int idTenant, int idApp, CancellationToken ct = default);
     Task<Result<IReadOnlyList<Acceso>>> ObtenerAccesosUsuarioAsync(int idUsuario, CancellationToken ct = default);
     Task<Result<IReadOnlyList<Acceso>>> ObtenerAccesosPorTenantYAppAsync(int idTenant, int idApp, CancellationToken ct = default);
     Task<Result<IReadOnlyList<Acceso>>> ObtenerAccesosPorRolAsync(int idRol, CancellationToken ct = default);
     Task<Result<Acceso>> AsignarAccesoAsync(int idUsuario, int idTenant, int idApp, int idRol, CancellationToken ct = default);
     Task<Result<Acceso>> AsignarAccesoAsync(int idUsuario, int idTenant, int idApp, int idRol, int? idUsuarioTenant, CancellationToken ct = default);
     Result RevocarAcceso(int idUsuario, int idApp);
-    Task<Result<IReadOnlyList<Acceso>>> ObtenerPlatformScopeAsync(int idUsuario, CancellationToken ct = default);
 }
 
 public class AccesoRepository : RepositoryAsync<Acceso>, IAccesoRepository
@@ -29,7 +30,20 @@ public class AccesoRepository : RepositoryAsync<Acceso>, IAccesoRepository
             var result = await DbSet.AnyAsync(a => a.IdUsuario == idUsuario && a.IdApp == idApp && a.Activo, ct);
             return Result<bool>.Success(result);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return Result<bool>.Failure("DB_ERROR", ex.Message);
+        }
+    }
+
+    public async Task<Result<bool>> TieneAccesoTenantAsync(int idUsuario, int idTenant, int idApp, CancellationToken ct = default)
+    {
+        try
+        {
+            var result = await DbSet.AnyAsync(a => a.IdUsuario == idUsuario && a.IdTenant == idTenant && a.IdApp == idApp && a.Activo, ct);
+            return Result<bool>.Success(result);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<bool>.Failure("DB_ERROR", ex.Message);
         }
@@ -46,7 +60,7 @@ public class AccesoRepository : RepositoryAsync<Acceso>, IAccesoRepository
                 .ToListAsync(ct);
             return Result<IReadOnlyList<Acceso>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<Acceso>>.Failure("DB_ERROR", ex.Message);
         }
@@ -63,7 +77,7 @@ public class AccesoRepository : RepositoryAsync<Acceso>, IAccesoRepository
                 .ToListAsync(ct);
             return Result<IReadOnlyList<Acceso>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<Acceso>>.Failure("DB_ERROR", ex.Message);
         }
@@ -80,7 +94,7 @@ public class AccesoRepository : RepositoryAsync<Acceso>, IAccesoRepository
                 .ToListAsync(ct);
             return Result<IReadOnlyList<Acceso>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<Acceso>>.Failure("DB_ERROR", ex.Message);
         }
@@ -118,7 +132,7 @@ public class AccesoRepository : RepositoryAsync<Acceso>, IAccesoRepository
             DbSet.Add(acceso);
             return Result<Acceso>.Success(acceso);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<Acceso>.Failure("DB_ERROR", ex.Message);
         }
@@ -135,26 +149,9 @@ public class AccesoRepository : RepositoryAsync<Acceso>, IAccesoRepository
             acceso.Revocar();
             return Result.Success();
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result.Failure("DB_ERROR", ex.Message);
-        }
-    }
-
-    public async Task<Result<IReadOnlyList<Acceso>>> ObtenerPlatformScopeAsync(int idUsuario, CancellationToken ct = default)
-    {
-        try
-        {
-            var list = await DbSet
-                .Where(a => a.IdUsuario == idUsuario && a.Activo && a.IdUsuarioTenant == null)
-                .Include(a => a.App).Include(a => a.Rol)
-                .AsNoTracking()
-                .ToListAsync(ct);
-            return Result<IReadOnlyList<Acceso>>.Success(list);
-        }
-        catch (Exception ex)
-        {
-            return Result<IReadOnlyList<Acceso>>.Failure("DB_ERROR", ex.Message);
         }
     }
 }

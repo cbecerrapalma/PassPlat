@@ -18,7 +18,7 @@ public class MFAConfiguration : IEntityTypeConfiguration<MFA>
         builder.Property(m => m.IdMFA).HasMaxLength(200).IsRequired();
         builder.Property(m => m.ClavePublica).HasMaxLength(500);
         builder.Property(m => m.EsPrincipal).HasDefaultValue(false).IsRequired();
-        builder.Property(m => m.FecAlta).HasDefaultValueSql("sysutcdatetime()").IsRequired();
+        builder.Property(m => m.FecAlta).HasDefaultValueSql("sysdatetime()").IsRequired();
         builder.Property(m => m.IdEstado).IsRequired();
         builder.Property(m => m.Metadatos).HasColumnType("nvarchar(max)");
         builder.Property(m => m.UltUso);

@@ -24,7 +24,7 @@ public class TipoMFARepository : RepositoryAsync<TipoMFA>, ITipoMFARepository
             var list = await DbSet.Where(t => t.Activo).ToListAsync(ct);
             return Result<IReadOnlyList<TipoMFA>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<TipoMFA>>.Failure("DB_ERROR", ex.Message);
         }

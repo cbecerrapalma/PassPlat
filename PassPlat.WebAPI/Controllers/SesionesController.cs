@@ -6,6 +6,9 @@ using CBP.WebApi.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using PassPlat.Aplicacion.Dtos.Core;
 using PassPlat.Aplicacion.Services;
+using CBP.Results.Errors;
+using CBP.Results;
+using PassPlat.WebAPI.Auth;
 
 namespace PassPlat.WebAPI.Controllers;
 
@@ -14,17 +17,19 @@ public class SesionesController : BaseApiController
 {
     private readonly ISesionService _service;
     private readonly ITenantContext _tenantContext;
+    private readonly IVisibilidadUsuarioService _visibilidad;
 
-    public SesionesController(ISesionService service, ITenantContext tenantContext)
+    public SesionesController(ISesionService service, ITenantContext tenantContext, IVisibilidadUsuarioService visibilidad)
     {
         _service = service;
         _tenantContext = tenantContext;
+        _visibilidad = visibilidad;
     }
 
     [HttpPost]
     public async Task<IActionResult> Crear([FromBody] CrearSesionDto dto, CancellationToken ct)
     {
-        var idUsuarioJwt = GetIdUsuario();
+        var idUsuarioJwt = User.IdUsuario();
         if (idUsuarioJwt != dto.IdUsuario)
             return Unauthorized(new { codigo = "ACCESO_DENEGADO" });
 
@@ -46,26 +51,11 @@ public class SesionesController : BaseApiController
     [HttpGet("activas/{idUsuario}")]
     public async Task<IActionResult> GetActivas(int idUsuario, CancellationToken ct)
     {
-        var idUsuarioJwt = GetIdUsuario();
-        if (idUsuarioJwt != idUsuario)
-            return Unauthorized(new { codigo = "ACCESO_DENEGADO" });
+        var uid = User.IdUsuario();
+        if (uid == null) return Unauthorized(new { codigo = "ACCESO_DENEGADO" });
 
-        return FromResultQuery(await _service.ObtenerSesionesActivasAsync(idUsuario, _tenantContext.CurrentId, ct));
+        return FromResultQuery(await _service.ObtenerSesionesVisiblesAsync(uid.Value, idUsuario, _tenantContext.CurrentId, ct));
     }
-
-    [HttpGet("contar/{idUsuario}")]
-    public async Task<IActionResult> Contar(int idUsuario, CancellationToken ct)
-    {
-        var idUsuarioJwt = GetIdUsuario();
-        if (idUsuarioJwt != idUsuario)
-            return Unauthorized(new { codigo = "ACCESO_DENEGADO" });
-
-        return FromResultQuery(await _service.ContarSesionesActivasAsync(idUsuario, _tenantContext.CurrentId, ct));
-    }
-
-    [HttpGet("contar-tenant")]
-    public async Task<IActionResult> ContarPorTenant(CancellationToken ct)
-        => FromResultQuery(await _service.ContarSesionesActivasPorTenantAsync(_tenantContext.CurrentId, ct));
 
     [HttpGet("activas-tenant")]
     public async Task<IActionResult> GetActivasTenant(CancellationToken ct)
@@ -76,19 +66,22 @@ public class SesionesController : BaseApiController
     public async Task<IActionResult> RevocarTodasTenant(CancellationToken ct)
         => FromResult(await _service.RevocarTodasPorTenantAsync(_tenantContext.CurrentId, ct));
 
-    [HttpGet("token-ext/{idTokenExt}")]
-    public async Task<IActionResult> GetByTokenExt(string idTokenExt, CancellationToken ct)
-        => FromResultQuery(await _service.ObtenerPorIdTokenExtAsync(idTokenExt, ct));
-
     [HttpPost("{idSesion}/revocar")]
     [Authorize(Policy = "SESIONES_REVOCAR")]
     public async Task<IActionResult> Revocar(Guid idSesion, CancellationToken ct)
     {
-        var uid = GetIdUsuario();
+        var uid = User.IdUsuario();
         if (uid == null) return Unauthorized(new { codigo = "ACCESO_DENEGADO" });
         var sesion = await _service.GetByIdAsync(idSesion, ct);
-        if (sesion.IsSuccess && sesion.Value?.IdUsuario != uid)
-            return Unauthorized(new { codigo = "ACCESO_DENEGADO" });
+        if (sesion.IsSuccess && sesion.Value is not null && sesion.Value.IdUsuario != uid)
+        {
+            if (sesion.Value.IdTenant != _tenantContext.CurrentId)
+            {
+                return FromResult(Result.Failure(CommonErrors.Authorization.Forbidden("sesión")));
+            }
+            var acceso = await _visibilidad.VerificarAsync(uid.Value, sesion.Value.IdUsuario, _tenantContext.CurrentId, "sesión", ct);
+            if (acceso.IsFailure) return FromResult(acceso);
+        }
         return FromResult(await _service.RevocarSesionAsync(idSesion, ct));
     }
 
@@ -96,9 +89,11 @@ public class SesionesController : BaseApiController
     [Authorize(Policy = "SESIONES_REVOCAR")]
     public async Task<IActionResult> RevocarTodas(int idUsuario, [FromQuery] Guid? idSesionExcluir, CancellationToken ct)
     {
-        var idUsuarioJwt = GetIdUsuario();
-        if (idUsuarioJwt != idUsuario)
-            return Unauthorized(new { codigo = "ACCESO_DENEGADO" });
+        var uid = User.IdUsuario();
+        if (uid == null) return Unauthorized(new { codigo = "ACCESO_DENEGADO" });
+
+        var acceso = await _visibilidad.VerificarAsync(uid.Value, idUsuario, _tenantContext.CurrentId, "sesiones del usuario", ct);
+        if (acceso.IsFailure) return FromResult(acceso);
 
         return FromResult(await _service.RevocarTodasAsync(idUsuario, _tenantContext.CurrentId, idSesionExcluir, ct));
     }
@@ -106,8 +101,4 @@ public class SesionesController : BaseApiController
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
         => FromResultQuery(await _service.GetByIdAsync(id, ct));
-
-    private int? GetIdUsuario() =>
-        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id)
-            ? id : null;
 }

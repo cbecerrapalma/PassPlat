@@ -34,7 +34,7 @@ else
                 <MudTd DataLabel="Id">@context.Id.ToString()[..Math.Min(8, context.Id.ToString().Length)]...</MudTd>
                 <MudTd DataLabel="Dispositivo">@context.DispModelo</MudTd>
                 <MudTd DataLabel="IP">@context.IPDireccion</MudTd>
-                <MudTd DataLabel="Inicio">@context.FecInicio.ToLocalTime().ToString("g")</MudTd>
+                <MudTd DataLabel="Inicio">@context.FecInicio.ToString("g")</MudTd>
             </RowTemplate>
             <NoRecordsContent>
                 <MudText Align="Align.Center" Class="py-8">

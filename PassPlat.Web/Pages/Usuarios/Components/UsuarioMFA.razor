@@ -40,7 +40,7 @@ else
                         @(context.EsPrincipal ? "Sí" : "No")
                     </MudChip>
                 </MudTd>
-                <MudTd DataLabel="Alta">@context.FecAlta.ToLocalTime().ToString("g")</MudTd>
+                <MudTd DataLabel="Alta">@context.FecAlta.ToString("g")</MudTd>
             </RowTemplate>
             <NoRecordsContent>
                 <MudText Align="Align.Center" Class="py-8">

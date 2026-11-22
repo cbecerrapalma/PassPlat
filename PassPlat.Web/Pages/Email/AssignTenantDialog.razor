@@ -1,69 +1,87 @@
+@inject ApiClient Api
 @inject ISnackbar Snackbar
+@using PassPlat.Aplicacion.Dtos.Core
 
-<MudDialog>
+<MudDialog Class="dialogo-formulario">
     <TitleContent>
-        <MudText Typo="Typo.h6">Asignar a Tenant</MudText>
-        <MudText Typo="Typo.body2" Class="mud-text-secondary">Vincula esta cuenta con un tenant especifico.</MudText>
+        <TituloDialogo Icono="@Icons.Material.Filled.Link" Texto="Asignar a Tenant" />
     </TitleContent>
 
     <DialogContent>
-        <MudPaper Elevation="0" Outlined="true" Class="pa-3 mb-4 d-flex align-center gap-3">
-            <MudAvatar Color="Color.Primary" Size="Size.Small">
-                <MudIcon Icon="@Icons.Material.Filled.Email" Size="Size.Small" />
-            </MudAvatar>
+        <AlertaErrorDialogo Mensaje="@_errorServidor" />
+        <MudForm @ref="_form">
+        <div class="dialogo-campos">
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">Cuenta de correo que usará el tenant seleccionado.</MudText>
+
+            <MudSelect T="int" Label="Cuenta de correo *" Variant="Variant.Outlined" @bind-Value="_idCuenta" FullWidth="true" Required="true"
+                RequiredError="Selecciona una cuenta"
+                Validation="@(new Func<int, string?>(v => v == 0 ? "Selecciona una cuenta" : null))">
+                @foreach (var c in _cuentas)
+                {
+                    <MudSelectItem Value="c.Id">@c.Nombre - @c.FromAddress</MudSelectItem>
+                }
+            </MudSelect>
+
             <div>
-                <MudText Typo="Typo.body2" Class="font-weight-medium">@AccountNombre</MudText>
-                <MudText Typo="Typo.caption" Class="mud-text-secondary">Cuenta de correo</MudText>
+                <MudSwitch @bind-Value="_esPredet" Color="Color.Primary">Predeterminada para este tenant</MudSwitch>
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">Si no se marca, el tenant usará la cuenta predeterminada del sistema.</MudText>
             </div>
-            <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" Class="mud-text-secondary mx-2" />
-            <MudAvatar Color="Color.Secondary" Size="Size.Small">
-                <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" />
-            </MudAvatar>
-            <div>
-                <MudText Typo="Typo.body2" Class="font-weight-medium">@_selectedTenant</MudText>
-                <MudText Typo="Typo.caption" Class="mud-text-secondary">Tenant</MudText>
-            </div>
-        </MudPaper>
-
-        <MudSelect T="string" Label="Tenant" Variant="Variant.Outlined" Value="@_selectedTenant"
-            ValueChanged="@(EventCallback.Factory.Create<string>(this, (v) => _selectedTenant = v))" FullWidth="true" Class="mb-4">
-            <MudSelectItem Value="@("Plataforma")">Plataforma (Sistema)</MudSelectItem>
-            <MudSelectItem Value="@("Corp")">Corp</MudSelectItem>
-            <MudSelectItem Value="@("Dev")">Dev</MudSelectItem>
-        </MudSelect>
-
-        <MudSelect T="string" Label="Cuenta de correo" Variant="Variant.Outlined" Value="@_selectedAccount" FullWidth="true" Class="mb-4">
-            <MudSelectItem Value="@("SMTP Global")">SMTP Global - cbpnotificaciones@gmail.com</MudSelectItem>
-            <MudSelectItem Value="@("SendGrid Transaccional")">SendGrid Transaccional - noreply@passplat.io</MudSelectItem>
-            <MudSelectItem Value="@("Amazon SES Prod")">Amazon SES Prod - alerts@passplat.io</MudSelectItem>
-            <MudSelectItem Value="@("MS Graph Corp")">MS Graph Corp - no-reply@corp.passplat.io</MudSelectItem>
-            <MudSelectItem Value="@("Mailgun Marketing")">Mailgun Marketing - marketing@passplat.io</MudSelectItem>
-        </MudSelect>
-
-        <MudSwitch @bind-Value="_esPredet" Color="Color.Primary">Predeterminada para este tenant</MudSwitch>
-        <MudText Typo="Typo.caption" Class="mud-text-secondary mt-1">Solo puede existir una cuenta predeterminada por tenant. La anterior sera reemplazada.</MudText>
+        </div>
+        </MudForm>
     </DialogContent>
 
     <DialogActions>
-        <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="@Cancel">Cancelar</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Check" OnClick="@Submit">Asignar</MudButton>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">Cancelar</MudButton>
+        <BotonGuardarDialogo Texto="Asignar" Guardando="@_guardando" OnClick="@Guardar" />
     </DialogActions>
 </MudDialog>
 
 @code {
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    private string? _errorServidor;
 
-    [Parameter] public string AccountNombre { get; set; } = "SMTP Global";
+    /// <summary>Tenant elegido en la página (o el de la sesión); el diálogo no lo cambia.</summary>
+    [Parameter] public int IdTenant { get; set; }
 
-    private string _selectedTenant = "Corp";
-    private string _selectedAccount = "SMTP Global";
+    private MudForm _form = null!;
+    private List<EmailAccountDto> _cuentas = [];
+    private int _idCuenta;
     private bool _esPredet;
+    private bool _guardando;
 
-    private void Submit()
+    protected override async Task OnInitializedAsync()
     {
-        Snackbar.Add("Cuenta asignada a tenant visualmente", Severity.Success);
-        MudDialog.Close(DialogResult.Ok(true));
+        try
+        {
+            _cuentas = await Api.GetAsync<List<EmailAccountDto>>("api/emailaccounts/activos") ?? [];
+        }
+        catch (Exception ex)
+        {
+            _errorServidor = Api.LastError ?? $"Error al cargar cuentas: {ex.Message}";
+        }
     }
 
-    private void Cancel() => MudDialog.Cancel();
+    private async Task Guardar()
+    {
+        await _form.ValidateAsync();
+        if (!_form.IsValid) return;
+        _guardando = true;
+        try
+        {
+            var result = await Api.PostAsync<TenantEmailAccountDto>("api/tenantemailaccounts",
+                new CrearTenantEmailAccountDto { IdTenant = IdTenant, IdEmailAccount = _idCuenta, EsPredeterminada = _esPredet });
+            if (result is not null)
+            {
+                Snackbar.Add("Cuenta asignada al tenant", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+                _errorServidor = Api.LastError ?? "Error al asignar la cuenta";
+        }
+        catch (Exception ex)
+        {
+            _errorServidor = Api.LastError ?? $"Error: {ex.Message}";
+        }
+        finally { _guardando = false; }
+    }
 }

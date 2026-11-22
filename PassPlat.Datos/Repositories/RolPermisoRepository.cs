@@ -25,7 +25,7 @@ public class RolPermisoRepository : RepositoryAsync<RolPermiso>, IRolPermisoRepo
                 .ToListAsync(ct);
             return Result<IReadOnlyList<RolPermiso>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<RolPermiso>>.Failure("DB_ERROR", ex.Message);
         }
@@ -38,7 +38,7 @@ public class RolPermisoRepository : RepositoryAsync<RolPermiso>, IRolPermisoRepo
             var entity = await DbSet.FirstOrDefaultAsync(rp => rp.IdRol == idRol && rp.IdPermiso == idPermiso && rp.Activo, ct);
             return Result<RolPermiso?>.Success(entity, allowNull: true);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<RolPermiso?>.Failure("DB_ERROR", ex.Message);
         }

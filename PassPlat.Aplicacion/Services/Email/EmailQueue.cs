@@ -49,7 +49,8 @@ public enum EmailJobKind
     ProviderAuthorizationGranted,
     OAuthConsentExpired,
     SessionRevoked,
-    SecurityNotification
+    SecurityNotification,
+    ApiPlantilla // S78: endpoint de envío por plantilla para apps externas
 }
 
 public sealed record EmailJob(

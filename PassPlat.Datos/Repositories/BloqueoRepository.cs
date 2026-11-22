@@ -12,8 +12,6 @@ public interface IBloqueoRepository : IRepositoryAsync<Bloqueo>
     Task<Result<bool>> EstaBloqueadoAsync(int idUsuario, int idTenant, CancellationToken ct = default);
     Task<Result<Bloqueo?>> ObtenerBloqueoActivoAsync(int idUsuario, int idTenant, CancellationToken ct = default);
     Result<Bloqueo> CrearBloqueo(int idUsuario, int idTenant, int idTipoBloqueo, string motivo, DateTime? fecFin = null, int? idAgente = null, int? idIP = null, int? idUsrBloqueador = null, string? tipoDeteccion = null);
-    Task<Result<IReadOnlyList<Bloqueo>>> ObtenerBloqueosTemporalesVencidosAsync(CancellationToken ct = default);
-    Task<Result> DesactivarBloqueosVencidosAsync(CancellationToken ct = default);
     Task<Result<IReadOnlyList<Bloqueo>>> ObtenerBloqueosPorUsuarioAsync(int idUsuario, int idTenant, CancellationToken ct = default);
 }
 
@@ -29,7 +27,7 @@ public class BloqueoRepository : RepositoryAsync<Bloqueo>, IBloqueoRepository
                 .AnyAsync(b => b.IdUsuario == idUsuario && b.IdTenant == idTenant && b.Activo
                     && (b.TipoBloqueo == null || !b.TipoBloqueo.EsTemporal || !b.FecFin.HasValue || b.FecFin.Value > DateTime.Now), ct));
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<bool>.Failure("DB_ERROR", ex.Message);
         }
@@ -44,7 +42,7 @@ public class BloqueoRepository : RepositoryAsync<Bloqueo>, IBloqueoRepository
                     && (b.TipoBloqueo == null || !b.TipoBloqueo.EsTemporal || !b.FecFin.HasValue || b.FecFin.Value > DateTime.Now), ct);
             return Result<Bloqueo?>.Success(bloqueo, allowNull: true);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<Bloqueo?>.Failure("DB_ERROR", ex.Message);
         }
@@ -62,40 +60,9 @@ public class BloqueoRepository : RepositoryAsync<Bloqueo>, IBloqueoRepository
             DbSet.Add(bloqueo);
             return Result<Bloqueo>.Success(bloqueo);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<Bloqueo>.Failure("DB_ERROR", ex.Message);
-        }
-    }
-
-    public async Task<Result<IReadOnlyList<Bloqueo>>> ObtenerBloqueosTemporalesVencidosAsync(CancellationToken ct = default)
-    {
-        try
-        {
-            var result = await Query().Include(b => b.TipoBloqueo)
-                .Where(b => b.Activo && b.TipoBloqueo != null && b.TipoBloqueo.EsTemporal && b.FecFin.HasValue && b.FecFin.Value <= DateTime.Now)
-                .ToListAsync(ct);
-            return Result<IReadOnlyList<Bloqueo>>.Success(result);
-        }
-        catch (Exception ex)
-        {
-            return Result<IReadOnlyList<Bloqueo>>.Failure("DB_ERROR", ex.Message);
-        }
-    }
-
-    public async Task<Result> DesactivarBloqueosVencidosAsync(CancellationToken ct = default)
-    {
-        try
-        {
-            await DbSet.Where(b => b.Activo && b.TipoBloqueo != null && b.TipoBloqueo.EsTemporal && b.FecFin.HasValue && b.FecFin.Value <= DateTime.Now)
-                .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(b => b.Activo, false)
-                    .SetProperty(b => b.FecFin, b => b.FecFin ?? DateTime.Now), ct);
-            return Result.Success();
-        }
-        catch (Exception ex)
-        {
-            return Result.Failure("DB_ERROR", ex.Message);
         }
     }
 
@@ -109,7 +76,7 @@ public class BloqueoRepository : RepositoryAsync<Bloqueo>, IBloqueoRepository
                 .ToListAsync(ct);
             return Result<IReadOnlyList<Bloqueo>>.Success(result);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<Bloqueo>>.Failure("DB_ERROR", ex.Message);
         }

@@ -21,7 +21,7 @@ public class AccesoConfiguration : IEntityTypeConfiguration<Acceso>
         builder.Property(a => a.IdRol).IsRequired();
         builder.Property(a => a.IdUsuarioTenant);
         builder.Property(a => a.Activo).HasDefaultValue(true).IsRequired();
-        builder.Property(a => a.FecAsignacion).HasDefaultValueSql("sysutcdatetime()").IsRequired();
+        builder.Property(a => a.FecAsignacion).HasDefaultValueSql("sysdatetime()").IsRequired();
 
         builder.HasOne(a => a.Usuario)
             .WithMany(u => u.Accesos)

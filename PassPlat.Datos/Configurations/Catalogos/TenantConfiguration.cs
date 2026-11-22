@@ -20,7 +20,7 @@ public class TenantConfiguration : IEntityTypeConfiguration<Tenant>
         builder.Property(t => t.Nombre).HasMaxLength(100).IsRequired().IsUnicode(false);
         builder.Property(t => t.Activo).HasDefaultValue(true).IsRequired();
         builder.Property(t => t.EsSistema).HasDefaultValue(false).IsRequired();
-        builder.Property(t => t.FecCrea).HasDefaultValueSql("sysutcdatetime()").IsRequired();
+        builder.Property(t => t.FecCrea).HasDefaultValueSql("sysdatetime()").IsRequired();
 
         builder.HasIndex(t => t.Codigo).IsUnique();
         builder.HasIndex(t => t.EsSistema).IsUnique().HasFilter("EsSistema = 1").HasDatabaseName("UX_Tenants_EsSistema");

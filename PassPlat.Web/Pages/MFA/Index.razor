@@ -3,6 +3,7 @@
 @inject AuthService Auth
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
+@inject IDialogService Dialog
 @using PassPlat.Web.Models
 @using PassPlat.Web.Shared
 
@@ -12,37 +13,57 @@
 }
 else
 {
-<MudContainer>
-    <MudBreadcrumbs Class="mb-3">
-        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
-        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/usuarios"))">Core</MudBreadcrumbItem>
-        <MudBreadcrumbItem>MFA</MudBreadcrumbItem>
-    </MudBreadcrumbs>
+<div class="iam-page">
+<MigasDePan />
 
-    <div class="mud-grid mud-grid-spacing-3 mb-4">
-        <IamKpiCard Valor="@_items.Count.ToString()" Label="Registros" Subtexto="Métodos MFA" Icon="@Icons.Material.Filled.Security" ColorClass="primary" Xs="12" Sm="6" Md="3" />
-        <IamKpiCard Valor="@_items.Count(m => m.EstadoMFANombre == "Activo").ToString()" Label="Activos" Subtexto="Vigentes" Icon="@Icons.Material.Filled.CheckCircle" ColorClass="success" Xs="12" Sm="6" Md="3" />
-        <IamKpiCard Valor="@_items.Count(m => m.EsPrincipal).ToString()" Label="Principales" Subtexto="Método primario" Icon="@Icons.Material.Filled.Star" ColorClass="warning" Xs="12" Sm="6" Md="3" />
-        <IamKpiCard Valor="@_items.Select(m => m.TipoMFANombre).Distinct().Count().ToString()" Label="Tipos" Subtexto="Distintos" Icon="@Icons.Material.Filled.Category" ColorClass="info" Xs="12" Sm="6" Md="3" />
+    <div class="page-header">
+        <div class="page-title-row">
+            <div>
+                <h1 class="page-title">Métodos MFA</h1>
+                <p class="page-subtitle">Métodos de autenticación de dos factores por usuario.</p>
+            </div>
+        </div>
     </div>
 
-    <MudPaper Class="pa-4 mb-4 d-flex flex-wrap align-center gap-4" Elevation="0" Outlined="true">
-        <MudText Typo="Typo.h5" Class="flex-grow-1 mb-0">Métodos MFA</MudText>
-        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium"
-            OnClick="@LoadData" />
-    </MudPaper>
+    <div class="kpi-row mb-4">
+        <IamKpiCard Valor="@_items.Count.ToString()" Label="Registros" Subtexto="Métodos MFA" Icon="@Icons.Material.Filled.Security" ColorClass="primary" />
+        <IamKpiCard Valor="@_items.Count(m => m.EstadoMFANombre == "Activo").ToString()" Label="Activos" Subtexto="Vigentes" Icon="@Icons.Material.Filled.CheckCircle" ColorClass="success" />
+        <IamKpiCard Valor="@_items.Count(m => m.EsPrincipal).ToString()" Label="Principales" Subtexto="Método primario" Icon="@Icons.Material.Filled.Star" ColorClass="warning" />
+        <IamKpiCard Valor="@_items.Select(m => m.TipoMFANombre).Distinct().Count().ToString()" Label="Tipos" Subtexto="Distintos" Icon="@Icons.Material.Filled.Category" ColorClass="info" />
+    </div>
 
-    <MudAutocomplete T="UsuarioDto" @bind-Value="_usuarioSelected"
-        SearchFunc="@SearchUsuarios" ToStringFunc="@(u => u is null ? "" : $"{u.NomUsuario} ({u.Nombre} {u.Apellido})")"
-        Label="Usuario" Variant="Variant.Outlined" Class="mb-3" />
-
-    <MudTable T="MFADto" Items="@_items" Hover="true" Breakpoint="Breakpoint.Sm"
-        SelectedItem="@_selectedItem" SelectedItemChanged="@OnSelectedItemChanged" RowStyle="cursor: pointer;">
+    <div class="content-body">
+        <div class="table-panel">
+            <div class="table-toolbar filter-row">
+                <SelectorCatalogo T="UsuarioDto" Class="lista-filtro" Items="_usuarios" @bind-Value="_usuarioSelected"
+                    SearchTextSelector="@(u => $"{u.NomUsuario} {u.Nombre} {u.Apellido}")"
+                    ToStringFunc="@(u => u is null ? "" : $"{u.NomUsuario} ({u.Nombre} {u.Apellido})")"
+                    Label="Usuario" Variant="Variant.Outlined" Clearable="true" />
+                <MudSelect T="string" Value="_tipoFiltro" ValueChanged="@OnTipoChanged" Label="Tipo"
+                           Variant="Variant.Outlined" Dense="true" Clearable="true" Class="lista-filtro">
+                    @foreach (var tipo in _tiposFiltro)
+                    {
+                        <MudSelectItem Value="@tipo">@tipo</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudSelect T="string" Value="_estadoFiltro" ValueChanged="@OnEstadoChanged" Label="Estado"
+                           Variant="Variant.Outlined" Dense="true" Clearable="true" Class="lista-filtro">
+                    @foreach (var estado in _estadosFiltro)
+                    {
+                        <MudSelectItem Value="@estado">@estado</MudSelectItem>
+                    }
+                </MudSelect>
+                <div class="toolbar-spacer"></div>
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium"
+                    OnClick="@LoadData" aria-label="Refrescar" />
+            </div>
+            <div class="table-wrap">
+    <MudTable T="MFADto" Items="@_itemsFiltrados" Hover="true" Breakpoint="Breakpoint.Sm">
         <ColGroup>
-            <col style="width:80px;" /><col /><col /><col /><col style="width:100px;" /><col style="width:160px;" />
+            <col style="width:80px;" /><col /><col /><col /><col style="width:100px;" /><col style="width:160px;" /><col style="width:90px;" />
         </ColGroup>
         <HeaderContent>
-            <MudTh>Id</MudTh><MudTh>Tipo</MudTh><MudTh>Identificador</MudTh><MudTh>Estado</MudTh><MudTh>Principal</MudTh><MudTh>Registro</MudTh>
+            <MudTh>Id</MudTh><MudTh>Tipo</MudTh><MudTh>Identificador</MudTh><MudTh>Estado</MudTh><MudTh>Principal</MudTh><MudTh>Registro</MudTh><MudTh>Acciones</MudTh>
         </HeaderContent>
         <RowTemplate>
             <MudTd DataLabel="Id">@context.Id</MudTd>
@@ -56,7 +77,14 @@ else
                     @(context.EsPrincipal ? "Sí" : "No")
                 </MudChip>
             </MudTd>
-            <MudTd DataLabel="Registro">@context.FecAlta.ToLocalTime().ToString("g")</MudTd>
+            <MudTd DataLabel="Registro">@context.FecAlta.ToString("g")</MudTd>
+            <MudTd DataLabel="Acciones">
+                @if (PuedeRevocar)
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.Block" Size="Size.Small" Color="Color.Error"
+                                   OnClick="@(() => RevocarAsync(context))" aria-label="Revocar" />
+                }
+            </MudTd>
         </RowTemplate>
         <PagerContent>
             <MudTablePager PageSizeOptions="new int[]{10,25,50}" />
@@ -68,60 +96,28 @@ else
             </MudText>
         </NoRecordsContent>
     </MudTable>
-
-    @if (_selectedItem is not null)
-    {
-        <IamInspector Titulo="Detalle MFA" Subtitulo="@_selectedItem.TipoMFANombre" Visible="_showInspector" OnClose="@(() => { _selectedItem = null; _showInspector = false; })">
-            <MudTabs @bind-ActivePanelIndex="_inspectorTab" KeepPanelsAlive="true" Class="detail-tabs">
-                <MudTabPanel Text="Info" Icon="@Icons.Material.Filled.Info">
-                    <div class="pa-3">
-                        <div class="d-flex align-center mb-2" style="gap:8px;">
-                            <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="min-width:90px;">Tipo:</MudText>
-                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@_selectedItem.TipoMFANombre</MudChip>
-                        </div>
-                        <div class="d-flex align-center mb-2" style="gap:8px;">
-                            <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="min-width:90px;">Identificador:</MudText>
-                            <MudText Typo="Typo.body2">@_selectedItem.IdMFA</MudText>
-                        </div>
-                        <div class="d-flex align-center mb-2" style="gap:8px;">
-                            <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="min-width:90px;">Estado:</MudText>
-                            <MudText Typo="Typo.body2">@_selectedItem.EstadoMFANombre</MudText>
-                        </div>
-                        <div class="d-flex align-center mb-2" style="gap:8px;">
-                            <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="min-width:90px;">Principal:</MudText>
-                            <MudChip T="string" Size="Size.Small" Color="@(_selectedItem.EsPrincipal ? Color.Success : Color.Default)">
-                                @(_selectedItem.EsPrincipal ? "Sí" : "No")
-                            </MudChip>
-                        </div>
-                        <MudDivider Class="my-2" />
-                        <div class="d-flex align-center mb-2" style="gap:8px;">
-                            <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="min-width:90px;">Registro:</MudText>
-                            <MudText Typo="Typo.body2">@_selectedItem.FecAlta.ToLocalTime().ToString("g")</MudText>
-                        </div>
-                    </div>
-                </MudTabPanel>
-            </MudTabs>
-        </IamInspector>
-    }
+            </div>
+        </div>
+    </div>
 
     <MudOverlay Visible="@_loading" />
     @if (_loading)
     {
         <MudProgressCircular Indeterminate="true" Class="mt-4" />
     }
-</MudContainer>
+</div>
 }
 
 @code {
     private List<MFADto> _items = [];
     private bool _loading;
     private int _idUsuario;
+    private string? _tipoFiltro;
+    private string? _estadoFiltro;
+    private List<string> _tiposFiltro = [];
+    private List<string> _estadosFiltro = [];
     private UsuarioDto? _usuarioSelected;
     private List<UsuarioDto> _usuarios = [];
-    private MFADto? _selectedItem;
-    private bool _showInspector;
-    private int _inspectorTab;
-    private string _filtroEstado = "todos";
 
     protected override async Task OnInitializedAsync()
     {
@@ -130,13 +126,18 @@ else
         if (_idUsuario > 0) await LoadData();
     }
 
-    private async Task<IEnumerable<UsuarioDto>> SearchUsuarios(string? text, CancellationToken ct)
+    // S85 · D4 — Tipo y Estado se aplican en memoria sobre la lista cargada
+    private List<MFADto> _itemsFiltrados
     {
-        if (string.IsNullOrWhiteSpace(text)) return _usuarios.Take(10);
-        return _usuarios.Where(u =>
-            u.NomUsuario.Contains(text, StringComparison.OrdinalIgnoreCase) ||
-            u.Nombre.Contains(text, StringComparison.OrdinalIgnoreCase) ||
-            u.Apellido?.Contains(text, StringComparison.OrdinalIgnoreCase) == true).Take(10);
+        get
+        {
+            var filtrados = _items;
+            if (!string.IsNullOrWhiteSpace(_tipoFiltro))
+                filtrados = filtrados.Where(m => m.TipoMFANombre == _tipoFiltro).ToList();
+            if (!string.IsNullOrWhiteSpace(_estadoFiltro))
+                filtrados = filtrados.Where(m => m.EstadoMFANombre == _estadoFiltro).ToList();
+            return filtrados;
+        }
     }
 
     private async Task LoadData()
@@ -148,15 +149,50 @@ else
             _idUsuario = _usuarioSelected?.Id ?? _idUsuario;
             var data = await Api.GetAsync<List<MFADto>>($"api/mfa/metodos/{_idUsuario}");
             _items = data ?? [];
+
+            // S85 · D4 — opciones de los filtros Tipo y Estado a partir de la lista cargada
+            _tiposFiltro = _items.Select(m => m.TipoMFANombre ?? string.Empty)
+                .Where(n => n.Length > 0).Distinct().OrderBy(n => n).ToList();
+            _estadosFiltro = _items.Select(m => m.EstadoMFANombre ?? string.Empty)
+                .Where(n => n.Length > 0).Distinct().OrderBy(n => n).ToList();
         }
         catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error al cargar: {ex.Message}", Severity.Error); }
         finally { _loading = false; }
     }
 
-    private void OnSelectedItemChanged(MFADto? item)
+    // S120 · D5 — los propios siempre; los de otro, con MFA_ADMINISTRAR (la API además acota al tenant de la sesión)
+    private bool PuedeRevocar => _idUsuario == Auth.IdUsuario || Auth.TienePermiso("MFA_ADMINISTRAR");
+
+    private async Task RevocarAsync(MFADto metodo)
     {
-        _selectedItem = item;
-        _showInspector = item is not null;
-        _inspectorTab = 0;
+        var parameters = new DialogParameters
+        {
+            ["Title"] = "Revocar método MFA",
+            ["Message"] = $"¿Revocar el método {metodo.TipoMFANombre} ({metodo.IdMFA})? El usuario deberá registrarlo de nuevo.",
+            ["ConfirmText"] = "Revocar",
+            ["CancelText"] = "Cancelar"
+        };
+        var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parameters);
+        var result = await dialog.Result;
+        if (result is not { Canceled: false }) return;
+
+        var ok = await Api.PostVoidAsync($"api/mfa/{metodo.IdUsuario}/revocar/{metodo.Id}");
+        if (ok)
+        {
+            Snackbar.Add("Método MFA revocado", Severity.Success);
+            await LoadData();
+        }
+        else
+            Snackbar.Add(Api.LastError ?? "Error al revocar el método MFA", Severity.Error);
+    }
+
+    private void OnTipoChanged(string? tipo)
+    {
+        _tipoFiltro = tipo;
+    }
+
+    private void OnEstadoChanged(string? estado)
+    {
+        _estadoFiltro = estado;
     }
 }

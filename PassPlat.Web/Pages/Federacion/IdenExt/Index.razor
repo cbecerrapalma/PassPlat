@@ -1,16 +1,18 @@
 @page "/federacion/iden-ext"
 @inject ApiClient Api
+@inject AuthService Auth
 @inject ISnackbar Snackbar
 @inject IDialogService Dialog
 @inject NavigationManager Navigation
-@inject AuthService Auth
 
+@if (!Auth.TienePermiso("FED_IDENEXT_VER"))
+{
+    <SinPermiso PermisoRequerido="FED_IDENEXT_VER" />
+}
+else
+{
 <div class="iam-page">
-    <MudBreadcrumbs Class="mb-3">
-        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
-        <MudBreadcrumbItem>Federación</MudBreadcrumbItem>
-        <MudBreadcrumbItem>Identidades Externas</MudBreadcrumbItem>
-    </MudBreadcrumbs>
+<MigasDePan />
 
     <div class="page-header">
         <div class="page-title-row">
@@ -18,27 +20,40 @@
                 <h1 class="page-title">Identidades Externas</h1>
                 <p class="page-subtitle">Vinculación de usuarios locales con cuentas de proveedores de identidad externa.</p>
             </div>
+            @if (Auth.TienePermiso("FED_IDENEXT_DESVINCULAR"))
+            {
             <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenCreateDialog" StartIcon="@Icons.Material.Filled.Add">
                 Vincular Identidad
             </MudButton>
+            }
         </div>
     </div>
 
     <div class="kpi-row mb-4">
-        <IamKpiCard Valor="@_totalCount.ToString()" Label="Total Vínculos" Subtexto="@($"{_totalCount} identidades")" Icon="@Icons.Material.Filled.Link" ColorClass="primary" Xs="12" Sm="6" Md="3" />
-        <IamKpiCard Valor="@_activosCount.ToString()" Label="Activos" Subtexto="@($"{_activosCount} activos")" Icon="@Icons.Material.Filled.CheckCircle" ColorClass="success" Xs="12" Sm="6" Md="3" />
-        <IamKpiCard Valor="@_inactivosCount.ToString()" Label="Inactivos" Subtexto="Desvinculados" Icon="@Icons.Material.Filled.LinkOff" ColorClass="warning" Xs="12" Sm="6" Md="3" />
-        <IamKpiCard Valor="@_conMFA.ToString()" Label="Con MFA" Subtexto="Tienen MFA activo" Icon="@Icons.Material.Filled.Fingerprint" ColorClass="info" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_totalCount.ToString()" Label="Total Vínculos" Icon="@Icons.Material.Filled.Link" ColorClass="primary" />
+        <IamKpiCard Valor="@_activosCount.ToString()" Label="Activos" Icon="@Icons.Material.Filled.CheckCircle" ColorClass="success" />
+        <IamKpiCard Valor="@_inactivosCount.ToString()" Label="Inactivos" Subtexto="Desvinculados" Icon="@Icons.Material.Filled.LinkOff" ColorClass="warning" />
+        <IamKpiCard Valor="@_conMFA.ToString()" Label="Con MFA" Subtexto="Tienen MFA activo" Icon="@Icons.Material.Filled.Fingerprint" ColorClass="info" />
     </div>
 
     <div class="content-body">
         <div class="table-panel">
-            <CrudToolbar ShowSearch="true"
+            <CrudToolbar ShowSearch="true" SearchLabel="Buscar identidad externa..."
                 SearchString="@_searchString" SearchStringChanged="@OnSearchChanged"
-                OnRefresh="@Refrescar" ShowCreate="false" />
+                OnRefresh="@Refrescar" ShowCreate="false">
+                <Filtros>
+                    <MudSelect T="int?" Value="_idProveedor" ValueChanged="@OnProveedorChanged" Label="Proveedor"
+                               Variant="Variant.Outlined" Dense="true" Clearable="true" Class="lista-filtro">
+                        @foreach (var p in _proveedores)
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)p.Id)">@p.Nombre</MudSelectItem>
+                        }
+                    </MudSelect>
+                </Filtros>
+            </CrudToolbar>
             <div class="table-wrap">
                 <MudTable @ref="_table" T="IdenExtDto" ServerData="@_serverReload" Items="@_items" Hover="true" Breakpoint="Breakpoint.Sm"
-                    SelectedItem="_selectedItem" SelectedItemChanged="@OnSelectedItemChanged" RowStyle="cursor: pointer;">
+                    OnRowClick="@((TableRowClickEventArgs<IdenExtDto> e) => VerDetalle(e.Item))" RowStyle="cursor: pointer;">
                     <ColGroup>
                         <col /><col /><col /><col style="width:120px;" /><col style="width:140px;" />
                     </ColGroup>
@@ -58,8 +73,8 @@
                         <MudTd DataLabel="Estado">
                             @if (!string.IsNullOrEmpty(context.EstadoNombre))
                             {
-                                <span class="badge badge-active" style="background: @(context.EstadoColor ?? "#4CAF50")22;color: @(context.EstadoColor ?? "#4CAF50");border:1px solid @(context.EstadoColor ?? "#4CAF50")44;">
-                                    <span class="badge-dot" style="background:@(context.EstadoColor ?? "#4CAF50");"></span>@context.EstadoNombre
+                                <span class="badge badge-active" style="background: @(context.EstadoColor ?? "var(--dat-verde)")22;color: @(context.EstadoColor ?? "var(--dat-verde)");border:1px solid @(context.EstadoColor ?? "var(--dat-verde)")44;">
+                                    <span class="badge-dot" style="background:@(context.EstadoColor ?? "var(--dat-verde)");"></span>@context.EstadoNombre
                                 </span>
                             }
                             else
@@ -70,9 +85,14 @@
                             }
                         </MudTd>
                         <MudTd DataLabel="Acciones">
-                            <MudTooltip Text="Desvincular">
-                                <MudIconButton Icon="@Icons.Material.Filled.LinkOff" Size="Size.Small" Color="Color.Error" OnClick="@(() => ConfirmUnlink(context))" />
-                            </MudTooltip>
+                            <div @onclick:stopPropagation="true" class="table-actions">
+                                @if (Auth.TienePermiso("FED_IDENEXT_DESVINCULAR"))
+                                {
+                                <MudTooltip Text="Desvincular">
+                                    <MudIconButton Icon="@Icons.Material.Filled.LinkOff" Size="Size.Small" Color="Color.Error" OnClick="@(() => ConfirmUnlink(context))" aria-label="Desvincular" />
+                                </MudTooltip>
+                                }
+                            </div>
                         </MudTd>
                     </RowTemplate>
                     <PagerContent>
@@ -86,80 +106,16 @@
                     </NoRecordsContent>
                 </MudTable>
             </div>
-
-            @if (_selectedItem is not null)
-            {
-                <div class="iam-inspector" style="width:380px;min-width:380px;position:sticky;top:16px;align-self:flex-start;">
-                    <div class="inspector-header">
-                        <div class="inspector-title-row">
-                            <div class="inspector-title">@(_selectedItem.ProviderUserName ?? _selectedItem.SubExterno)</div>
-                            @if (!string.IsNullOrEmpty(_selectedItem.EstadoNombre))
-                            {
-                                <span class="badge badge-active" style="background: @(_selectedItem.EstadoColor ?? "#4CAF50")22;color: @(_selectedItem.EstadoColor ?? "#4CAF50");border:1px solid @(_selectedItem.EstadoColor ?? "#4CAF50")44;">
-                                    <span class="badge-dot" style="background:@(_selectedItem.EstadoColor ?? "#4CAF50");"></span>@_selectedItem.EstadoNombre
-                                </span>
-                            }
-                            else
-                            {
-                                <span class="badge @(_selectedItem.Activo ? "badge-active" : "badge-inactive")">
-                                    <span class="badge-dot"></span>@(_selectedItem.Activo ? "Activo" : "Inactivo")
-                                </span>
-                            }
-                        </div>
-                        <div class="inspector-tabs" role="tablist">
-                            <MudButton Variant="Variant.Text" Color="@(_inspectorTab == 0 ? Color.Primary : Color.Default)" @onclick="() => _inspectorTab = 0" Size="Size.Small">Información</MudButton>
-                            <MudButton Variant="Variant.Text" Color="@(_inspectorTab == 1 ? Color.Primary : Color.Default)" @onclick="() => _inspectorTab = 1" Size="Size.Small">Tokens</MudButton>
-                        </div>
-                    </div>
-                    <div class="inspector-body">
-                        @if (_inspectorTab == 0)
-                        {
-                            <div class="insp-section">
-                                <div class="insp-section-title">Detalles de Identidad</div>
-                                <div class="field-row"><div class="field-label">Usuario</div><div class="field-value">@(_selectedItem.UsuarioNombre ?? $"#{_selectedItem.IdUsuario}")</div></div>
-                                <div class="field-row"><div class="field-label">Proveedor</div><div class="field-value">@(_selectedItem.ProvIdenNombre ?? $"#{_selectedItem.IdProvIden}")</div></div>
-                                <div class="field-row"><div class="field-label">Sub (ID Externo)</div><div class="field-value mono" style="font-size:10px;">@_selectedItem.SubExterno</div></div>
-                                <div class="field-row"><div class="field-label">Provider UserName</div><div class="field-value">@(_selectedItem.ProviderUserName ?? "—")</div></div>
-                                <div class="field-row"><div class="field-label">Email</div><div class="field-value">@(_selectedItem.EmailExterno ?? "—")</div></div>
-                                <div class="field-row"><div class="field-label">Nombre</div><div class="field-value">@(_selectedItem.NombreExterno ?? "—")</div></div>
-                                <div class="field-row"><div class="field-label">Es Principal</div><div class="field-value"><MudIcon Icon="@(_selectedItem.EsPrincipal ? Icons.Material.Filled.Star : Icons.Material.Filled.StarBorder)" Size="Size.Small" Color="@(_selectedItem.EsPrincipal ? Color.Warning : Color.Default)" /></div></div>
-                                <div class="field-row"><div class="field-label">Scopes</div><div class="field-value" style="font-size:10px;">@(_selectedItem.Scopes ?? "—")</div></div>
-                                <div class="field-row"><div class="field-label">Último Login</div><div class="field-value">@(_selectedItem.UltimoLogin?.ToLocalTime().ToString("dd MMM yyyy HH:mm") ?? "—")</div></div>
-                                <div class="field-row"><div class="field-label">Última IP</div><div class="field-value mono" style="font-size:10px;">@(_selectedItem.UltimaIP ?? "—")</div></div>
-                                <div class="field-row"><div class="field-label">Último Dispositivo</div><div class="field-value">@(_selectedItem.DispositivoModelo ?? "—")</div></div>
-                                <div class="field-row"><div class="field-label">Último Tenant</div><div class="field-value">@(_selectedItem.UltimoTenantNombre ?? "—")</div></div>
-                                <div class="field-row"><div class="field-label">Creado</div><div class="field-value" style="color:var(--text-muted);">@(_selectedItem.FecCrea?.ToLocalTime().ToString("dd MMM yyyy") ?? "—")</div></div>
-                            </div>
-                            @if (_selectedItem.FecRevocacion.HasValue)
-                            {
-                                <MudDivider Class="my-2" />
-                                <div class="insp-section">
-                                    <div class="insp-section-title">Revocación</div>
-                                    <div class="field-row"><div class="field-label">Fecha</div><div class="field-value" style="color:var(--mud-palette-error);">@_selectedItem.FecRevocacion.Value.ToLocalTime().ToString("dd MMM yyyy HH:mm")</div></div>
-                                    <div class="field-row"><div class="field-label">Motivo</div><div class="field-value">@(_selectedItem.MotivoRevocacion ?? "—")</div></div>
-                                    <div class="field-row"><div class="field-label">Revocado por</div><div class="field-value">@(_selectedItem.UsuarioRevocaNombre ?? "—")</div></div>
-                                </div>
-                            }
-                        }
-                        @if (_inspectorTab == 1)
-                        {
-                            <div class="insp-section">
-                                <div class="insp-section-title">Tokens y Seguridad</div>
-                                <div class="field-row"><div class="field-label">Token Expira</div><div class="field-value">@(_selectedItem.TokenExpiration?.ToLocalTime().ToString("dd MMM yyyy HH:mm") ?? "—")</div></div>
-                                <div class="field-row"><div class="field-label">Correlation ID</div><div class="field-value mono" style="font-size:10px;">@(_selectedItem.CorrelationId?.ToString() ?? "—")</div></div>
-                                <MudDivider Class="my-2" />
-                                <MudText Typo="Typo.caption" Color="Color.Error" Class="d-flex align-center">
-                                    <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="mr-1" />
-                                    Los tokens almacenados están cifrados y no se muestran por seguridad.
-                                </MudText>
-                            </div>
-                        }
-                    </div>
-                </div>
-            }
         </div>
     </div>
+
+    <MudOverlay Visible="@_loading" />
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" Class="mt-4" />
+    }
 </div>
+}
 
 @code {
     private MudTable<IdenExtDto>? _table;
@@ -171,12 +127,12 @@
     private int _activosCount;
     private int _inactivosCount;
     private int _conMFA;
-    private IdenExtDto? _selectedItem;
-    private int _inspectorTab;
-    private readonly DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+    private int? _idProveedor;
+    private List<(int Id, string Nombre)> _proveedores = [];
 
     protected override async Task OnInitializedAsync()
     {
+        if (!Auth.TienePermiso("FED_IDENEXT_VER")) return; // S114 · D3
         try
         {
             var response = await Api.GetAsync<PagedResponse<IdenExtDto>>("api/iden-ext/page?pageNumber=1&pageSize=200");
@@ -187,6 +143,13 @@
                 _activosCount = response.Items.Count(i => i.Activo);
                 _inactivosCount = response.Items.Count(i => !i.Activo);
                 _conMFA = 0;
+                // S85 · D4 — proveedores para el filtro, a partir de la carga de KPIs
+                _proveedores = response.Items
+                    .Where(i => !string.IsNullOrWhiteSpace(i.ProvIdenNombre))
+                    .GroupBy(i => i.IdProvIden)
+                    .Select(g => (Id: g.Key, Nombre: g.First().ProvIdenNombre!))
+                    .OrderBy(p => p.Nombre)
+                    .ToList();
             }
         }
         catch (Exception ex)
@@ -200,8 +163,11 @@
         _loading = true;
         try
         {
+            // S85 · D4 — la API ya aplica TextoLibre e IdProveedor (antes la página no los mandaba)
+            var textoParam = string.IsNullOrWhiteSpace(_searchString) ? "" : $"&TextoLibre={Uri.EscapeDataString(_searchString.Trim())}";
+            var proveedorParam = _idProveedor is int idProv ? $"&IdProveedor={idProv}" : "";
             var response = await Api.GetAsync<PagedResponse<IdenExtDto>>(
-                $"api/iden-ext/page?pageNumber={state.Page + 1}&pageSize={state.PageSize}");
+                $"api/iden-ext/page?pageNumber={state.Page + 1}&pageSize={state.PageSize}{textoParam}{proveedorParam}");
             if (response != null)
             {
                 _items = response.Items;
@@ -212,13 +178,19 @@
             }
         }
         catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error al cargar: {ex.Message}", Severity.Error); }
-        finally { _loading = false; }
+        finally { _loading = false; StateHasChanged(); }
         return new TableData<IdenExtDto> { Items = [], TotalItems = 0 };
     }
 
     private async Task OnSearchChanged(string value)
     {
         _searchString = value;
+        if (_table is not null) await _table.ReloadServerData();
+    }
+
+    private async Task OnProveedorChanged(int? idProveedor)
+    {
+        _idProveedor = idProveedor;
         if (_table is not null) await _table.ReloadServerData();
     }
 
@@ -237,18 +209,17 @@
         }
     }
 
-    private void OnSelectedItemChanged(IdenExtDto? item)
+    private void VerDetalle(IdenExtDto? item)
     {
-        _selectedItem = item;
-        _inspectorTab = 0;
+        if (item is not null) Navigation.NavigateTo($"/federacion/iden-ext/{item.IdUsuario}/{item.Id}");
     }
 
     private async Task OpenCreateDialog()
     {
         var parameters = new DialogParameters { ["IsEdit"] = false };
-        var dialog = await Dialog.ShowAsync<IdenExtDialog>("Vincular Identidad", parameters, _dialogOptions);
+        var dialog = await Dialog.ShowAsync<IdenExtDialog>("Vincular Identidad", parameters, OpcionesDialogo.Dialogo(TamanoDialogo.Estandar));
         var result = await dialog.Result;
-        if (!result.Canceled) { await Refrescar(); Snackbar.Add("Identidad vinculada", Severity.Success); }
+        if (result is { Canceled: false }) { await Refrescar(); Snackbar.Add("Identidad vinculada", Severity.Success); }
     }
 
     private async Task ConfirmUnlink(IdenExtDto item)
@@ -256,10 +227,9 @@
         var parameters = new DialogParameters { ["Title"] = "Confirmar", ["Message"] = $"Desvincular identidad de {item.ProvIdenNombre ?? $"#{item.IdProvIden}"} para {item.UsuarioNombre ?? $"#{item.IdUsuario}"}?", ["ConfirmText"] = "Si", ["CancelText"] = "Cancelar" };
         var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parameters);
         var result = await dialog.Result;
-        if (!result.Canceled)
+        if (result is { Canceled: false })
         {
-            var userId = Auth.IdUsuario ?? 1;
-            var ok = await Api.PostVoidAsync($"api/iden-ext/{item.Id}/desvincular/{userId}");
+            var ok = await Api.PostVoidAsync($"api/iden-ext/{item.Id}/desvincular");
             if (ok) { Snackbar.Add("Identidad desvinculada", Severity.Success); await Refrescar(); }
             else Snackbar.Add(Api.LastError ?? "Error al desvincular", Severity.Error);
         }

@@ -3,39 +3,45 @@
 @inject ISnackbar Snackbar
 @using PassPlat.Web.Models
 
-<MudDialog Options="_dialogOptions">
+<MudDialog Options="@OpcionesDialogo.Dialogo(TamanoDialogo.Estandar)" Class="dialogo-formulario">
     <TitleContent>
-        <MudText Typo="Typo.h6">Nuevo Bloqueo</MudText>
+        <TituloDialogo Icono="@Icons.Material.Filled.Add" Texto="Nuevo Bloqueo" />
     </TitleContent>
     <DialogContent>
-        <MudAutocomplete T="UsuarioDto" @bind-Value="_usuarioSelected"
-            SearchFunc="@SearchUsuarios" ToStringFunc="@(u => u is null ? "" : $"{u.NomUsuario} ({u.Nombre} {u.Apellido})")"
-            Label="Usuario" Variant="Variant.Outlined" Class="mb-3"
-            Error="@(_submitted && _usuarioSelected is null)" ErrorText="El usuario es requerido" />
-        <MudAutocomplete T="TenantDto" @bind-Value="_tenantSelected"
-            SearchFunc="@SearchTenants" ToStringFunc="@(t => t is null ? "" : $"{t.Nombre} ({t.Codigo})")"
-            Label="Tenant" Variant="Variant.Outlined" Class="mb-3"
-            Error="@(_submitted && _tenantSelected is null)" ErrorText="El tenant es requerido" />
-        <MudSelect T="int" @bind-Value="_idTipoBloqueo" Label="Tipo Bloqueo" Variant="Variant.Outlined" Class="mb-3" Required="true">
-            @foreach (var tipo in _tiposBloqueo)
-            {
-                <MudSelectItem Value="@tipo.Id">@tipo.Nombre</MudSelectItem>
-            }
-        </MudSelect>
-        <MudTextField @bind-Value="_motivo" Label="Motivo" Variant="Variant.Outlined" Class="mb-3" Required="true"
-                      Error="@(_submitted && string.IsNullOrWhiteSpace(_motivo))" ErrorText="El motivo es requerido" />
-        <MudTextField @bind-Value="_duracionMinutos" Label="Duración (minutos)" Variant="Variant.Outlined" Class="mb-3" HelperText="Dejar vacío para bloqueo permanente" />
+        <AlertaErrorDialogo Mensaje="@_errorServidor" />
+        <MudForm @ref="_form">
+        <div class="dialogo-campos">
+            <SelectorCatalogo T="UsuarioDto" Items="_usuarios" @bind-Value="_usuarioSelected"
+                SearchTextSelector="@(u => $"{u.NomUsuario} {u.Nombre} {u.Apellido} {u.Email}")"
+                ToStringFunc="@(u => u is null ? "" : $"{u.NomUsuario} ({u.Nombre} {u.Apellido})")"
+                Label="Usuario" Variant="Variant.Outlined"
+                Required="true" RequiredError="El usuario es requerido" />
+            <SelectorCatalogo T="TenantDto" Items="_tenants" @bind-Value="_tenantSelected"
+                SearchTextSelector="@(t => $"{t.Nombre} {t.Codigo}")"
+                ToStringFunc="@(t => t is null ? "" : $"{t.Nombre} ({t.Codigo})")"
+                Label="Tenant" Variant="Variant.Outlined"
+                Required="true" RequiredError="El tenant es requerido" />
+            <MudSelect T="int" @bind-Value="_idTipoBloqueo" Label="Tipo Bloqueo" Variant="Variant.Outlined" Required="true">
+                @foreach (var tipo in _tiposBloqueo)
+                {
+                    <MudSelectItem Value="@tipo.Id">@tipo.Nombre</MudSelectItem>
+                }
+            </MudSelect>
+            <MudTextField @bind-Value="_motivo" Label="Motivo" Variant="Variant.Outlined" Required="true"
+                          RequiredError="El motivo es requerido" />
+            <MudTextField @bind-Value="_duracionMinutos" Label="Duración (minutos)" Variant="Variant.Outlined" HelperText="Deja vacío para bloqueo permanente" />
+        </div>
+        </MudForm>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="@(() => MudDialog.Cancel())">Cancelar</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@Save" Disabled="@(!CanSave() || _saving)">Crear</MudButton>
+        <BotonGuardarDialogo Texto="Crear" Guardando="@_saving" OnClick="@Save" />
     </DialogActions>
 </MudDialog>
 
 @code {
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
-
-    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+    private string? _errorServidor;
 
     private List<UsuarioDto> _usuarios = [];
     private List<TenantDto> _tenants = [];
@@ -46,13 +52,13 @@
     private string _motivo = "";
     private int? _duracionMinutos;
     private bool _saving;
-    private bool _submitted;
+    private MudForm _form = null!;
 
     protected override async Task OnInitializedAsync()
     {
         var tUsuarios = Api.GetAsync<List<UsuarioDto>>("api/usuarios");
-        var tTenants = Api.GetAsync<List<TenantDto>>("api/tenants");
-        var tTipos = Api.GetAsync<List<TipoBloqueoDto>>("api/tipos-bloqueo");
+        var tTenants = TenantsObjetivo.CargarAsync(Api, Auth); // S113 · D4
+        var tTipos = Api.GetAsync<List<TipoBloqueoDto>>("api/TiposBloqueo");
 
         await Task.WhenAll(tUsuarios, tTenants, tTipos);
 
@@ -64,31 +70,10 @@
         _tenantSelected = _tenants.FirstOrDefault(t => t.Id == (Auth.IdTenant ?? 0));
     }
 
-    private Task<IEnumerable<UsuarioDto>> SearchUsuarios(string value, CancellationToken _)
-    {
-        if (string.IsNullOrEmpty(value))
-            return Task.FromResult(_usuarios.Take(20));
-        return Task.FromResult(_usuarios.Where(u =>
-            u.NomUsuario.Contains(value, StringComparison.OrdinalIgnoreCase) ||
-            u.Nombre.Contains(value, StringComparison.OrdinalIgnoreCase) ||
-            u.Email.Contains(value, StringComparison.OrdinalIgnoreCase)).Take(20));
-    }
-
-    private Task<IEnumerable<TenantDto>> SearchTenants(string value, CancellationToken _)
-    {
-        if (string.IsNullOrEmpty(value))
-            return Task.FromResult(_tenants.Take(20));
-        return Task.FromResult(_tenants.Where(t =>
-            t.Nombre.Contains(value, StringComparison.OrdinalIgnoreCase) ||
-            t.Codigo.Contains(value, StringComparison.OrdinalIgnoreCase)).Take(20));
-    }
-
-    private bool CanSave() => _usuarioSelected is not null && _tenantSelected is not null && !string.IsNullOrWhiteSpace(_motivo);
-
     private async Task Save()
     {
-        _submitted = true;
-        if (!CanSave()) return;
+        await _form.ValidateAsync();
+        if (!_form.IsValid) return;
         _saving = true;
         try
         {
@@ -102,11 +87,11 @@
                 MudDialog.Close(DialogResult.Ok(true));
             }
             else
-                Snackbar.Add(Api.LastError ?? "Error al crear bloqueo", Severity.Error);
+                _errorServidor = Api.LastError ?? "Error al crear bloqueo";
         }
         catch (Exception ex)
         {
-            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+            _errorServidor = Api.LastError ?? $"Error: {ex.Message}";
         }
         finally
         {

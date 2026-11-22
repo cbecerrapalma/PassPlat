@@ -25,6 +25,14 @@ public sealed class RequestLoggingMiddleware
         {
             await _next(context);
         }
+        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+        {
+            // El cliente abortó el request (p. ej. navegó a otra página): no es un fallo del servidor.
+            sw.Stop();
+            _logger.LogInformation("HTTP {Method} {Path} cancelled by client in {ElapsedMs}ms",
+                method, path, sw.ElapsedMilliseconds);
+            throw;
+        }
         catch (Exception)
         {
             sw.Stop();

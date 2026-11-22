@@ -1,4 +1,3 @@
-using System.Threading.RateLimiting;
 using CBP.Caching.DependencyInjection;
 using CBP.Caching.Memory.DependencyInjection;
 using CBP.Data.Asynchronous;
@@ -12,9 +11,10 @@ using PassPlat.Dominio.Entities.Catalogos;
 using PassPlat.WebAPI.MultiTenant;
 using CBP.Security.Cryptography.Factories;
 using CBP.WebApi.Extensions;
-
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Mvc;
+using PassPlat.WebAPI.Filters;
+using PassPlat.WebAPI.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using PassPlat.Aplicacion;
 using PassPlat.Aplicacion.OAuth;
@@ -45,6 +45,11 @@ builder.Services.AddSingleton(Log.Logger);
 builder.Services.AddSingleton<RequestDelegate>(_ => static ctx => Task.CompletedTask);
 
 builder.Services.AddCbpControllers();
+
+builder.Services.AddTransient<TenantRequeridoExceptionFilter>();
+builder.Services.Configure<MvcOptions>(o => o.Filters.Add(typeof(TenantRequeridoExceptionFilter)));
+// S64: errores de negocio sin tipo (500 de CBP) con su estado HTTP correcto (ClasificacionErrores).
+builder.Services.Configure<MvcOptions>(o => o.Filters.Add(new ErrorCodigoHttpFilter()));
 builder.Services.AddCbpWebApi();
 builder.Services.AddCbpOpenApi();
 
@@ -67,6 +72,16 @@ builder.Services.AddJwtOperator(options =>
         if (rtExpMins <= 0) throw new InvalidOperationException("JWT RefreshTokenExpirationMinutes must be greater than 0.");
         options.RefreshTokenExpirationMinutes = rtExpMins;
         options.ClockSkew = TimeSpan.FromMinutes(2);
+        // S54.15: GAP-S54.14-01 — PassPlat must accept both PassPlat and InventaNet audiences
+        // Token for INVENTA (IdApp=2) is issued with audience InventaNet via AuthenticationTokenIssuer.GenerateTokenWithAudience.
+        // Without ValidAudiences, ValidateAudience with single ValidAudience=PassPlat rejects Inventa tokens (INVALID_TOKEN on /api/auth/mis-tenants).
+        // Minimal blast-radius fix: keep ValidateAudience=true, ValidIssuer, signature, lifetime; expand ValidAudiences to [PassPlat, InventaNet].
+        var audienceInventa = jwt["AudienceInventa"] ?? "InventaNet";
+        options.ConfigureTokenValidation = p =>
+        {
+            p.ValidAudiences = new[] { jwt["Audience"]!, audienceInventa };
+            p.ValidAudience = null; // force array check, avoid single-value precedence
+        };
 });
 
 builder.Services.AddAuthentication(o => o.DefaultForbidScheme = "CbpFallback")
@@ -79,67 +94,31 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
 builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, LoggingAuthorizationMiddlewareResultHandler>();
 
-builder.Services.AddRateLimiter(options =>
-{
-    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-
-    var isDevelopment = builder.Environment.IsDevelopment();
-
-    options.AddFixedWindowLimiter("LoginPolicy", opt =>
-    {
-        opt.Window = TimeSpan.FromMinutes(1);
-        opt.PermitLimit = isDevelopment ? 100 : 5;
-        opt.QueueLimit = 0;
-    });
-
-    options.AddSlidingWindowLimiter("RefreshPolicy", opt =>
-    {
-        opt.Window = TimeSpan.FromMinutes(1);
-        opt.PermitLimit = 30;
-        opt.SegmentsPerWindow = 6;
-        opt.QueueLimit = 0;
-    });
-
-    options.AddFixedWindowLimiter("PasswordPolicy", opt =>
-    {
-        opt.Window = TimeSpan.FromMinutes(5);
-        opt.PermitLimit = 3;
-        opt.QueueLimit = 0;
-    });
-
-    options.AddFixedWindowLimiter("MFAPolicy", opt =>
-    {
-        opt.Window = TimeSpan.FromMinutes(1);
-        opt.PermitLimit = 5;
-        opt.QueueLimit = 0;
-    });
-
-    options.AddFixedWindowLimiter("TokenPolicy", opt =>
-    {
-        opt.Window = TimeSpan.FromMinutes(15);
-        opt.PermitLimit = 10;
-        opt.QueueLimit = 0;
-    });
-
-    options.AddFixedWindowLimiter("PurgePolicy", opt =>
-    {
-        opt.Window = TimeSpan.FromHours(1);
-        opt.PermitLimit = 1;
-        opt.QueueLimit = 0;
-    });
-});
+// S63: limitadores particionados por IP / usuario con tope global por política
+// (configuración en appsettings, sección "RateLimiting"). Ver PassPlat.WebAPI/RateLimiting.
+builder.Services.AddPassPlatRateLimiting(builder.Configuration);
 
 builder.Services.AddSqlSlowQueryInterceptor();
+builder.Services.AddSqlCommandErrorInterceptor();
 builder.Services.AddDbContext<PassPlatDbContext>((sp, options) =>
 {
     var connStr = builder.Configuration.GetConnectionString("PassPlatDb");
     if (string.IsNullOrEmpty(connStr))
         throw new InvalidOperationException("ConnectionStrings:PassPlatDb must be configured (via User Secrets, env vars, or Key Vault).");
     options.UseSqlServer(connStr);
-    if (builder.Environment.IsDevelopment())
+
+    // D1: EnableSensitiveDataLogging solo si Development Y configuración explícita (no existe en appsettings -> desactivado)
+    if (builder.Environment.IsDevelopment() && builder.Configuration.GetValue<bool>("Diagnostics:EfSensitiveDataLogging"))
         options.EnableSensitiveDataLogging();
-    options.LogTo(Console.WriteLine, Microsoft.Extensions.Logging.LogLevel.Information);
+
+    // D2: Eliminar la salida directa a consola; EF ya usa ILoggerFactory (Serilog) con sus filtros.
+    // D4: Bajar CommandError y SaveChangesFailed a Debug; el interceptor registra en Error.
+    options.ConfigureWarnings(w => w
+        .Log((Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.CommandError, Microsoft.Extensions.Logging.LogLevel.Debug))
+        .Log((Microsoft.EntityFrameworkCore.Diagnostics.CoreEventId.SaveChangesFailed, Microsoft.Extensions.Logging.LogLevel.Debug)));
+
     options.AddInterceptors(sp.GetRequiredService<CBP.Data.Utilities.Services.SqlSlowQueryInterceptor>());
+    options.AddInterceptors(sp.GetRequiredService<CBP.Data.Utilities.Services.SqlCommandErrorInterceptor>());
 });
 
 builder.Services.AddUnitOfWorkAsync<PassPlatDbContext>();
@@ -155,12 +134,6 @@ builder.Services.AddCbpCache(cache =>
 {
     cache.UseLocal(new CBP.Caching.Memory.MemoryCacheProvider());
 });
-builder.Services.AddHttpClient("OAuth.Jwks", client =>
-{
-    client.Timeout = TimeSpan.FromSeconds(10);
-    client.DefaultRequestHeaders.UserAgent.ParseAdd("PassPlat-OAuth/1.0");
-    client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
-}).AddStandardResilienceHandler();
 
 builder.Services.AddHttpClient("OAuth.Token", client =>
 {
@@ -184,8 +157,6 @@ builder.Services.Configure<MfaOptions>(
     builder.Configuration.GetSection(MfaOptions.SectionName));
 builder.Services.Configure<OAuthOptions>(
     builder.Configuration.GetSection(OAuthOptions.SectionName));
-builder.Services.Configure<OAuthMaintenanceOptions>(
-    builder.Configuration.GetSection(OAuthMaintenanceOptions.SectionName));
 
 // Password hashing service (Argon2id)
 builder.Services.AddSingleton<CBP.Security.Cryptography.Services.IPasswordService>(
@@ -248,10 +219,11 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 
 app.UseCors();
-app.UseRateLimiter();
 app.UseMiddleware<TenantResolutionMiddleware>();
 app.UseMiddleware<LoggingScopeMiddleware>();
 app.UseCbpAuthentication();
+// S63 H10: después de la autenticación, para que las políticas por usuario vean al usuario.
+app.UseRateLimiter();
 app.UseMiddleware<DiagnosticAuthMiddleware>();
 app.UseAuthorization();
 app.UseMiddleware<DiagnosticAfterAuthMiddleware>();

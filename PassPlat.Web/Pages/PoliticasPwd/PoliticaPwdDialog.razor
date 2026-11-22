@@ -4,71 +4,89 @@
 @using PassPlat.Aplicacion.Dtos.Catalogos
 @using PassPlat.Aplicacion.Dtos.Core
 
-<MudDialog Options="_dialogOptions">
+<MudDialog Options="@OpcionesDialogo.Dialogo(TamanoDialogo.Amplio)" Class="dialogo-formulario">
     <TitleContent>
-        <MudText Typo="Typo.h6">@(IsEdit ? "Editar" : "Nueva") Política de Contraseña</MudText>
+        <TituloDialogo Icono="@(IsEdit ? Icons.Material.Filled.Edit : Icons.Material.Filled.Add)" Texto="@(IsEdit ? "Editar Política de Contraseña" : "Nueva Política de Contraseña")" />
     </TitleContent>
     <DialogContent>
-        <MudExpansionPanels MultiExpansion="true">
-            <MudExpansionPanel Text="General">
-                <MudTextField @bind-Value="_codigo" Label="Código" Variant="Variant.Outlined" Class="mb-3" Disabled="@IsEdit" Required="true"
-                              Error="@(_submitted && string.IsNullOrWhiteSpace(_codigo))" ErrorText="El código es requerido" />
-                <MudTextField @bind-Value="_nombre" Label="Nombre" Variant="Variant.Outlined" Class="mb-3" Required="true"
-                              Error="@(_submitted && string.IsNullOrWhiteSpace(_nombre))" ErrorText="El nombre es requerido" />
-                <MudAutocomplete T="TenantDto" @bind-Value="_tenantSelected"
-                    SearchFunc="@SearchTenants" ToStringFunc="@(t => t is null ? "" : $"{t.Nombre} ({t.Codigo})")"
-                    Label="Tenant (opcional)" Variant="Variant.Outlined" Class="mb-3" Clearable="true" />
-                <MudAutocomplete T="AppDto" @bind-Value="_appSelected"
-                    SearchFunc="@SearchApps" ToStringFunc="@(a => a is null ? "" : $"{a.Nombre} ({a.Codigo})")"
-                    Label="App (opcional)" Variant="Variant.Outlined" Class="mb-3" Clearable="true" />
-            </MudExpansionPanel>
-            <MudExpansionPanel Text="Longitud">
-                <div class="d-flex gap-4">
-                    <MudTextField @bind-Value="_longMinStr" Label="Long. Mínima" Variant="Variant.Outlined" Class="mb-3 flex-1" />
-                    <MudTextField @bind-Value="_longMaxStr" Label="Long. Máxima" Variant="Variant.Outlined" Class="mb-3 flex-1" />
-                </div>
-            </MudExpansionPanel>
-            <MudExpansionPanel Text="Requisitos de Caracteres">
-                <MudSwitch @bind-Value="_reqMayuscula" Label="Requiere mayúscula" Color="Color.Primary" Class="mb-2" />
-                <MudSwitch @bind-Value="_reqMinuscula" Label="Requiere minúscula" Color="Color.Primary" Class="mb-2" />
-                <MudSwitch @bind-Value="_reqNumero" Label="Requiere número" Color="Color.Primary" Class="mb-2" />
-                <MudSwitch @bind-Value="_reqEspecial" Label="Requiere carácter especial" Color="Color.Primary" Class="mb-2" />
-                <MudTextField @bind-Value="_caracteresEspeciales" Label="Caracteres especiales permitidos" Variant="Variant.Outlined" Class="mb-3" HelperText="Dejar vacío para usar los predeterminados" />
-            </MudExpansionPanel>
-            <MudExpansionPanel Text="Prohibiciones">
-                <MudSwitch @bind-Value="_prohSecuenciales" Label="Prohibir secuencias (123, abc)" Color="Color.Error" Class="mb-2" />
-                <MudSwitch @bind-Value="_prohRepetitivos" Label="Prohibir repetitivos (aaa, 111)" Color="Color.Error" Class="mb-2" />
-                <MudSwitch @bind-Value="_prohPatrones" Label="Prohibir patrones de teclado" Color="Color.Error" Class="mb-2" />
-                <MudSwitch @bind-Value="_prohPwdComun" Label="Prohibir contraseñas comunes" Color="Color.Error" Class="mb-2" />
-                <MudSwitch @bind-Value="_prohInfoUsuario" Label="Prohibir información del usuario" Color="Color.Error" Class="mb-2" />
-            </MudExpansionPanel>
-            <MudExpansionPanel Text="Seguridad">
-                <MudSwitch @bind-Value="_verificarBrechas" Label="Verificar en brechas de datos" Color="Color.Warning" Class="mb-2" />
-                <MudSwitch @bind-Value="_permitirEspacios" Label="Permitir espacios" Color="Color.Warning" Class="mb-2" />
-            </MudExpansionPanel>
-            <MudExpansionPanel Text="Vigencia y Bloqueo">
-                <MudTextField @bind-Value="_diasVigenciaStr" Label="Días de vigencia" Variant="Variant.Outlined" Class="mb-3" HelperText="0 = sin expiración" />
-                <MudTextField @bind-Value="_pwdRecordadasStr" Label="Contraseñas recordadas" Variant="Variant.Outlined" Class="mb-3" HelperText="0 = sin historial" />
-                <MudTextField @bind-Value="_maxIntentosStr" Label="Máx. intentos fallidos" Variant="Variant.Outlined" Class="mb-3" />
-                <MudTextField @bind-Value="_durBloqueoMinStr" Label="Duración bloqueo (minutos)" Variant="Variant.Outlined" Class="mb-3" HelperText="0 = hasta desbloqueo manual" />
-            </MudExpansionPanel>
-            <MudExpansionPanel Text="Estado">
-                <MudSwitch @bind-Value="_activa" Label="Política activa" Color="Color.Success" Class="mb-2" />
-            </MudExpansionPanel>
-        </MudExpansionPanels>
+        <AlertaErrorDialogo Mensaje="@_errorServidor" />
+        <MudForm @ref="_form">
+        <div class="dialogo-campos">
+            <MudExpansionPanels MultiExpansion="true">
+                <MudExpansionPanel Text="General" Expanded="true">
+                    <div class="dialogo-campos">
+                        <div class="dialogo-fila">
+                            <MudTextField @bind-Value="_codigo" Label="Código" Variant="Variant.Outlined" Disabled="@IsEdit" Required="true"
+                                          RequiredError="El código es requerido" />
+                            <MudTextField @bind-Value="_nombre" Label="Nombre" Variant="Variant.Outlined" Required="true"
+                                          RequiredError="El nombre es requerido" />
+                        </div>
+                        <SelectorCatalogo T="TenantDto" Items="_tenants" @bind-Value="_tenantSelected"
+                            SearchTextSelector="@(t => $"{t.Nombre} {t.Codigo}")"
+                            ToStringFunc="@(t => t is null ? "" : $"{t.Nombre} ({t.Codigo})")"
+                            Label="Tenant (opcional)" Variant="Variant.Outlined" Clearable="true" />
+                        <SelectorCatalogo T="AppDto" Items="_apps" @bind-Value="_appSelected"
+                            SearchTextSelector="@(a => $"{a.Nombre} {a.Codigo}")"
+                            ToStringFunc="@(a => a is null ? "" : $"{a.Nombre} ({a.Codigo})")"
+                            Label="App (opcional)" Variant="Variant.Outlined" Clearable="true" />
+                    </div>
+                </MudExpansionPanel>
+                <MudExpansionPanel Text="Longitud">
+                    <div class="dialogo-fila">
+                        <MudTextField @bind-Value="_longMinStr" Label="Long. Mínima" Variant="Variant.Outlined" />
+                        <MudTextField @bind-Value="_longMaxStr" Label="Long. Máxima" Variant="Variant.Outlined" />
+                    </div>
+                </MudExpansionPanel>
+                <MudExpansionPanel Text="Requisitos de Caracteres">
+                    <div class="dialogo-campos">
+                        <div class="dialogo-fila">
+                            <MudSwitch @bind-Value="_reqMayuscula" Label="Requiere mayúscula" Color="Color.Primary" />
+                            <MudSwitch @bind-Value="_reqMinuscula" Label="Requiere minúscula" Color="Color.Primary" />
+                            <MudSwitch @bind-Value="_reqNumero" Label="Requiere número" Color="Color.Primary" />
+                            <MudSwitch @bind-Value="_reqEspecial" Label="Requiere carácter especial" Color="Color.Primary" />
+                        </div>
+                        <MudTextField @bind-Value="_caracteresEspeciales" Label="Caracteres especiales permitidos" Variant="Variant.Outlined" HelperText="Deja vacío para usar los predeterminados" />
+                    </div>
+                </MudExpansionPanel>
+                <MudExpansionPanel Text="Prohibiciones">
+                    <div class="dialogo-fila">
+                        <MudSwitch @bind-Value="_prohSecuenciales" Label="Prohibir secuencias (123, abc)" Color="Color.Error" />
+                        <MudSwitch @bind-Value="_prohRepetitivos" Label="Prohibir repetitivos (aaa, 111)" Color="Color.Error" />
+                        <MudSwitch @bind-Value="_prohPatrones" Label="Prohibir patrones de teclado" Color="Color.Error" />
+                        <MudSwitch @bind-Value="_prohPwdComun" Label="Prohibir contraseñas comunes" Color="Color.Error" />
+                        <MudSwitch @bind-Value="_prohInfoUsuario" Label="Prohibir información del usuario" Color="Color.Error" />
+                    </div>
+                </MudExpansionPanel>
+                <MudExpansionPanel Text="Seguridad">
+                    <div class="dialogo-fila">
+                        <MudSwitch @bind-Value="_verificarBrechas" Label="Verificar en brechas de datos" Color="Color.Warning" />
+                        <MudSwitch @bind-Value="_permitirEspacios" Label="Permitir espacios" Color="Color.Warning" />
+                    </div>
+                </MudExpansionPanel>
+                <MudExpansionPanel Text="Vigencia y Bloqueo">
+                    <div class="dialogo-fila">
+                        <MudTextField @bind-Value="_diasVigenciaStr" Label="Días de vigencia" Variant="Variant.Outlined" HelperText="0 = sin expiración" />
+                        <MudTextField @bind-Value="_pwdRecordadasStr" Label="Contraseñas recordadas" Variant="Variant.Outlined" HelperText="0 = sin historial" />
+                        <MudTextField @bind-Value="_maxIntentosStr" Label="Máx. intentos fallidos" Variant="Variant.Outlined" />
+                        <MudTextField @bind-Value="_durBloqueoMinStr" Label="Duración bloqueo (minutos)" Variant="Variant.Outlined" HelperText="0 = hasta desbloqueo manual" />
+                    </div>
+                </MudExpansionPanel>
+                <MudExpansionPanel Text="Estado">
+                    <MudSwitch @bind-Value="_activa" Label="Política activa" Color="Color.Success" />
+                </MudExpansionPanel>
+            </MudExpansionPanels>
+        </div>
+        </MudForm>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="@Cancel">Cancelar</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@Save" Disabled="@(!CanSave() || _saving)">
-            @(IsEdit ? "Guardar" : "Crear")
-        </MudButton>
+        <BotonGuardarDialogo Texto="@(IsEdit ? "Guardar" : "Crear")" Guardando="@_saving" OnClick="@Save" />
     </DialogActions>
 </MudDialog>
 
 @code {
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
-
-    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.ExtraExtraLarge, FullWidth = true, CloseButton = true };
+    private string? _errorServidor;
 
     [Parameter] public bool IsEdit { get; set; }
     [Parameter] public PoliticaPwdDto? Politica { get; set; }
@@ -99,9 +117,7 @@
     private string _durBloqueoMinStr = "30";
     private bool _activa = true;
     private bool _saving;
-    private bool _submitted;
-
-    private bool CanSave() => !string.IsNullOrWhiteSpace(_codigo) && !string.IsNullOrWhiteSpace(_nombre);
+    private MudForm _form = null!;
 
     private void Cancel() => MudDialog.Cancel();
 
@@ -146,28 +162,10 @@
         }
     }
 
-    private Task<IEnumerable<TenantDto>> SearchTenants(string value, CancellationToken _)
-    {
-        if (string.IsNullOrEmpty(value))
-            return Task.FromResult(_tenants.Take(20));
-        return Task.FromResult(_tenants.Where(t =>
-            t.Nombre.Contains(value, StringComparison.OrdinalIgnoreCase) ||
-            t.Codigo.Contains(value, StringComparison.OrdinalIgnoreCase)).Take(20));
-    }
-
-    private Task<IEnumerable<AppDto>> SearchApps(string value, CancellationToken _)
-    {
-        if (string.IsNullOrEmpty(value))
-            return Task.FromResult(_apps.Take(20));
-        return Task.FromResult(_apps.Where(a =>
-            a.Nombre.Contains(value, StringComparison.OrdinalIgnoreCase) ||
-            a.Codigo.Contains(value, StringComparison.OrdinalIgnoreCase)).Take(20));
-    }
-
     private async Task Save()
     {
-        _submitted = true;
-        if (!CanSave()) return;
+        await _form.ValidateAsync();
+        if (!_form.IsValid) return;
         _saving = true;
         try
         {
@@ -210,7 +208,7 @@
                     MudDialog.Close(DialogResult.Ok(true));
                 }
                 else
-                    Snackbar.Add(Api.LastError ?? "Error al actualizar", Severity.Error);
+                    _errorServidor = Api.LastError ?? "Error al actualizar";
             }
             else
             {
@@ -246,12 +244,12 @@
                     MudDialog.Close(DialogResult.Ok(true));
                 }
                 else
-                    Snackbar.Add(Api.LastError ?? "Error al crear", Severity.Error);
+                    _errorServidor = Api.LastError ?? "Error al crear";
             }
         }
         catch (Exception ex)
         {
-            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+            _errorServidor = Api.LastError ?? $"Error: {ex.Message}";
         }
         finally
         {

@@ -22,7 +22,7 @@ public class TipoModuloRepository : RepositoryAsync<TipoModulo>, ITipoModuloRepo
             var entity = await DbSet.FirstOrDefaultAsync(t => t.Codigo == codigo, ct);
             return Result<TipoModulo?>.Success(entity, allowNull: true);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<TipoModulo?>.Failure("DB_ERROR", ex.Message);
         }

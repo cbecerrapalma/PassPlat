@@ -30,10 +30,6 @@ public class Tenant
     public ICollection<ConfProvIden> ConfProvIden { get; set; } = [];
     public ICollection<IdenExt> IdenExt { get; set; } = [];
     public ICollection<AudIdenExt> AuditoriasIdenExt { get; set; } = [];
-    public ICollection<ConfLdap> ConfLdaps { get; set; } = [];
-    public ICollection<ConfSaml> ConfSamls { get; set; } = [];
-    public ICollection<LdapSyncLog> LdapSyncLogs { get; set; } = [];
-    public ICollection<SamlSession> SamlSessions { get; set; } = [];
 
     public static Tenant Crear(string codigo, string nombre)
     {

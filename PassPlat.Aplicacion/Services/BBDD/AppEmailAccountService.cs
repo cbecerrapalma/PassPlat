@@ -35,6 +35,11 @@ public class AppEmailAccountService : ServiceAsync<AppEmailAccount, AppEmailAcco
 
     public async Task<Result<AppEmailAccountDto>> CrearAsync(CrearAppEmailAccountDto dto, CancellationToken ct = default)
     {
+        var existe = await _repo.AnyAsync(e => e.IdApp == dto.IdApp && e.IdEmailAccount == dto.IdEmailAccount, ct);
+        if (existe.IsFailure)
+            return Result<AppEmailAccountDto>.Failure(existe.Error!);
+        if (existe.Value)
+            return Result<AppEmailAccountDto>.Failure("ASIGNACION_DUPLICADA", "La cuenta ya está asignada a la aplicación.");
         var entity = Mapper.Map<AppEmailAccount>(dto);
         var addResult = _repo.Add(entity);
         if (addResult.IsFailure)

@@ -1,0 +1,52 @@
+@implements IDisposable
+
+@* S89 · D1 — el reloj de la barra repinta solo este componente, no todo MainLayout (P37). *@
+<div class="appbar-clock d-none d-md-flex">
+    <MudText Typo="Typo.caption" Class="appbar-greeting">@_saludo</MudText>
+    <div class="appbar-clock-sep"></div>
+    <MudText Typo="Typo.caption" Class="appbar-time">@_hora</MudText>
+</div>
+
+@code {
+    private readonly CancellationTokenSource _cts = new();
+    private string _hora = "";
+    private string _saludo = "";
+
+    protected override void OnInitialized()
+    {
+        Actualizar();
+        _ = LatirAsync(_cts.Token);
+    }
+
+    private async Task LatirAsync(CancellationToken ct)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(ct))
+            {
+                Actualizar();
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private void Actualizar()
+    {
+        var ahora = DateTime.Now;
+        _hora = ahora.ToString("HH:mm:ss");
+        _saludo = ahora.Hour switch
+        {
+            < 12 => "Buenos días",
+            < 18 => "Buenas tardes",
+            _ => "Buenas noches"
+        };
+    }
+
+    public void Dispose()
+    {
+        _cts.Cancel();
+        _cts.Dispose();
+    }
+}

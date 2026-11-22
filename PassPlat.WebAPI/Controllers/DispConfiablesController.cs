@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using CBP.Data.Abstractions;
 using CBP.MultiTenant.Abstractions;
 using CBP.Results;
@@ -5,11 +6,13 @@ using CBP.WebApi.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using PassPlat.Aplicacion.Dtos.Core;
 using PassPlat.Aplicacion.Services;
 using PassPlat.Aplicacion.Services.Security;
 using PassPlat.Datos;
 using PassPlat.Datos.Repositories;
 using PassPlat.Dominio.Entities.Core;
+using PassPlat.WebAPI.Auth;
 namespace PassPlat.WebAPI.Controllers;
 
 [Authorize(Policy = "USUARIOS_VERDISP")]
@@ -18,19 +21,41 @@ public class DispConfiablesController : BaseApiController
     private readonly IDispConfiableService _service;
     private readonly ITenantContext _tenantContext;
     private readonly IUnitOfWorkAsync _uow;
-    public DispConfiablesController(IDispConfiableService service, ITenantContext tenantContext, IUnitOfWorkAsync uow)
+    private readonly IVisibilidadUsuarioService _visibilidad;
+    private readonly ILogger<DispConfiablesController> _logger;
+    public DispConfiablesController(IDispConfiableService service, ITenantContext tenantContext, IUnitOfWorkAsync uow, IVisibilidadUsuarioService visibilidad, ILogger<DispConfiablesController> logger)
     {
         _service = service;
         _tenantContext = tenantContext;
         _uow = uow;
+        _visibilidad = visibilidad;
+        _logger = logger;
     }
 
-    [HttpGet("es-confiable/{idUsuario}/{idDisp}")] public async Task<IActionResult> EsConfiable(int idUsuario, int idDisp, CancellationToken ct) => Ok(await _service.EsConfiableAsync(idUsuario, idDisp));
-    [HttpGet] public async Task<IActionResult> GetAll(CancellationToken ct) => FromResultQuery(await _service.ObtenerTodosConDispositivoAsync(ct));
-    [HttpGet("usuario/{idUsuario}")] public async Task<IActionResult> GetByUsuario(int idUsuario, CancellationToken ct) => FromResultQuery(await _service.ObtenerPorUsuarioAsync(idUsuario));
+    [HttpGet("es-confiable/{idUsuario}/{idDisp}")]
+    public async Task<IActionResult> EsConfiable(int idUsuario, int idDisp, CancellationToken ct)
+    {
+        var denegado = await VerificarVisibilidadAsync(idUsuario, ct);
+        if (denegado != null) return denegado;
+        return Ok(await _service.EsConfiableAsync(idUsuario, idDisp, _tenantContext.Current?.Id, ct));
+    }
+    [HttpGet] public async Task<IActionResult> GetAll(CancellationToken ct) => FromResultQuery(await _service.ObtenerTodosConDispositivoAsync(_tenantContext.Current?.Id, ct));
+    [HttpGet("usuario/{idUsuario}")]
+    public async Task<IActionResult> GetByUsuario(int idUsuario, CancellationToken ct)
+    {
+        var denegado = await VerificarVisibilidadAsync(idUsuario, ct);
+        if (denegado != null) return denegado;
+        // S96 · D5 — un fallo de esta consulta queda registrado (antes el panel mostraba la lista vacía sin rastro).
+        var result = await _service.ObtenerPorUsuarioAsync(idUsuario, _tenantContext.Current?.Id, ct);
+        if (result.IsFailure)
+            _logger.LogError("DispConfiables usuario/{IdUsuario}: {Codigo} {Mensaje}", idUsuario, result.Error!.Code, result.Error.Message);
+        return FromResultQuery(result);
+    }
     [HttpPost("marcar-confiable/{idUsuario}/{idDisp}")]
     public async Task<IActionResult> MarcarConfiable(int idUsuario, int idDisp, [FromQuery] string? nombre, [FromQuery] int? idAgente, CancellationToken ct)
     {
+        var denegado = await VerificarVisibilidadAsync(idUsuario, ct);
+        if (denegado != null) return denegado;
         var result = await _service.MarcarComoConfiableAsync(idUsuario, _tenantContext.CurrentId, idDisp, nombre, idAgente, ct);
         if (result.IsFailure) return FromResult(result);
         await _uow.SaveChangesAsync(ct);
@@ -39,7 +64,9 @@ public class DispConfiablesController : BaseApiController
     [HttpPost("revocar-confianza/{idUsuario}/{idDisp}")]
     public async Task<IActionResult> RevocarConfianza(int idUsuario, int idDisp, CancellationToken ct)
     {
-        var result = await _service.RevocarConfianzaAsync(idUsuario, idDisp, ct);
+        var denegado = await VerificarVisibilidadAsync(idUsuario, ct);
+        if (denegado != null) return denegado;
+        var result = await _service.RevocarConfianzaAsync(idUsuario, idDisp, _tenantContext.Current?.Id, ct);
         if (result.IsFailure) return FromResult(result);
         await _uow.SaveChangesAsync(ct);
         return NoContent();
@@ -48,7 +75,7 @@ public class DispConfiablesController : BaseApiController
     [HttpDelete("{id}")]
     public async Task<IActionResult> Eliminar(int id, CancellationToken ct)
     {
-        var result = await _service.EliminarAsync(id, ct);
+        var result = await _service.EliminarAsync(id, _tenantContext.Current?.Id, ct);
         if (result.IsFailure) return FromResult(result);
         await _uow.SaveChangesAsync(ct);
         return NoContent();
@@ -57,67 +84,20 @@ public class DispConfiablesController : BaseApiController
     [HttpPost("bloquear/{id}")]
     public async Task<IActionResult> Bloquear(int id, CancellationToken ct)
     {
-        var result = await _service.BloquearAsync(id, ct);
+        var result = await _service.BloquearAsync(id, _tenantContext.Current?.Id, ct);
         if (result.IsFailure) return FromResult(result);
         await _uow.SaveChangesAsync(ct);
         return NoContent();
     }
 
-    [HttpPost("trigger-new-device/{idUsuario}")]
-    public async Task<IActionResult> TriggerNewDevice(int idUsuario, [FromQuery] int idDisp, CancellationToken ct)
+    // S75 · D3 — con tenant activo: uno mismo o miembro activo del tenant; sin tenant: sin cambios
+    private async Task<IActionResult?> VerificarVisibilidadAsync(int idUsuario, CancellationToken ct)
     {
-        var result = await _service.DetectarNuevoDispositivoAsync(idUsuario, _tenantContext.CurrentId, idDisp, "Test Device", null, "192.168.1.1", "TestAgent/1.0", ct);
-        if (result.IsFailure) return FromResult(result);
-        await _uow.SaveChangesAsync(ct);
-        return Ok(new { mensaje = "NewDevice event queued" });
-    }
-
-    // Endpoint de diagnóstico/prueba (convención trigger-*): desde `ip` se inyecta
-    // una IP controlada para validar el flujo de detección. NO es una vía funcional
-    // de negocio: en producción la IP se obtiene del contexto de red, nunca del cliente.
-    [HttpPost("trigger-new-ip/{idUsuario}")]
-    public async Task<IActionResult> TriggerNewIp(int idUsuario, [FromQuery] string? ip, CancellationToken ct)
-    {
-        var ipService = HttpContext.RequestServices.GetRequiredService<PassPlat.Aplicacion.Services.IIPService>();
-        var outboxRepo = HttpContext.RequestServices.GetRequiredService<IOutboxRepository>();
-
-        Result<NewIpDetectionResult?> txResult;
-
-        try
-        {
-            txResult = await _uow.ExecuteInTransactionAsync(async () =>
-            {
-                var result = await ipService.DetectarNuevaIPConOutboxAsync(
-                    idUsuario, _tenantContext.CurrentId, ip ?? "10.0.0.99", "TestAgent/1.0", "Test Device", ct);
-
-                if (result.IsFailure) return result;
-
-                if (result.Value?.Outbox != null)
-                    await outboxRepo.AddAsync(result.Value.Outbox!, ct);
-
-                return result;
-            }, ct);
-        }
-        catch (DbUpdateException ex) when (EsViolacionIndiceUnico(ex))
-        {
-            // Carrera: otro request ganó el INSERT IP (UQ_IPs_Direccion). El perdedor
-            // se rechaza limpio — el creador real persistió su Outbox. Es el diseño
-            // S21: el índice único es el árbitro determinista del creador.
-            return Ok(new { mensaje = "NewIp event ya encolado por otra solicitud", ip = ip ?? "10.0.0.99", queued = false });
-        }
-
-        if (txResult.IsFailure) return FromResult(txResult);
-        return Ok(new { mensaje = "NewIp event queued", ip = ip ?? "10.0.0.99", queued = txResult.Value?.Outbox != null });
-    }
-
-    private static bool EsViolacionIndiceUnico(DbUpdateException ex)
-    {
-        for (var e = ex.InnerException; e != null; e = e.InnerException)
-        {
-            if (e is Microsoft.Data.SqlClient.SqlException sqlex &&
-                (sqlex.Number == 2601 || sqlex.Number == 2627))
-                return true;
-        }
-        return false;
+        var idTenant = _tenantContext.Current?.Id;
+        if (idTenant is null) return null;
+        var uid = User.IdUsuario();
+        if (uid == null) return Unauthorized(new { codigo = "ACCESO_DENEGADO" });
+        var acceso = await _visibilidad.VerificarAsync(uid.Value, idUsuario, idTenant.Value, "dispositivos del usuario", ct);
+        return acceso.IsFailure ? FromResult(acceso) : null;
     }
 }

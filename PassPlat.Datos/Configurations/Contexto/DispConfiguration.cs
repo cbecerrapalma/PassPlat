@@ -15,7 +15,7 @@ public class DispConfiguration : IEntityTypeConfiguration<Disp>
         builder.Property(d => d.IdTipoDisp).IsRequired();
         builder.Property(d => d.Fabricante).HasMaxLength(100);
         builder.Property(d => d.Modelo).HasMaxLength(100);
-        builder.Property(d => d.FecPrimerReg).HasDefaultValueSql("sysutcdatetime()").IsRequired();
+        builder.Property(d => d.FecPrimerReg).HasDefaultValueSql("sysdatetime()").IsRequired();
         builder.Property(d => d.UltActividad);
         builder.Property(d => d.CantidadLogins).HasDefaultValue(0).IsRequired();
         builder.Property(d => d.IP).HasMaxLength(45);

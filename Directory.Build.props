@@ -1,0 +1,10 @@
+<Project>
+  <!-- S92.2-K3: auditoria NuGet permanente. NU1903 (alta) y NU1904 (critica) son errores de compilacion. -->
+  <PropertyGroup>
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <WarningsAsErrors>NU1903;NU1904</WarningsAsErrors>
+    <!-- S115 · D3 (P46): versión de la solución; el cajón y el pie la leen del ensamblado. Se sube a mano en cada entrega. -->
+    <Version>1.1.0</Version>
+  </PropertyGroup>
+</Project>

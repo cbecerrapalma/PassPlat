@@ -5,35 +5,53 @@
 @inject NavigationManager Navigation
 @inject AuthService Auth
 
-<MudContainer>
-    <MudBreadcrumbs Class="mb-3">
-        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
-        <MudBreadcrumbItem>Seguridad</MudBreadcrumbItem>
-        <MudBreadcrumbItem>Dispositivos</MudBreadcrumbItem>
-    </MudBreadcrumbs>
+<div class="iam-page">
+<MigasDePan />
 
-    <MudGrid Class="mb-4">
-        <MudItem xs="12" sm="6" md="3">
+    <div class="page-header">
+        <div class="page-title-row">
+            <div>
+                <h1 class="page-title">Gestión de Dispositivos</h1>
+                <p class="page-subtitle">Dispositivos registrados; seleccione uno para ver su detalle.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="kpi-row mb-4">
+        <div>
             <IamKpiCard Icon="@Icons.Material.Filled.Devices" Valor="@_totalDisp.ToString()" Label="Total Dispositivos" ColorClass="primary" />
-        </MudItem>
-        <MudItem xs="12" sm="6" md="3">
+        </div>
+        <div>
             <IamKpiCard Icon="@Icons.Material.Filled.Shield" Valor="@_totalConf.ToString()" Label="Confiables" ColorClass="success" />
-        </MudItem>
-        <MudItem xs="12" sm="6" md="3">
+        </div>
+        <div>
             <IamKpiCard Icon="@Icons.Material.Filled.Block" Valor="@_totalNoConf.ToString()" Label="No Confiables" ColorClass="warning" />
-        </MudItem>
-        <MudItem xs="12" sm="6" md="3">
+        </div>
+        <div>
             <IamKpiCard Icon="@Icons.Material.Filled.Person" Valor="@_totalUsuarios.ToString()" Label="Usuarios" ColorClass="info" />
-        </MudItem>
-    </MudGrid>
+        </div>
+    </div>
 
-    <MudPaper Class="pa-4 mb-4 d-flex flex-wrap align-center gap-4" Elevation="0" Outlined="true">
-        <MudText Typo="Typo.h5" Class="flex-grow-1 mb-0">Gestión de Dispositivos</MudText>
-        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium" OnClick="@LoadData" />
-    </MudPaper>
-
-    <MudTable T="DispConfiableDto" Items="@_items" Hover="true" Breakpoint="Breakpoint.Sm"
-        SelectedItem="@_selectedItem" SelectedItemChanged="@OnSelectedItemChanged"
+    <div class="content-body">
+        <div class="table-panel">
+            <div class="table-toolbar filter-row">
+                <MudTextField @bind-Value="_search" Label="Buscar dispositivo..." Variant="Variant.Outlined" Immediate="true" Clearable="true" Class="lista-filtro" />
+                <MudSelect T="string" Value="_tipoFiltro" ValueChanged="@OnTipoChanged" Label="Tipo" Variant="Variant.Outlined" Dense="true" Clearable="true" Class="lista-filtro">
+                    @foreach (var tipo in _tiposFiltro)
+                    {
+                        <MudSelectItem Value="@tipo">@tipo</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudSelect T="bool?" Value="_confiableFiltro" ValueChanged="@OnConfiableChanged" Label="Confiable" Variant="Variant.Outlined" Dense="true" Clearable="true" Class="lista-filtro">
+                    <MudSelectItem T="bool?" Value="@((bool?)true)">Sí</MudSelectItem>
+                    <MudSelectItem T="bool?" Value="@((bool?)false)">No</MudSelectItem>
+                </MudSelect>
+                <div class="toolbar-spacer"></div>
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium" OnClick="@LoadData" aria-label="Refrescar" />
+            </div>
+            <div class="table-wrap">
+    <MudTable T="DispConfiableDto" Items="@_itemsFiltrados" Hover="true" Breakpoint="Breakpoint.Sm"
+        OnRowClick="@((TableRowClickEventArgs<DispConfiableDto> e) => VerDetalle(e.Item))" RowStyle="cursor: pointer;"
         Loading="@_loading" Class="mt-2">
         <ColGroup>
             <col style="width:60px;" />
@@ -81,24 +99,26 @@
                 </MudChip>
             </MudTd>
             <MudTd DataLabel="Acciones">
-                <MudTooltip Text="Marcar confiable">
-                    <MudIconButton Icon="@Icons.Material.Filled.Shield" Size="Size.Small" Color="Color.Success"
-                        Disabled="@context.Confiable"
-                        OnClick="@(() => MarcarConfiable(context))" />
-                </MudTooltip>
-                <MudTooltip Text="Revocar confianza">
-                    <MudIconButton Icon="@Icons.Material.Filled.Block" Size="Size.Small" Color="Color.Warning"
-                        Disabled="@(!context.Confiable)"
-                        OnClick="@(() => RevocarConfianza(context))" />
-                </MudTooltip>
-                <MudTooltip Text="Bloquear dispositivo">
-                    <MudIconButton Icon="@Icons.Material.Filled.Dangerous" Size="Size.Small" Color="Color.Error"
-                        OnClick="@(() => Bloquear(context))" />
-                </MudTooltip>
-                <MudTooltip Text="Eliminar dispositivo">
-                    <MudIconButton Icon="@Icons.Material.Filled.DeleteForever" Size="Size.Small" Color="Color.Error"
-                        OnClick="@(() => Eliminar(context))" />
-                </MudTooltip>
+                <div @onclick:stopPropagation="true" class="table-actions">
+                    <MudTooltip Text="Marcar confiable">
+                        <MudIconButton Icon="@Icons.Material.Filled.Shield" Size="Size.Small" Color="Color.Success"
+                            Disabled="@context.Confiable"
+                            OnClick="@(() => MarcarConfiable(context))" aria-label="Seguridad" />
+                    </MudTooltip>
+                    <MudTooltip Text="Revocar confianza">
+                        <MudIconButton Icon="@Icons.Material.Filled.Block" Size="Size.Small" Color="Color.Warning"
+                            Disabled="@(!context.Confiable)"
+                            OnClick="@(() => RevocarConfianza(context))" aria-label="Bloquear" />
+                    </MudTooltip>
+                    <MudTooltip Text="Bloquear dispositivo">
+                        <MudIconButton Icon="@Icons.Material.Filled.Dangerous" Size="Size.Small" Color="Color.Error"
+                            OnClick="@(() => Bloquear(context))" aria-label="Acción peligrosa" />
+                    </MudTooltip>
+                    <MudTooltip Text="Eliminar dispositivo">
+                        <MudIconButton Icon="@Icons.Material.Filled.DeleteForever" Size="Size.Small" Color="Color.Error"
+                            OnClick="@(() => Eliminar(context))" aria-label="Eliminar definitivamente" />
+                    </MudTooltip>
+                </div>
             </MudTd>
         </RowTemplate>
         <PagerContent>
@@ -111,38 +131,10 @@
             </MudText>
         </NoRecordsContent>
     </MudTable>
-
-    @if (_selectedItem is not null)
-    {
-        <MudPaper Class="pa-4 mt-4" Elevation="0" Outlined="true">
-            <MudText Typo="Typo.h6" Class="mb-3">
-                Detalle del Dispositivo #@_selectedItem.Id
-                <MudChip T="string" Size="Size.Small" Color="@(_selectedItem.Confiable ? Color.Success : Color.Error)" Class="ml-2">
-                    @(_selectedItem.Confiable ? "Confiable" : "No confiable")
-                </MudChip>
-            </MudText>
-            <MudGrid>
-                <MudItem xs="12" md="6">
-                    <div class="field-row"><div class="field-label">Dispositivo</div><div class="field-value">@_selectedItem.DispModelo</div></div>
-                    <div class="field-row"><div class="field-label">Fabricante</div><div class="field-value">@(_selectedItem.DispFabricante ?? "—")</div></div>
-                    <div class="field-row"><div class="field-label">Tipo</div><div class="field-value">@(_selectedItem.DispTipo ?? "—")</div></div>
-                    <div class="field-row"><div class="field-label">Nombre</div><div class="field-value">@(_selectedItem.Nombre ?? "—")</div></div>
-                    <div class="field-row"><div class="field-label">Usuario</div><div class="field-value">@(_selectedItem.UsuarioNombre ?? $"#{_selectedItem.IdUsuario}")</div></div>
-                </MudItem>
-                <MudItem xs="12" md="6">
-                    <div class="field-row"><div class="field-label">IP</div><div class="field-value mono">@(_selectedItem.IP ?? "—")</div></div>
-                    <div class="field-row"><div class="field-label">País</div><div class="field-value">@(_selectedItem.Pais ?? "—")</div></div>
-                    <div class="field-row"><div class="field-label">Navegador</div><div class="field-value">@(_selectedItem.Navegador ?? "—")</div></div>
-                    <div class="field-row"><div class="field-label">Sistema Operativo</div><div class="field-value">@(_selectedItem.SO ?? "—")</div></div>
-                    <div class="field-row"><div class="field-label">Proveedor Auth</div><div class="field-value">@(_selectedItem.ProveedorAuth ?? "Local")</div></div>
-                    <div class="field-row"><div class="field-label">Logins</div><div class="field-value">@_selectedItem.CantidadLogins</div></div>
-                    <div class="field-row"><div class="field-label">Último Uso</div><div class="field-value">@(_selectedItem.UltUso?.ToLocalTime().ToString("dd MMM yyyy HH:mm") ?? "—")</div></div>
-                    <div class="field-row"><div class="field-label">Fec. Alta</div><div class="field-value">@_selectedItem.FecAlta.ToLocalTime().ToString("dd MMM yyyy HH:mm")</div></div>
-                </MudItem>
-            </MudGrid>
-        </MudPaper>
-    }
-</MudContainer>
+            </div>
+        </div>
+    </div>
+</div>
 
 @code {
     private List<DispConfiableDto> _items = [];
@@ -151,11 +143,37 @@
     private int _totalConf;
     private int _totalNoConf;
     private int _totalUsuarios;
-    private DispConfiableDto? _selectedItem;
+    private string? _search;
+    private string? _tipoFiltro;
+    private bool? _confiableFiltro;
+    private List<string> _tiposFiltro = [];
 
     protected override async Task OnInitializedAsync()
     {
         await LoadData();
+    }
+
+    // S85 · D4 — buscador (UsuarioNombre/Nombre/IP/DispModelo), tipo y confianza se aplican en memoria
+    private List<DispConfiableDto> _itemsFiltrados
+    {
+        get
+        {
+            var filtrados = _items;
+            if (!string.IsNullOrWhiteSpace(_search))
+            {
+                var s = _search.Trim();
+                filtrados = filtrados.Where(d =>
+                    (d.UsuarioNombre ?? string.Empty).Contains(s, StringComparison.OrdinalIgnoreCase) ||
+                    (d.Nombre ?? string.Empty).Contains(s, StringComparison.OrdinalIgnoreCase) ||
+                    (d.IP ?? string.Empty).Contains(s, StringComparison.OrdinalIgnoreCase) ||
+                    (d.DispModelo ?? string.Empty).Contains(s, StringComparison.OrdinalIgnoreCase)).ToList();
+            }
+            if (!string.IsNullOrWhiteSpace(_tipoFiltro))
+                filtrados = filtrados.Where(d => d.DispTipo == _tipoFiltro).ToList();
+            if (_confiableFiltro is bool confiable)
+                filtrados = filtrados.Where(d => d.Confiable == confiable).ToList();
+            return filtrados;
+        }
     }
 
     private async Task LoadData()
@@ -168,6 +186,10 @@
             _totalConf = _items.Count(d => d.Confiable);
             _totalNoConf = _items.Count(d => !d.Confiable);
             _totalUsuarios = _items.Select(d => d.IdUsuario).Distinct().Count();
+
+            // S85 · D4 — opciones del filtro Tipo a partir de la lista cargada
+            _tiposFiltro = _items.Select(d => d.DispTipo ?? string.Empty)
+                .Where(n => n.Length > 0).Distinct().OrderBy(n => n).ToList();
         }
         catch (Exception ex)
         {
@@ -179,9 +201,9 @@
         }
     }
 
-    private void OnSelectedItemChanged(DispConfiableDto? item)
+    private void VerDetalle(DispConfiableDto? item)
     {
-        _selectedItem = item;
+        if (item is not null) Navigation.NavigateTo($"/dispositivos/{item.Id}");
     }
 
     private async Task MarcarConfiable(DispConfiableDto item)
@@ -233,7 +255,7 @@
         };
         var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parameters);
         var result = await dialog.Result;
-        if (result.Canceled) return;
+        if (result is null or { Canceled: true }) return;
 
         try
         {
@@ -264,7 +286,7 @@
         };
         var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parameters);
         var result = await dialog.Result;
-        if (result.Canceled) return;
+        if (result is null or { Canceled: true }) return;
 
         try
         {
@@ -281,5 +303,16 @@
         {
             Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
         }
+    }
+
+    private void OnTipoChanged(string? tipo)
+    {
+        _tipoFiltro = tipo;
+    }
+
+    private void OnConfiableChanged(bool? confiable)
+    {
+        _confiableFiltro = confiable;
+        StateHasChanged();
     }
 }

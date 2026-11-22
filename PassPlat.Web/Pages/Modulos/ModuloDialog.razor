@@ -1,0 +1,152 @@
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog Class="dialogo-formulario">
+    <TitleContent>
+        <TituloDialogo Icono="@Icons.Material.Filled.ViewModule" Texto="@(Modulo is null ? "Nuevo módulo" : "Editar módulo")" />
+    </TitleContent>
+    <DialogContent>
+        <AlertaErrorDialogo Mensaje="@_errorServidor" />
+        <MudForm @ref="_form">
+            <div class="dialogo-campos">
+                <MudTextField @bind-Value="_codigo" Label="Código" Variant="Variant.Outlined" Required="true"
+                    Disabled="@(Modulo is not null)" data-testid="modulo-codigo" />
+                <MudTextField @bind-Value="_nombre" Label="Nombre" Variant="Variant.Outlined" Required="true"
+                    data-testid="modulo-nombre" />
+                <MudTextField @bind-Value="_ruta" Label="Ruta" Variant="Variant.Outlined"
+                    HelperText="Ruta de la página; vacía si el módulo es solo contenedor" data-testid="modulo-ruta" />
+                <MudTextField @bind-Value="_descripcion" Label="Descripción" Variant="Variant.Outlined" Lines="2" />
+                <MudSelect T="int" Label="Tipo" @bind-Value="_idTipo" Variant="Variant.Outlined" FullWidth="true"
+                    AnchorOrigin="Origin.BottomCenter" Required="true" data-testid="modulo-tipo">
+                    @foreach (var tipo in Tipos)
+                    {
+                        <MudSelectItem T="int" Value="@tipo.Id">@tipo.Nombre</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudSelect T="int?" Label="Módulo padre" @bind-Value="_idPadre" Variant="Variant.Outlined"
+                    FullWidth="true" AnchorOrigin="Origin.BottomCenter" data-testid="modulo-padre">
+                    <MudSelectItem T="int?" Value="@((int?)null)">Sin padre (raíz)</MudSelectItem>
+                    @foreach (var padre in TiposPadre)
+                    {
+                        <MudSelectItem T="int?" Value="@((int?)padre.Id)">@padre.Nombre</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudNumericField T="byte" @bind-Value="_orden" Label="Orden" Variant="Variant.Outlined" Min="0" Max="255" />
+                <MudSwitch T="bool" @bind-Value="_visibleMenu" Label="Visible en el menú" Color="Color.Primary" data-testid="modulo-menu" />
+                @if (Modulo is not null)
+                {
+                    <MudSwitch T="bool" @bind-Value="_activo" Label="Activo" Color="Color.Success" data-testid="modulo-activo" />
+                }
+            </div>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancelar" Disabled="@_guardando">Cancelar</MudButton>
+        <BotonGuardarDialogo Texto="Guardar" Guardando="@_guardando" OnClick="Guardar" />
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    private string? _errorServidor;
+    [Parameter] public ModuloDto? Modulo { get; set; }
+    [Parameter] public List<ModuloDto> Modulos { get; set; } = [];
+    [Parameter] public List<TipoModuloDto> Tipos { get; set; } = [];
+
+    private MudForm _form = null!;
+    private string _codigo = string.Empty;
+    private string _nombre = string.Empty;
+    private string? _ruta;
+    private string? _descripcion;
+    private int _idTipo;
+    private int? _idPadre;
+    private byte _orden;
+    private bool _visibleMenu = true;
+    private bool _activo = true;
+    private bool _guardando;
+
+    // Al editar, ni el propio módulo ni sus descendientes pueden ser padre: crearían un ciclo
+    private IEnumerable<ModuloDto> TiposPadre
+    {
+        get
+        {
+            if (Modulo is null) return Modulos;
+            var excluidos = new HashSet<int> { Modulo.Id };
+            var pendientes = new Queue<int>([Modulo.Id]);
+            while (pendientes.Count > 0)
+            {
+                var actual = pendientes.Dequeue();
+                foreach (var hijo in Modulos.Where(m => m.IdModuloPadre == actual))
+                    if (excluidos.Add(hijo.Id)) pendientes.Enqueue(hijo.Id);
+            }
+            return Modulos.Where(m => !excluidos.Contains(m.Id));
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        if (Modulo is null) return;
+        _codigo = Modulo.Codigo;
+        _nombre = Modulo.Nombre;
+        _ruta = Modulo.Ruta;
+        _descripcion = Modulo.Descripcion;
+        _idTipo = Modulo.IdTipoModulo;
+        _idPadre = Modulo.IdModuloPadre;
+        _orden = Modulo.Orden;
+        _visibleMenu = Modulo.EsVisibleMenu;
+        _activo = Modulo.Activo;
+    }
+
+    private void Cancelar() => MudDialog.Cancel();
+
+    private async Task Guardar()
+    {
+        if (string.IsNullOrWhiteSpace(_codigo) || string.IsNullOrWhiteSpace(_nombre) || _idTipo <= 0)
+        {
+            Snackbar.Add("Completa código, nombre y tipo", Severity.Warning);
+            return;
+        }
+        _guardando = true;
+        try
+        {
+            if (Modulo is null)
+            {
+                var (result, error) = await Api.PostWithErrorAsync<ModuloDto>("api/modulos", new CrearModuloDto
+                {
+                    IdModuloPadre = _idPadre,
+                    IdTipoModulo = _idTipo,
+                    Codigo = _codigo.Trim(),
+                    Nombre = _nombre.Trim(),
+                    Descripcion = _descripcion,
+                    Ruta = string.IsNullOrWhiteSpace(_ruta) ? null : _ruta.Trim(),
+                    Orden = _orden,
+                    EsVisibleMenu = _visibleMenu
+                });
+                if (result is not null) MudDialog.Close(DialogResult.Ok(true));
+                else _errorServidor = error ?? "No se pudo crear el módulo";
+            }
+            else
+            {
+                var resultado = await Api.PutAsync<ModuloDto>($"api/modulos/{Modulo.Id}", new ActualizarModuloDto
+                {
+                    IdModuloPadre = _idPadre,
+                    IdTipoModulo = _idTipo,
+                    Codigo = _codigo.Trim(),
+                    Nombre = _nombre.Trim(),
+                    Descripcion = _descripcion,
+                    Ruta = string.IsNullOrWhiteSpace(_ruta) ? null : _ruta.Trim(),
+                    Orden = _orden,
+                    EsVisibleMenu = _visibleMenu,
+                    Activo = _activo
+                });
+                if (resultado is not null) MudDialog.Close(DialogResult.Ok(true));
+                else _errorServidor = Api.LastError ?? "No se pudo actualizar el módulo";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorServidor = Api.LastError ?? $"Error al guardar el módulo: {ex.Message}";
+        }
+        finally { _guardando = false; }
+    }
+}

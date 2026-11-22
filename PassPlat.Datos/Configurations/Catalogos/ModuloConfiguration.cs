@@ -19,7 +19,7 @@ public class ModuloConfiguration : IEntityTypeConfiguration<Modulo>
         builder.Property(m => m.Orden).HasColumnType("smallint").HasDefaultValue(0);
         builder.Property(m => m.EsVisibleMenu).HasDefaultValue(true).IsRequired();
         builder.Property(m => m.Activo).HasDefaultValue(true).IsRequired();
-        builder.Property(m => m.FecCrea).HasDefaultValueSql("sysutcdatetime()").IsRequired();
+        builder.Property(m => m.FecCrea).HasDefaultValueSql("sysdatetime()").IsRequired();
         builder.Property(m => m.FecMod);
 
         builder.HasOne(m => m.ModuloPadre).WithMany(m => m.SubModulos).HasForeignKey(m => m.IdModuloPadre)

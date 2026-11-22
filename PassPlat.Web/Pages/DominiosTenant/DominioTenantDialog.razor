@@ -3,76 +3,92 @@
 @inject ISnackbar Snackbar
 @using PassPlat.Web.Models
 
-<MudDialog Options="_dialogOptions">
+@* S101 · D5 — diálogo único de dominios: con IdTenant fijo (detalle del tenant) no muestra el selector;
+   con Dominio edita (PUT); guarda él y cierra Ok(true). *@
+<MudDialog Options="@OpcionesDialogo.Dialogo(TamanoDialogo.Compacto)" Class="dialogo-formulario">
     <TitleContent>
-        <MudText Typo="Typo.h6">Agregar Dominio</MudText>
+        <TituloDialogo Icono="@(EsEdicion ? Icons.Material.Filled.Edit : Icons.Material.Filled.Add)" Texto="@(EsEdicion ? "Editar Dominio" : "Agregar Dominio")" />
     </TitleContent>
     <DialogContent>
-        <MudAutocomplete T="TenantDto" @bind-Value="_tenantSelected"
-            SearchFunc="@SearchTenants" ToStringFunc="@(t => t is null ? "" : $"{t.Nombre} ({t.Codigo})")"
-            Label="Tenant" Variant="Variant.Outlined" Class="mb-3"
-            Error="@(_submitted && _tenantSelected is null)" ErrorText="El tenant es requerido" />
-        <MudTextField @bind-Value="_dominio" Label="Dominio" Variant="Variant.Outlined" Class="mb-3" Required="true"
-                      Error="@(_submitted && string.IsNullOrWhiteSpace(_dominio))" ErrorText="El dominio es requerido" />
+        <AlertaErrorDialogo Mensaje="@_errorServidor" />
+        <MudForm @ref="_form">
+        <div class="dialogo-campos">
+            @if (MuestraSelector)
+            {
+                <SelectorCatalogo T="TenantDto" Items="_tenants" @bind-Value="_tenantSelected"
+                    SearchTextSelector="@(t => $"{t.Nombre} {t.Codigo}")"
+                    ToStringFunc="@(t => t is null ? "" : $"{t.Nombre} ({t.Codigo})")"
+                    Label="Tenant" Variant="Variant.Outlined"
+                    Required="true" RequiredError="El tenant es requerido" />
+            }
+            <MudTextField @bind-Value="_dominio" Label="Dominio" Variant="Variant.Outlined" Placeholder="ejemplo.com"
+                Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Language"
+                Required="true" RequiredError="El dominio es requerido"
+                HelperText="Ingresa el dominio sin protocolo (ej: ejemplo.com, mail.ejemplo.com)" />
+        </div>
+        </MudForm>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="@(() => MudDialog.Cancel())">Cancelar</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@Save" Disabled="@(!CanSave() || _saving)">
-            Crear
-        </MudButton>
+        <BotonGuardarDialogo Texto="@(EsEdicion ? "Guardar" : "Agregar")" Guardando="@_saving" OnClick="@Save" />
     </DialogActions>
 </MudDialog>
 
 @code {
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    private string? _errorServidor;
 
-    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+    /// <summary>Tenant fijo (detalle del tenant): sin selector.</summary>
+    [Parameter] public int? IdTenant { get; set; }
+
+    /// <summary>Dominio a editar; sin él, alta.</summary>
+    [Parameter] public DominioTenantDto? Dominio { get; set; }
+
+    private bool EsEdicion => Dominio is not null;
+    private bool MuestraSelector => !IdTenant.HasValue && !EsEdicion;
 
     private string _dominio = "";
     private List<TenantDto> _tenants = [];
     private TenantDto? _tenantSelected;
     private bool _saving;
-    private bool _submitted;
+    private MudForm _form = null!;
 
     protected override async Task OnInitializedAsync()
     {
+        _dominio = Dominio?.Dominio ?? "";
+        if (!MuestraSelector) return;
         var data = await Api.GetAsync<List<TenantDto>>("api/tenants");
         _tenants = data ?? [];
         _tenantSelected = _tenants.FirstOrDefault(t => t.Id == (Auth.IdTenant ?? 0));
     }
 
-    private Task<IEnumerable<TenantDto>> SearchTenants(string value, CancellationToken _)
-    {
-        if (string.IsNullOrEmpty(value))
-            return Task.FromResult(_tenants.Take(20));
-        return Task.FromResult(_tenants.Where(t =>
-            t.Nombre.Contains(value, StringComparison.OrdinalIgnoreCase) ||
-            t.Codigo.Contains(value, StringComparison.OrdinalIgnoreCase)).Take(20));
-    }
-
-    private bool CanSave() => _tenantSelected is not null && !string.IsNullOrWhiteSpace(_dominio);
-
     private async Task Save()
     {
-        _submitted = true;
-        if (!CanSave()) return;
+        await _form.ValidateAsync();
+        if (!_form.IsValid) return;
         _saving = true;
         try
         {
-            var idTenant = _tenantSelected?.Id ?? (Auth.IdTenant ?? 0);
-            var result = await Api.PostAsync<DominioTenantDto>("api/DominiosTenant",
-                new { idTenant, dominio = _dominio });
+            var dominio = _dominio.Trim().ToLowerInvariant();
+            DominioTenantDto? result;
+            if (EsEdicion)
+                result = await Api.PutAsync<DominioTenantDto>($"api/DominiosTenant/{Dominio!.Id}", new { dominio });
+            else
+            {
+                var idTenant = IdTenant ?? _tenantSelected?.Id ?? (Auth.IdTenant ?? 0);
+                result = await Api.PostAsync<DominioTenantDto>("api/DominiosTenant", new { idTenant, dominio });
+            }
             if (result is not null)
             {
-                Snackbar.Add("Dominio agregado", Severity.Success);
+                Snackbar.Add(EsEdicion ? "Dominio actualizado" : "Dominio agregado", Severity.Success);
                 MudDialog.Close(DialogResult.Ok(true));
             }
             else
-                Snackbar.Add(Api.LastError ?? "Error al crear", Severity.Error);
+                _errorServidor = Api.LastError ?? "Error al guardar el dominio";
         }
         catch (Exception ex)
         {
-            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+            _errorServidor = Api.LastError ?? $"Error: {ex.Message}";
         }
         finally
         {

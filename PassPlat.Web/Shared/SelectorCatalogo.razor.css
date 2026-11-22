@@ -1,0 +1,14 @@
+/* S54.1 · D2 — CSS aislado del selector de catalogo (solo elementos propios del componente).
+   La lista, el pie y «Sin resultados» se renderizan en el MudPopoverProvider (portal fuera
+   del componente) y el CSS con aislamiento no alcanza a ese DOM: sus reglas viven en el
+   bloque <style> de SelectorCatalogo.razor. */
+
+.selector-catalogo {
+    display: block;
+}
+
+.selector-catalogo-error {
+    display: block;
+    margin-top: 4px;
+    font-size: 12px;
+}

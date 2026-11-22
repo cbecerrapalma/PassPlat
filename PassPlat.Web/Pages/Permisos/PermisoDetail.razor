@@ -1,0 +1,159 @@
+@page "/permiso/{id:int}"
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@inject AuthService Auth
+@inject NavigationManager Navigation
+@using PassPlat.Web.Models
+@using PassPlat.Web.Shared
+
+@if (!Auth.TienePermiso("PERMISOS_VER"))
+{
+    <SinPermiso PermisoRequerido="PERMISOS_VER" />
+}
+else
+{
+<div class="iam-page">
+<MigasDePan Padre="/admin/permisos" Actual="@(_permiso?.Nombre ?? "Permiso")" />
+
+    @if (_cargando && _permiso is null)
+    {
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="100%" Height="300px" Style="border-radius:10px;" />
+    }
+    else if (_permiso is null)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-3">Permiso no encontrado</MudAlert>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="@VolverALista">Atrás</MudButton>
+    }
+    else
+    {
+        <div class="page-header">
+            <div class="page-title-row">
+                <div style="display:flex;gap:12px;align-items:center;">
+                    <h1 class="page-title">@_permiso.Nombre</h1>
+                    <span class="badge @(_permiso.Activo ? "badge-active" : "badge-inactive")">
+                        <span class="badge-dot"></span>@(_permiso.Activo ? "Activo" : "Inactivo")
+                    </span>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <MudButton Variant="Variant.Outlined" OnClick="@VolverALista" StartIcon="@Icons.Material.Filled.ArrowBack">Atrás</MudButton>
+                    @if (Auth.TienePermiso("PERMISOS_EDITAR"))
+                    {
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => AbrirEditarPermiso(_permiso))" StartIcon="@Icons.Material.Filled.Edit">Editar</MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="@(() => ConfirmarEliminarPermiso(_permiso))" StartIcon="@Icons.Material.Filled.Block">@(_permiso.Activo ? "Desactivar" : "Activar")</MudButton>
+                    }
+                </div>
+            </div>
+            <p class="page-subtitle">@_permiso.Descripcion</p>
+        </div>
+
+        <MudTabs @bind-ActivePanelIndex="_tabIndex" Class="detail-tabs" TabPanelsClass="pt-3">
+            <MudTabPanel Text="Info" Icon="@Icons.Material.Filled.Info">
+                <div class="detail-section">
+                    <div class="detail-section-title">Detalles del Permiso</div>
+                    <div class="field-row"><div class="field-label">Código</div><div class="field-value" style="font-family:'JetBrains Mono',monospace;">@_permiso.Codigo</div></div>
+                    <div class="field-row"><div class="field-label">Nombre</div><div class="field-value">@_permiso.Nombre</div></div>
+                    <div class="field-row"><div class="field-label">Descripción</div><div class="field-value">@_permiso.Descripcion</div></div>
+                    <div class="field-row"><div class="field-label">Aplicación</div><div class="field-value">@(_permiso.AppNombre ?? "—")</div></div>
+                    <div class="field-row"><div class="field-label">Módulo</div><div class="field-value"><span class="assign-chip" style="background:rgba(167,139,250,.1);color:var(--violet-400);">@(_permiso.ModuloNombre ?? "—")</span></div></div>
+                    <div class="field-row"><div class="field-label">Orden</div><div class="field-value">@_permiso.Orden</div></div>
+                    <div class="field-row"><div class="field-label">Creado</div><div class="field-value" style="color:var(--text-muted);">@_permiso.FecCrea.ToString("dd MMM yyyy")</div></div>
+                </div>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Roles" Icon="@Icons.Material.Filled.Security">
+                <div class="detail-section">
+                    <div class="detail-section-title">Roles con este Permiso</div>
+                    @if (_rolesConPermiso.Count > 0)
+                    {
+                        <table class="mini-table">
+                            <thead><tr><th>Rol</th><th>Código</th><th>Asignación</th></tr></thead>
+                            <tbody>
+                                @foreach (var r in _rolesConPermiso)
+                                {
+                                    <tr @key="r.IdRol">
+                                        <td class="name-cell">@r.RolNombre</td>
+                                        <td><span class="badge badge-default" style="font-size:10px;">@r.RolCodigo</span></td>
+                                        <td><span class="badge @(r.Estado == "on" ? "badge-active" : "badge-default")" style="font-size:10px;">@(r.Estado == "on" ? "Directo" : "Heredado")</span></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    else
+                    {
+                        <div style="color:var(--text-muted);font-size:12px;padding:8px 0;">Ningún rol de este tenant tiene el permiso</div>
+                    }
+                </div>
+            </MudTabPanel>
+        </MudTabs>
+    }
+</div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private PermisoDto? _permiso;
+    private List<Index.MatrizPermisoRole> _matrizRoles = [];
+    private int _tabIndex;
+    private bool _cargando = true;
+
+    private List<Index.MatrizPermisoRole> _rolesConPermiso
+    {
+        get
+        {
+            if (_permiso is null) return [];
+            // solo los roles que tienen el permiso («on» directo o «inherited»); «off» e «inactive» no cuentan
+            return _matrizRoles
+                .Where(r => r.IdPermiso == _permiso.Id && r.Estado is "on" or "inherited")
+                .GroupBy(r => r.IdRol)
+                .Select(g => g.OrderBy(r => r.Estado == "on" ? 0 : 1).First())
+                .ToList();
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!Auth.TienePermiso("PERMISOS_VER")) return;
+        _tabIndex = 0;
+        await CargarPermiso();
+    }
+
+    private void VolverALista() => Navigation.NavigateTo("/admin/permisos");
+
+    private async Task CargarPermiso()
+    {
+        _cargando = true;
+        try
+        {
+            _permiso = await Api.GetAsync<PermisoDto>($"api/permisos/{Id}");
+            if (_permiso is null) return;
+            _matrizRoles = await Api.GetAsync<List<Index.MatrizPermisoRole>>(Index.RutaMatriz(Auth.EsSistema, Auth.IdTenant)) ?? [];
+            if (Api.LastError != null) Snackbar.Add(Api.LastError, Severity.Error);
+        }
+        catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error al cargar datos: {ex.Message}", Severity.Error); }
+        finally { _cargando = false; }
+    }
+
+    private async Task AbrirEditarPermiso(PermisoDto permiso)
+    {
+        var parameters = new DialogParameters { ["IsEdit"] = true, ["Permiso"] = permiso };
+        var dialog = await Dialog.ShowAsync<PermisoDialog>("Editar Permiso", parameters, OpcionesDialogo.Dialogo(TamanoDialogo.Estandar));
+        var result = await dialog.Result;
+        if (result is { Canceled: false }) { await CargarPermiso(); Snackbar.Add("Permiso actualizado", Severity.Success); }
+    }
+
+    private async Task ConfirmarEliminarPermiso(PermisoDto permiso)
+    {
+        var parameters = new DialogParameters { ["Title"] = "Confirmar", ["Message"] = $"{(permiso.Activo ? "Desactivar" : "Activar")} '{permiso.Nombre}' ({permiso.Codigo})?", ["ConfirmText"] = permiso.Activo ? "Desactivar" : "Activar", ["CancelText"] = "Cancelar", ["ConfirmColor"] = Color.Error };
+        var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parameters);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            var ok = await Api.DeleteAsync($"api/permisos/{permiso.Id}");
+            if (ok) { Snackbar.Add($"Permiso '{permiso.Nombre}' {(permiso.Activo ? "desactivado" : "activado")}", Severity.Success); await CargarPermiso(); }
+            else Snackbar.Add(Api.LastError ?? "Error al cambiar estado", Severity.Error);
+        }
+    }
+}

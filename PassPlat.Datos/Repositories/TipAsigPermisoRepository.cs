@@ -22,7 +22,7 @@ public class TipAsigPermisoRepository : RepositoryAsync<TipAsigPermiso>, ITipAsi
             var list = await DbSet.OrderBy(t => t.Id).AsNoTracking().ToListAsync(ct);
             return Result<IReadOnlyList<TipAsigPermiso>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<TipAsigPermiso>>.Failure("DB_ERROR", ex.Message);
         }

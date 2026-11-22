@@ -8,12 +8,11 @@ namespace PassPlat.Datos.Repositories;
 
 public interface INotificacionRepository : IRepositoryAsync<Notificacion>
 {
-    Task<Result<IReadOnlyList<Notificacion>>> ObtenerNoLeidasAsync(int idUsuario, CancellationToken ct = default);
-    Task<Result<int>> ContarNoLeidasAsync(int idUsuario, CancellationToken ct = default);
-    Task<Result> MarcarTodasComoLeidasAsync(int idUsuario, CancellationToken ct = default);
+    // S118 · D5 — idTenant: null = sin acotar; con valor = solo las notificaciones de ese tenant.
+    Task<Result<IReadOnlyList<Notificacion>>> ObtenerNoLeidasAsync(int idUsuario, int? idTenant, CancellationToken ct = default);
+    Task<Result> MarcarTodasComoLeidasAsync(int idUsuario, int? idTenant, CancellationToken ct = default);
+    Task<Result<(IReadOnlyList<Notificacion> Items, int TotalCount)>> ObtenerPaginadoPorTenantAsync(int idTenant, int pageNumber, int pageSize, CancellationToken ct = default);
     Result MarcarComoLeida(int idNotificacion);
-    Task<Result<IReadOnlyList<Notificacion>>> ObtenerPorTipoAsync(int idUsuario, string tipoNotif, int cantidad, CancellationToken ct = default);
-    Task<Result<int>> EliminarNotificacionesAntiguasAsync(int dias, CancellationToken ct = default);
     Result<Notificacion> CrearNotificacion(int idUsuario, int idTenant, string tipoNotif, string asunto, string? mensaje = null);
 }
 
@@ -21,44 +20,49 @@ public class NotificacionRepository : RepositoryAsync<Notificacion>, INotificaci
 {
     public NotificacionRepository(PassPlatDbContext dbContext) : base(dbContext) { }
 
-    public async Task<Result<IReadOnlyList<Notificacion>>> ObtenerNoLeidasAsync(int idUsuario, CancellationToken ct = default)
+    public async Task<Result<IReadOnlyList<Notificacion>>> ObtenerNoLeidasAsync(int idUsuario, int? idTenant, CancellationToken ct = default)
     {
         try
         {
-            var result = await DbSet.Where(n => n.IdUsuario == idUsuario && !n.Leida).OrderByDescending(n => n.FecCrea).ToListAsync(ct);
+            var result = await DbSet.Where(n => n.IdUsuario == idUsuario && !n.Leida && (idTenant == null || n.IdTenant == idTenant))
+                .OrderByDescending(n => n.FecCrea).ToListAsync(ct);
             return Result<IReadOnlyList<Notificacion>>.Success(result);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<Notificacion>>.Failure("DB_ERROR", ex.Message);
         }
     }
 
-    public async Task<Result<int>> ContarNoLeidasAsync(int idUsuario, CancellationToken ct = default)
+    public async Task<Result> MarcarTodasComoLeidasAsync(int idUsuario, int? idTenant, CancellationToken ct = default)
     {
         try
         {
-            return Result<int>.Success(await DbSet.CountAsync(n => n.IdUsuario == idUsuario && !n.Leida, ct));
-        }
-        catch (Exception ex)
-        {
-            return Result<int>.Failure("DB_ERROR", ex.Message);
-        }
-    }
-
-    public async Task<Result> MarcarTodasComoLeidasAsync(int idUsuario, CancellationToken ct = default)
-    {
-        try
-        {
-            await DbSet.Where(n => n.IdUsuario == idUsuario && !n.Leida)
+            await DbSet.Where(n => n.IdUsuario == idUsuario && !n.Leida && (idTenant == null || n.IdTenant == idTenant))
                 .ExecuteUpdateAsync(setters => setters
                     .SetProperty(n => n.Leida, true)
                     .SetProperty(n => n.FecLeida, DateTime.Now), ct);
             return Result.Success();
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result.Failure("DB_ERROR", ex.Message);
+        }
+    }
+
+    public async Task<Result<(IReadOnlyList<Notificacion> Items, int TotalCount)>> ObtenerPaginadoPorTenantAsync(int idTenant, int pageNumber, int pageSize, CancellationToken ct = default)
+    {
+        try
+        {
+            var query = DbSet.AsNoTracking().Where(n => n.IdTenant == idTenant);
+            var totalCount = await query.CountAsync(ct);
+            var items = await query.OrderByDescending(n => n.FecCrea)
+                .Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+            return Result<(IReadOnlyList<Notificacion>, int)>.Success((items, totalCount));
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return Result<(IReadOnlyList<Notificacion>, int)>.Failure("DB_ERROR", ex.Message);
         }
     }
 
@@ -73,37 +77,9 @@ public class NotificacionRepository : RepositoryAsync<Notificacion>, INotificaci
             notif.MarcarLeida();
             return Result.Success();
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result.Failure("DB_ERROR", ex.Message);
-        }
-    }
-
-    public async Task<Result<IReadOnlyList<Notificacion>>> ObtenerPorTipoAsync(int idUsuario, string tipoNotif, int cantidad, CancellationToken ct = default)
-    {
-        try
-        {
-            var result = await Query().Where(n => n.IdUsuario == idUsuario && n.TipoNotif == tipoNotif)
-                .OrderByDescending(n => n.FecCrea).Take(cantidad).ToListAsync(ct);
-            return Result<IReadOnlyList<Notificacion>>.Success(result);
-        }
-        catch (Exception ex)
-        {
-            return Result<IReadOnlyList<Notificacion>>.Failure("DB_ERROR", ex.Message);
-        }
-    }
-
-    public async Task<Result<int>> EliminarNotificacionesAntiguasAsync(int dias, CancellationToken ct = default)
-    {
-        try
-        {
-            var fechaLimite = DateTime.Now.AddDays(-dias);
-            var count = await DbSet.Where(n => n.FecCrea < fechaLimite).ExecuteDeleteAsync(ct);
-            return Result<int>.Success(count);
-        }
-        catch (Exception ex)
-        {
-            return Result<int>.Failure("DB_ERROR", ex.Message);
         }
     }
 
@@ -115,7 +91,7 @@ public class NotificacionRepository : RepositoryAsync<Notificacion>, INotificaci
             DbSet.Add(notificacion);
             return Result<Notificacion>.Success(notificacion);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<Notificacion>.Failure("DB_ERROR", ex.Message);
         }

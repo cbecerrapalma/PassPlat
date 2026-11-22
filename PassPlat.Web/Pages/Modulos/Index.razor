@@ -1,0 +1,214 @@
+@page "/admin/modulos"
+@inject ApiClient Api
+@inject AuthService Auth
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@using PassPlat.Web.Models
+@using PassPlat.Web.Shared
+
+@if (!Auth.TienePermiso("MODULOS_VER"))
+{
+    <SinPermiso PermisoRequerido="MODULOS_VER" />
+}
+else
+{
+<div class="iam-page">
+<MigasDePan />
+
+    <div class="page-header">
+        <div class="page-title-row">
+            <div>
+                <h1 class="page-title">Módulos</h1>
+                <p class="page-subtitle">Catálogo de módulos de la plataforma, su jerarquía y su visibilidad en el menú.</p>
+            </div>
+            <div class="page-actions">
+                @if (PuedeCrear)
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => AbrirDialogo(null))"
+                        StartIcon="@Icons.Material.Filled.Add" Size="Size.Medium" data-testid="modulos-nuevo">
+                        Nuevo módulo
+                    </MudButton>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="kpi-row mb-4">
+        <IamKpiCard Valor="@_filas.Count.ToString()" Label="Módulos" Subtexto="En el catálogo" Icon="@Icons.Material.Filled.ViewModule" ColorClass="primary" />
+        <IamKpiCard Valor="@_filas.Count(f => f.Modulo.Activo).ToString()" Label="Activos" Subtexto="Disponibles" Icon="@Icons.Material.Filled.CheckCircle" ColorClass="success" />
+        <IamKpiCard Valor="@_filas.Count(f => f.Modulo.EsVisibleMenu).ToString()" Label="En menú" Subtexto="Visibles en el cajón" Icon="@Icons.Material.Filled.Menu" ColorClass="info" />
+    </div>
+
+    <div class="content-body">
+        <div class="table-panel">
+            <div class="table-toolbar filter-row">
+                <MudSelect T="int" Label="Tipo" Value="_filtroTipo" ValueChanged="@(v => _filtroTipo = v)"
+                    Variant="Variant.Outlined" Dense="true" Class="lista-filtro">
+                    <MudSelectItem T="int" Value="@(0)">Todos</MudSelectItem>
+                    @foreach (var tipo in _tipos)
+                    {
+                        <MudSelectItem T="int" Value="@tipo.Id">@tipo.Nombre</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudSelect T="string" Label="Estado" @bind-Value="_filtroEstado" Variant="Variant.Outlined" Dense="true" Class="lista-filtro">
+                    <MudSelectItem T="string" Value="@("todos")">Todos</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("activos")">Activos</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("inactivos")">Inactivos</MudSelectItem>
+                </MudSelect>
+                <MudSelect T="string" Label="En menú" @bind-Value="_filtroMenu" Variant="Variant.Outlined" Dense="true" Class="lista-filtro">
+                    <MudSelectItem T="string" Value="@("todos")">Todos</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("si")">Sí</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("no")">No</MudSelectItem>
+                </MudSelect>
+                <MudTextField @bind-Value="_busqueda" Label="Buscar módulo..." Variant="Variant.Outlined"
+                    Immediate="true" Clearable="true" Class="lista-filtro"
+                    Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+                <div class="toolbar-spacer"></div>
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium" aria-label="Refrescar" OnClick="@Cargar" />
+            </div>
+            <div class="table-wrap">
+                <MudTable T="Fila" Items="@_filtradas" Hover="true" Loading="@_cargando" Breakpoint="Breakpoint.Sm">
+                    <HeaderContent>
+                        <MudTh>Código</MudTh>
+                        <MudTh>Nombre</MudTh>
+                        <MudTh>Ruta</MudTh>
+                        <MudTh>Padre</MudTh>
+                        <MudTh>Tipo</MudTh>
+                        <MudTh>En menú</MudTh>
+                        <MudTh>Estado</MudTh>
+                        <MudTh>Acciones</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Código" data-testid="modulo-fila">@context.Modulo.Codigo</MudTd>
+                        <MudTd DataLabel="Nombre">
+                            <span style="padding-left:@(context.Nivel * 16)px;">@context.Modulo.Nombre</span>
+                        </MudTd>
+                        <MudTd DataLabel="Ruta">@(string.IsNullOrWhiteSpace(context.Modulo.Ruta) ? "—" : context.Modulo.Ruta)</MudTd>
+                        <MudTd DataLabel="Padre">@(context.Modulo.ModuloPadreNombre ?? "—")</MudTd>
+                        <MudTd DataLabel="Tipo">@TipoNombre(context.Modulo.IdTipoModulo)</MudTd>
+                        <MudTd DataLabel="En menú">
+                            <MudChip T="string" Size="Size.Small" Color="@(context.Modulo.EsVisibleMenu ? Color.Success : Color.Default)" Variant="Variant.Outlined">
+                                @(context.Modulo.EsVisibleMenu ? "Sí" : "No")
+                            </MudChip>
+                        </MudTd>
+                        <MudTd DataLabel="Estado">
+                            <MudChip T="string" Size="Size.Small" Color="@(context.Modulo.Activo ? Color.Success : Color.Error)">
+                                @(context.Modulo.Activo ? "Activo" : "Inactivo")
+                            </MudChip>
+                        </MudTd>
+                        <MudTd DataLabel="Acciones">
+                            @if (PuedeEditar)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary"
+                                    aria-label="Editar" data-testid="modulos-editar" OnClick="@(() => AbrirDialogo(context.Modulo))" />
+                            }
+                            else
+                            {
+                                <span>—</span>
+                            }
+                        </MudTd>
+                    </RowTemplate>
+                    <NoRecordsContent>
+                        <MudText Align="Align.Center" Class="py-6">
+                            <MudIcon Icon="@Icons.Material.Filled.SearchOff" Class="mr-2" />
+                            No hay registros
+                        </MudText>
+                    </NoRecordsContent>
+                </MudTable>
+            </div>
+        </div>
+    </div>
+</div>
+}
+
+@code {
+    private sealed record Fila(ModuloDto Modulo, int Nivel);
+
+    private List<Fila> _filas = [];
+    private List<TipoModuloDto> _tipos = [];
+    private string? _busqueda;
+    private int _filtroTipo;
+    private string _filtroEstado = "todos";
+    private string _filtroMenu = "todos";
+    private bool _cargando;
+
+    private bool PuedeCrear => Auth.EsSistema && Auth.TienePermiso("PERMISOS_CREAR");
+    private bool PuedeEditar => Auth.EsSistema && Auth.TienePermiso("PERMISOS_EDITAR");
+
+    private IEnumerable<Fila> _filtradas => _filas.Where(f =>
+        (_filtroTipo == 0 || f.Modulo.IdTipoModulo == _filtroTipo)
+        && (_filtroEstado == "todos" || f.Modulo.Activo == (_filtroEstado == "activos"))
+        && (_filtroMenu == "todos" || f.Modulo.EsVisibleMenu == (_filtroMenu == "si"))
+        && (string.IsNullOrWhiteSpace(_busqueda)
+            || Contiene(f.Modulo.Codigo)
+            || Contiene(f.Modulo.Nombre)
+            || Contiene(f.Modulo.Ruta)));
+
+    private string TipoNombre(int idTipo) => _tipos.FirstOrDefault(t => t.Id == idTipo)?.Nombre ?? "—";
+
+    private bool Contiene(string? valor) => !string.IsNullOrWhiteSpace(valor)
+        && valor.Contains(_busqueda!, StringComparison.OrdinalIgnoreCase);
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.TienePermiso("MODULOS_VER")) return;
+        await Cargar();
+    }
+
+    private async Task Cargar()
+    {
+        _cargando = true;
+        try
+        {
+            var tipos = await Api.GetAsync<List<TipoModuloDto>>("api/TiposModulo");
+            if (tipos is null) Snackbar.Add(Api.LastError ?? "No se pudieron cargar los tipos de módulo", Severity.Error);
+            _tipos = tipos ?? [];
+
+            var arbol = await Api.GetAsync<List<ModuloDto>>("api/modulos");
+            if (arbol is null)
+            {
+                _filas = [];
+                Snackbar.Add(Api.LastError ?? "No se pudo cargar el catálogo de módulos", Severity.Error);
+                return;
+            }
+            var aplanado = new List<Fila>();
+            Aplanar(arbol, 0, [], aplanado);
+            _filas = aplanado;
+        }
+        catch (Exception ex)
+        {
+            _filas = [];
+            Snackbar.Add(Api.LastError ?? $"Error al cargar: {ex.Message}", Severity.Error);
+        }
+        finally { _cargando = false; }
+    }
+
+    // S109 · D4 — el árbol se aplana sin recursión infinita: un id ya visitado no se repite.
+    private static void Aplanar(IEnumerable<ModuloDto> nodos, int nivel, HashSet<int> visitados, List<Fila> destino)
+    {
+        foreach (var nodo in nodos)
+        {
+            if (!visitados.Add(nodo.Id)) continue;
+            destino.Add(new Fila(nodo, nivel));
+            Aplanar(nodo.SubModulos, nivel + 1, visitados, destino);
+        }
+    }
+
+    private async Task AbrirDialogo(ModuloDto? modulo)
+    {
+        var parametros = new DialogParameters
+        {
+            ["Modulo"] = modulo,
+            ["Modulos"] = _filas.Select(f => f.Modulo).ToList(),
+            ["Tipos"] = _tipos
+        };
+        var dialog = await Dialog.ShowAsync<ModuloDialog>(modulo is null ? "Nuevo módulo" : "Editar módulo",
+            parametros, OpcionesDialogo.Dialogo(TamanoDialogo.Estandar));
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            Snackbar.Add(modulo is null ? "Módulo creado" : "Módulo actualizado", Severity.Success);
+            await Cargar();
+        }
+    }
+}

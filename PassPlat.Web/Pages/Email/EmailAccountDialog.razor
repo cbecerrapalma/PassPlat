@@ -1,101 +1,75 @@
 @inject ApiClient Api
 @inject ISnackbar Snackbar
 
-<MudDialog Options="_dialogOptions">
+<MudDialog Options="@OpcionesDialogo.Dialogo(TamanoDialogo.Estandar)" Class="dialogo-formulario">
     <TitleContent>
-        <div class="d-flex align-center gap-2">
-            <MudAvatar Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled">
-                <MudIcon Icon="@(IsEdit ? Icons.Material.Filled.Edit : Icons.Material.Filled.MailOutline)" Size="Size.Small" />
-            </MudAvatar>
-            <MudText Typo="Typo.h6">@(IsEdit ? "Editar" : "Nueva") Cuenta de Correo</MudText>
-        </div>
+        <TituloDialogo Icono="@(IsEdit ? Icons.Material.Filled.Edit : Icons.Material.Filled.MailOutline)" Texto="@(IsEdit ? "Editar Cuenta de Correo" : "Nueva Cuenta de Correo")" />
     </TitleContent>
 
     <DialogContent>
-        <MudText Typo="Typo.subtitle2" Class="mud-text-secondary mb-2">PROVIDER Y DATOS GENERALES</MudText>
-        <MudGrid>
-            <MudItem xs="12" sm="6">
+        <AlertaErrorDialogo Mensaje="@_errorServidor" />
+        <MudForm @ref="_form">
+        <div class="dialogo-campos">
+            <div class="dialogo-seccion">Provider y datos generales</div>
+            <div class="dialogo-fila">
                 <MudSelect T="byte" Label="Provider *" Variant="Variant.Outlined" @bind-Value="_idProvider" FullWidth="true" Required="true"
-                    Error="@(_submitted && _idProvider == 0)" ErrorText="Seleccione un provider">
+                    RequiredError="Selecciona un provider"
+                    Validation="@(new Func<byte, string?>(v => v == 0 ? "Selecciona un provider" : null))">
                     @foreach (var p in _providers)
                     {
                         <MudSelectItem Value="p.Id">@p.Nombre</MudSelectItem>
                     }
                 </MudSelect>
-            </MudItem>
-            <MudItem xs="12" sm="6">
                 <MudTextField @bind-Value="_nombre" Label="Nombre de la Cuenta" Variant="Variant.Outlined" FullWidth="true" Required="true"
-                    Error="@(_submitted && string.IsNullOrWhiteSpace(_nombre))" ErrorText="El nombre es requerido"
+                    RequiredError="El nombre es requerido"
                     HelperText="Ej: SMTP Gmail Principal" />
-            </MudItem>
-            <MudItem xs="12">
-                <MudTextField @bind-Value="_descripcion" Label="Descripcion" Variant="Variant.Outlined" FullWidth="true"
-                    HelperText="Opcional - proposito de la cuenta" />
-            </MudItem>
-        </MudGrid>
+                <MudTextField @bind-Value="_descripcion" Label="Descripción" Variant="Variant.Outlined" FullWidth="true" Class="dialogo-ancho"
+                    HelperText="Opcional - propósito de la cuenta" />
+            </div>
 
-        <MudText Typo="Typo.subtitle2" Class="mud-text-secondary mb-2 mt-4">CONFIGURACION SMTP</MudText>
-        <MudGrid>
-            <MudItem xs="12" sm="8">
+            <div class="dialogo-seccion">Configuración SMTP</div>
+            <div class="dialogo-fila">
                 <MudTextField @bind-Value="_host" Label="Host / Servidor" Variant="Variant.Outlined" FullWidth="true" Required="true"
-                    Error="@(_submitted && string.IsNullOrWhiteSpace(_host))" ErrorText="El host es requerido"
+                    RequiredError="El host es requerido"
                     HelperText="Ej: smtp.gmail.com" />
-            </MudItem>
-            <MudItem xs="12" sm="4">
-                <MudTextField @bind-Value="_puerto" Label="Puerto" Variant="Variant.Outlined" Type="number" FullWidth="true"
-                    HelperText="Comun: 25, 465 (SSL), 587 (TLS)" />
-            </MudItem>
-            <MudItem xs="12">
-                <MudTextField @bind-Value="_usuario" Label="Usuario / Username" Variant="Variant.Outlined" FullWidth="true" Required="true"
-                    Error="@(_submitted && string.IsNullOrWhiteSpace(_usuario))" ErrorText="El usuario es requerido" />
-            </MudItem>
-            <MudItem xs="12">
-                <MudTextField @bind-Value="_password" Label="Contrasena / App Password" Variant="Variant.Outlined" InputType="InputType.Password" FullWidth="true"
+                <MudTextField @bind-Value="_puerto" Label="Puerto" Variant="Variant.Outlined" InputType="InputType.Number" FullWidth="true"
+                    HelperText="Común: 25, 465 (SSL), 587 (TLS)" />
+                <MudTextField @bind-Value="_usuario" Label="Usuario / Username" Variant="Variant.Outlined" autocomplete="off" FullWidth="true" Required="true" Class="dialogo-ancho"
+                    RequiredError="El usuario es requerido" />
+                <MudTextField @bind-Value="_password" Label="Contraseña / App Password" Variant="Variant.Outlined" autocomplete="new-password" InputType="InputType.Password" FullWidth="true" Class="dialogo-ancho"
                     Required="@(!IsEdit)"
-                    Error="@(_submitted && !IsEdit && string.IsNullOrWhiteSpace(_password))" ErrorText="La contrasena es requerida"
-                    HelperText="@(IsEdit ? "Dejar en blanco para mantener la existente" : "Se almacena encriptada con AES-256")" />
-            </MudItem>
-        </MudGrid>
+                    RequiredError="La contraseña es requerida"
+                    HelperText="@(IsEdit ? "Deja en blanco para mantener la existente" : "Se almacena encriptada con AES-256")" />
+            </div>
 
-        <MudText Typo="Typo.subtitle2" Class="mud-text-secondary mb-2 mt-4">INFORMACION DEL REMITENTE</MudText>
-        <MudGrid>
-            <MudItem xs="12" sm="6">
+            <div class="dialogo-seccion">Información del remitente</div>
+            <div class="dialogo-fila">
                 <MudTextField @bind-Value="_fromAddress" Label="From Address" Variant="Variant.Outlined" FullWidth="true" Required="true"
-                    Error="@(_submitted && string.IsNullOrWhiteSpace(_fromAddress))" ErrorText="El remitente es requerido"
-                    HelperText="Direccion que veran los destinatarios." />
-            </MudItem>
-            <MudItem xs="12" sm="6">
+                    RequiredError="El remitente es requerido"
+                    HelperText="Dirección que verán los destinatarios." />
                 <MudTextField @bind-Value="_fromName" Label="From Name" Variant="Variant.Outlined" FullWidth="true"
                     HelperText="Nombre visible del remitente." />
-            </MudItem>
-        </MudGrid>
+            </div>
 
-        <MudText Typo="Typo.subtitle2" Class="mud-text-secondary mb-2 mt-4">SEGURIDAD Y CIFRADO</MudText>
-        <MudGrid>
-            <MudItem xs="12" sm="6">
+            <div class="dialogo-seccion">Seguridad y cifrado</div>
+            <div class="dialogo-fila">
                 <MudSwitch @bind-Value="_usaSSL" Color="Color.Primary">Usar SSL (puerto 465)</MudSwitch>
-            </MudItem>
-            <MudItem xs="12" sm="6">
                 <MudSwitch @bind-Value="_usaTLS" Color="Color.Primary">Usar TLS (STARTTLS, puerto 587)</MudSwitch>
-            </MudItem>
-            <MudItem xs="12">
-                <MudSwitch @bind-Value="_esPredet" Color="Color.Primary">Marcar como cuenta predeterminada para el provider</MudSwitch>
-            </MudItem>
-        </MudGrid>
+                <MudSwitch @bind-Value="_esPredet" Color="Color.Primary" Class="dialogo-ancho">Marcar como cuenta predeterminada para el provider</MudSwitch>
+            </div>
+        </div>
+        </MudForm>
     </DialogContent>
 
     <DialogActions>
         <MudButton OnClick="@(() => MudDialog.Cancel())">Cancelar</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" OnClick="@Guardar" Disabled="@(!PuedeGuardar() || _guardando)">
-            @(IsEdit ? "Guardar Cambios" : "Guardar Cuenta")
-        </MudButton>
+        <BotonGuardarDialogo Texto="@(IsEdit ? "Guardar" : "Crear")" Guardando="@_guardando" OnClick="@Guardar" />
     </DialogActions>
 </MudDialog>
 
 @code {
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
-
-    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Large, FullWidth = true, CloseButton = true };
+    private string? _errorServidor;
 
     [Parameter] public bool IsEdit { get; set; }
     [Parameter] public EmailAccountDto? Account { get; set; }
@@ -114,7 +88,7 @@
     private bool _usaTLS = true;
     private bool _esPredet;
     private bool _guardando;
-    private bool _submitted;
+    private MudForm _form = null!;
 
     protected override async Task OnInitializedAsync()
     {
@@ -124,7 +98,7 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add(Api.LastError ?? $"Error al cargar providers: {ex.Message}", Severity.Error);
+            _errorServidor = Api.LastError ?? $"Error al cargar providers: {ex.Message}";
         }
 
         if (IsEdit && Account is not null)
@@ -143,21 +117,10 @@
         }
     }
 
-    private bool PuedeGuardar()
-    {
-        if (string.IsNullOrWhiteSpace(_nombre)) return false;
-        if (string.IsNullOrWhiteSpace(_host)) return false;
-        if (string.IsNullOrWhiteSpace(_usuario)) return false;
-        if (string.IsNullOrWhiteSpace(_fromAddress)) return false;
-        if (_idProvider == 0) return false;
-        if (!IsEdit && string.IsNullOrWhiteSpace(_password)) return false;
-        return true;
-    }
-
     private async Task Guardar()
     {
-        _submitted = true;
-        if (!PuedeGuardar()) return;
+        await _form.ValidateAsync();
+        if (!_form.IsValid) return;
         _guardando = true;
         try
         {
@@ -185,7 +148,7 @@
                     MudDialog.Close(DialogResult.Ok(true));
                 }
                 else
-                    Snackbar.Add(Api.LastError ?? "Error al actualizar cuenta", Severity.Error);
+                    _errorServidor = Api.LastError ?? "Error al actualizar cuenta";
             }
             else
             {
@@ -211,12 +174,12 @@
                     MudDialog.Close(DialogResult.Ok(true));
                 }
                 else
-                    Snackbar.Add(Api.LastError ?? "Error al crear cuenta", Severity.Error);
+                    _errorServidor = Api.LastError ?? "Error al crear cuenta";
             }
         }
         catch (Exception ex)
         {
-            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+            _errorServidor = Api.LastError ?? $"Error: {ex.Message}";
         }
         finally { _guardando = false; }
     }

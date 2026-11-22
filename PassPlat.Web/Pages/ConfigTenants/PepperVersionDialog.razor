@@ -2,32 +2,30 @@
 @inject ISnackbar Snackbar
 @using PassPlat.Web.Models
 
-<MudDialog Options="_dialogOptions">
+<MudDialog Options="@OpcionesDialogo.Dialogo(TamanoDialogo.Compacto)" Class="dialogo-formulario">
     <TitleContent>
-        <MudText Typo="Typo.h6">Actualizar Pepper Version</MudText>
+        <TituloDialogo Icono="@Icons.Material.Filled.Edit" Texto="Actualizar Versión de Pepper" />
     </TitleContent>
     <DialogContent>
-        <MudText Class="mb-3">
-            Configuración ID: @ConfigTenant.Id (Tenant: @ConfigTenant.TenantNombre)
-        </MudText>
-        <MudText Class="mb-3">
-            Versión actual: @ConfigTenant.PepperVersionActual
-        </MudText>
-        <MudTextField @bind-Value="_nuevaVersion" Label="Nueva Versión Pepper" Variant="Variant.Outlined"
-            Type="InputType.Number" HelperText="Incrementar para regenerar hashes de contraseñas" />
+        <AlertaErrorDialogo Mensaje="@_errorServidor" />
+        <div class="dialogo-campos">
+            <div class="readonly-grid">
+                <div class="readonly-item"><div class="field-label">Configuración</div><div class="field-value">ID @ConfigTenant.Id (Tenant: @ConfigTenant.TenantNombre)</div></div>
+                <div class="readonly-item"><div class="field-label">Versión actual</div><div class="field-value">@ConfigTenant.PepperVersionActual</div></div>
+            </div>
+            <MudTextField @bind-Value="_nuevaVersion" Label="Nueva Versión Pepper" Variant="Variant.Outlined"
+                InputType="InputType.Number" HelperText="Incrementar para regenerar hashes de contraseñas" />
+        </div>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="@(() => MudDialog.Cancel())">Cancelar</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Warning" OnClick="@Save" Disabled="@_saving">
-            Actualizar
-        </MudButton>
+        <BotonGuardarDialogo Texto="Guardar" Guardando="@_saving" OnClick="@Save" />
     </DialogActions>
 </MudDialog>
 
 @code {
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
-
-    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+    private string? _errorServidor;
 
     [Parameter] public ConfigTenantDto ConfigTenant { get; set; } = null!;
 
@@ -47,15 +45,15 @@
             var ok = await Api.PostVoidAsync($"api/ConfigTenants/{ConfigTenant.Id}/pepper-version", new { pepperVersion = _nuevaVersion });
             if (ok)
             {
-                Snackbar.Add("Pepper version actualizada", Severity.Success);
+                Snackbar.Add("Versión de pepper actualizada", Severity.Success);
                 MudDialog.Close(DialogResult.Ok(true));
             }
             else
-                Snackbar.Add(Api.LastError ?? "Error al actualizar", Severity.Error);
+                _errorServidor = Api.LastError ?? "Error al actualizar";
         }
         catch (Exception ex)
         {
-            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+            _errorServidor = Api.LastError ?? $"Error: {ex.Message}";
         }
         finally
         {

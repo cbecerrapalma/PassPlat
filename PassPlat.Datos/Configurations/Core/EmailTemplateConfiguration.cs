@@ -28,7 +28,7 @@ public class EmailTemplateConfiguration : IEntityTypeConfiguration<EmailTemplate
         builder.Property(e => e.Version).IsRequired().HasDefaultValue(1);
         builder.Property(e => e.VariablesDoc).HasMaxLength(1000);
         builder.Property(e => e.IdUsrMod);
-        builder.Property(e => e.FecCrea).HasDefaultValueSql("sysutcdatetime()").IsRequired();
+        builder.Property(e => e.FecCrea).HasDefaultValueSql("sysdatetime()").IsRequired();
         builder.Property(e => e.FecMod);
 
         builder.HasOne(e => e.Tenant)

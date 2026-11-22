@@ -1,8 +1,14 @@
 @using PassPlat.Aplicacion.Dtos.Core
 @inject ApiClient Api
 @inject ISnackbar Snackbar
+@inject AuthService Auth
 
-@if (_loading)
+@* S113 · D4 — sin el permiso, aviso en lugar de un 403 *@
+@if (!Auth.TienePermiso("NOTIFICACIONES_VER"))
+{
+    <MudText Typo="Typo.body2" Class="pa-4">No tiene permiso para ver las notificaciones.</MudText>
+}
+else if (_loading)
 {
     <MudSkeleton Width="100%" Height="200px" />
 }
@@ -39,7 +45,7 @@ else
                         @(context.Leida ? "Sí" : "No")
                     </MudChip>
                 </MudTd>
-                <MudTd DataLabel="Fecha">@context.FecCrea.ToLocalTime().ToString("g")</MudTd>
+                <MudTd DataLabel="Fecha">@context.FecCrea.ToString("g")</MudTd>
             </RowTemplate>
             <NoRecordsContent>
                 <MudText Align="Align.Center" Class="py-8">
@@ -61,7 +67,7 @@ else
 
     protected override async Task OnParametersSetAsync()
     {
-        if (IsActive && !_loaded)
+        if (IsActive && !_loaded && Auth.TienePermiso("NOTIFICACIONES_VER"))
         {
             _loaded = true;
             await LoadData();

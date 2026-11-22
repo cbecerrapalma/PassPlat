@@ -22,7 +22,7 @@ public class UsuarioPermisoConfiguration : IEntityTypeConfiguration<UsuarioPermi
         builder.Property(up => up.FecFin);
         builder.Property(up => up.Motivo).HasMaxLength(200);
         builder.Property(up => up.IdUsrCrea).IsRequired();
-        builder.Property(up => up.FecCrea).HasDefaultValueSql("sysutcdatetime()").IsRequired();
+        builder.Property(up => up.FecCrea).HasDefaultValueSql("sysdatetime()").IsRequired();
         builder.Property(up => up.IdUsrMod).IsRequired();
         builder.Property(up => up.FecMod);
 

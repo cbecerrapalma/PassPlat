@@ -11,7 +11,7 @@ using PassPlat.Dominio.Entities.Core;
 
 namespace PassPlat.WebAPI.Controllers;
 
-[Authorize(Policy = "HISTORIAL_PWD_VER")]
+[Authorize(Policy = "HISTORIALPWD_VER")]
 public class HistorialPwdController : BaseApiController
 {
     private readonly IHistorialPwdService _service;
@@ -55,11 +55,4 @@ public class HistorialPwdController : BaseApiController
         });
     }
     [HttpGet("reciente/{idUsuario}/{cantidad}")] public async Task<IActionResult> GetReciente(int idUsuario, int cantidad, CancellationToken ct) => FromResultQuery(await _service.ObtenerHistorialRecienteAsync(idUsuario, cantidad, ct));
-    [HttpPost("marcar-comprometidas")] public async Task<IActionResult> MarcarComprometidas([FromBody] MarcarComprometidasRequest request, CancellationToken ct) => FromResult(await _service.MarcarComprometidasPorHashAsync(request.HashPwd, ct));
-    [HttpGet("comprometidas")] public async Task<IActionResult> GetComprometidas(CancellationToken ct) => FromResultQuery(await _service.ObtenerPasswordsComprometidasAsync(ct));
-}
-
-public class MarcarComprometidasRequest
-{
-    public string HashPwd { get; init; } = string.Empty;
 }

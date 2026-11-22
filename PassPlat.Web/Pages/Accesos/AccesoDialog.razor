@@ -1,54 +1,113 @@
 @inject ApiClient Api
 @inject AuthService Auth
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 
-<MudDialog Options="_dialogOptions">
+@* S54 · D1 — Dialogo de asignacion de acceso.
+   - Tenant de solo lectura: el servidor reemplaza el tenant del cuerpo por el de la sesion (H4).
+   - Roles: solo activos, globales o del tenant de la sesion (H6).
+   - "Asignar" deshabilitado hasta tener usuario, app y rol elegidos de la lista (H3).
+   - Aviso de reemplazo cuando el usuario ya tiene acceso a esa app (H5) + confirmacion.
+   - Errores con el mensaje del servidor (PostWithErrorAsync, H7).
+   S54.1 · D5/D6/D7 — aviso exacto, español correcto y validacion visible.
+   S73 · D3 — patrón único de editor (TituloDialogo, dialogo-campos, BotonGuardarDialogo). *@
+
+<MudDialog Options="@OpcionesDialogo.Dialogo(TamanoDialogo.Compacto)" Class="dialogo-formulario">
     <TitleContent>
-        <MudText Typo="Typo.h6">Asignar Acceso</MudText>
+        <TituloDialogo Icono="@Icons.Material.Filled.Link" Texto="Asignar Acceso" />
     </TitleContent>
     <DialogContent>
-        <MudAutocomplete T="UsuarioDto" @bind-Value="_usuarioSelected"
-            SearchFunc="@SearchUsuarios" ToStringFunc="@(u => u is null ? "" : $"{u.NomUsuario} ({u.Nombre} {u.Apellido})")"
-            Label="Usuario" Variant="Variant.Outlined" Class="mb-3" />
-        <MudAutocomplete T="TenantDto" @bind-Value="_tenantSelected"
-            SearchFunc="@SearchTenants" ToStringFunc="@(t => t is null ? "" : $"{t.Nombre} ({t.Codigo})")"
-            Label="Tenant" Variant="Variant.Outlined" Class="mb-3" />
-        <MudAutocomplete T="AppDto" @bind-Value="_appSelected"
-            SearchFunc="@SearchApps" ToStringFunc="@(a => a is null ? "" : $"{a.Nombre} ({a.Codigo})")"
-            Label="App" Variant="Variant.Outlined" Class="mb-3" />
-        <MudAutocomplete T="RolDto" @bind-Value="_rolSelected"
-            SearchFunc="@SearchRoles" ToStringFunc="@(r => r is null ? "" : $"{r.Nombre} ({r.Codigo})")"
-            Label="Rol" Variant="Variant.Outlined" Class="mb-3" />
+        <AlertaErrorDialogo Mensaje="@_errorServidor" />
+        <div class="dialogo-campos">
+            <SelectorCatalogo T="UsuarioDto"
+                Items="_usuarios"
+                SearchTextSelector="@(u => $"{u.NomUsuario} {u.Nombre} {u.Apellido} {u.Email}")"
+                ToStringFunc="@(u => u is null ? "" : $"{u.NomUsuario} ({u.Nombre} {u.Apellido})")"
+                @bind-Value="_usuarioSelected"
+                @bind-Value:after="@OnUsuarioChangedAsync"
+                Label="Usuario" Variant="Variant.Outlined"
+                Required="true" RequiredError="El usuario es requerido" />
+
+            <MudTextField Value="@_tenantSesionTexto" Label="Tenant" Variant="Variant.Outlined"
+                          ReadOnly="true" Disabled="true"
+                          HelperText="El acceso se crea en el tenant de tu sesión" />
+
+            <SelectorCatalogo T="AppDto"
+                Items="_apps"
+                SearchTextSelector="@(a => $"{a.Nombre} {a.Codigo}")"
+                ToStringFunc="@(a => a is null ? "" : $"{a.Nombre} ({a.Codigo})")"
+                @bind-Value="_appSelected"
+                @bind-Value:after="@OnAppChanged"
+                Label="App" Variant="Variant.Outlined"
+                Required="true" RequiredError="La app es requerida" />
+
+            <SelectorCatalogo T="RolDto"
+                Items="_rolesPermitidos"
+                SearchTextSelector="@(r => $"{r.Nombre} {r.Codigo}")"
+                ToStringFunc="@(r => r is null ? "" : $"{r.Nombre} ({r.Codigo})")"
+                @bind-Value="_rolSelected"
+                @bind-Value:after="@OnRolChanged"
+                Label="Rol" Variant="Variant.Outlined"
+                Required="true" RequiredError="El rol es requerido"
+                HelperText="@_ayudaRoles" />
+
+            @if (!string.IsNullOrWhiteSpace(_textoReemplazo))
+            {
+                <MudAlert Severity="@_severidadReemplazo" Dense="true" data-testid="acceso-reemplazo">@_textoReemplazo</MudAlert>
+            }
+
+            <MudText Typo="Typo.caption" Color="Color.Secondary" data-testid="acceso-aviso-correo">
+                PassPlat notificará al usuario por correo cuando se asigne el rol.
+            </MudText>
+        </div>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="@(() => MudDialog.Cancel())">Cancelar</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@Save" Disabled="@_saving">Asignar</MudButton>
+        <BotonGuardarDialogo Texto="Asignar" Guardando="@_saving" Deshabilitado="@(!_puedeAsignar || _sinCambios)" OnClick="@Save"
+                             data-testid="acceso-asignar" />
     </DialogActions>
 </MudDialog>
 
 @code {
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    private string? _errorServidor;
 
-    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+    [Parameter] public int? UsuarioIdPreseleccionado { get; set; }
+    [Parameter] public int? AppIdPreseleccionado { get; set; }
 
     private List<UsuarioDto> _usuarios = [];
     private List<TenantDto> _tenants = [];
     private List<AppDto> _apps = [];
-    private List<RolDto> _roles = [];
+    private List<RolDto> _rolesTodos = [];
+    private IReadOnlyList<RolDto> _rolesPermitidos = [];
+    private List<AccesoDto> _accesosUsuario = [];
+
     private UsuarioDto? _usuarioSelected;
-    private TenantDto? _tenantSelected;
     private AppDto? _appSelected;
     private RolDto? _rolSelected;
+    private TenantDto? _tenantSesion;
+    private string? _textoReemplazo;
     private bool _saving;
+
+    private int _idTenantSesion => Auth.IdTenant ?? 0;
+    private string _tenantSesionTexto => _tenantSesion is null ? "(sin tenant en la sesión)" : $"{_tenantSesion.Nombre} ({_tenantSesion.Codigo})";
+    private string _ayudaRoles => $"Solo roles activos del tenant de tu sesión o globales ({_rolesPermitidos.Count} disponibles)";
+    private bool _puedeAsignar => ReglasAsignacionAcceso.PuedeAsignar(_usuarioSelected, _appSelected, _rolSelected);
+
+    /// <summary>D5 — el acceso resultante seria identico al que ya existe: no hay nada que guardar.</summary>
+    private bool _sinCambios => _accesoExistente is not null
+        && ReglasAsignacionAcceso.EsMismoAcceso(_accesoExistente, _rolSelected, _idTenantSesion);
+
+    private Severity _severidadReemplazo => _sinCambios ? Severity.Info : Severity.Warning;
+
+    private AccesoDto? _accesoExistente;
 
     protected override async Task OnInitializedAsync()
     {
-        var idUsr = Auth.IdUsuario ?? 0;
-        var idTen = Auth.IdTenant ?? 0;
-
         var tUsuarios = Api.GetAsync<List<UsuarioDto>>("api/usuarios");
-        var tTenants = Api.GetAsync<List<TenantDto>>("api/tenants");
-        var tApps = Api.GetAsync<List<AppDto>>("api/apps");
+        // S113 · D4 — sin TENANTS_VER/APPS_VER: el tenant de la sesión y las apps de sus Accesos
+        var tTenants = TenantsObjetivo.CargarAsync(Api, Auth);
+        var tApps = AppsObjetivo.CatalogoOAccesosAsync(Api, Auth);
         var tRoles = Api.GetAsync<List<RolDto>>("api/roles");
 
         await Task.WhenAll(tUsuarios, tTenants, tApps, tRoles);
@@ -56,71 +115,97 @@
         _usuarios = tUsuarios.Result ?? [];
         _tenants = tTenants.Result ?? [];
         _apps = tApps.Result ?? [];
-        _roles = tRoles.Result ?? [];
+        _rolesTodos = tRoles.Result ?? [];
+        _rolesPermitidos = ReglasAsignacionAcceso.RolesPermitidos(_rolesTodos, _idTenantSesion);
+        _tenantSesion = _tenants.FirstOrDefault(t => t.Id == _idTenantSesion);
 
-        _usuarioSelected = _usuarios.FirstOrDefault(u => u.Id == idUsr);
-        _tenantSelected = _tenants.FirstOrDefault(t => t.Id == idTen);
+        if (UsuarioIdPreseleccionado.HasValue)
+            _usuarioSelected = _usuarios.FirstOrDefault(u => u.Id == UsuarioIdPreseleccionado.Value);
+        if (AppIdPreseleccionado.HasValue)
+            _appSelected = _apps.FirstOrDefault(a => a.Id == AppIdPreseleccionado.Value);
+
+        if (_usuarioSelected is not null)
+            await CargarAccesosUsuarioAsync();
     }
 
-    private Task<IEnumerable<UsuarioDto>> SearchUsuarios(string value, CancellationToken _)
+    private async Task OnUsuarioChangedAsync()
     {
-        if (string.IsNullOrEmpty(value))
-            return Task.FromResult(_usuarios.Take(20));
-        return Task.FromResult(_usuarios.Where(u =>
-            u.NomUsuario.Contains(value, StringComparison.OrdinalIgnoreCase) ||
-            u.Nombre.Contains(value, StringComparison.OrdinalIgnoreCase) ||
-            u.Email.Contains(value, StringComparison.OrdinalIgnoreCase)).Take(20));
+        await CargarAccesosUsuarioAsync();
     }
 
-    private Task<IEnumerable<TenantDto>> SearchTenants(string value, CancellationToken _)
+    private async Task CargarAccesosUsuarioAsync()
     {
-        if (string.IsNullOrEmpty(value))
-            return Task.FromResult(_tenants.Take(20));
-        return Task.FromResult(_tenants.Where(t =>
-            t.Nombre.Contains(value, StringComparison.OrdinalIgnoreCase) ||
-            t.Codigo.Contains(value, StringComparison.OrdinalIgnoreCase)).Take(20));
+        _accesosUsuario = [];
+        if (_usuarioSelected is not null)
+            _accesosUsuario = await Api.GetAsync<List<AccesoDto>>($"api/accesos/usuario/{_usuarioSelected.Id}") ?? [];
+        RecalcularReemplazo();
+        // La carga es asincrona: sin esto el aviso de reemplazo no se redibuja.
+        await InvokeAsync(StateHasChanged);
     }
 
-    private Task<IEnumerable<AppDto>> SearchApps(string value, CancellationToken _)
+    private void OnAppChanged()
     {
-        if (string.IsNullOrEmpty(value))
-            return Task.FromResult(_apps.Take(20));
-        return Task.FromResult(_apps.Where(a =>
-            a.Nombre.Contains(value, StringComparison.OrdinalIgnoreCase) ||
-            a.Codigo.Contains(value, StringComparison.OrdinalIgnoreCase)).Take(20));
+        RecalcularReemplazo();
     }
 
-    private Task<IEnumerable<RolDto>> SearchRoles(string value, CancellationToken _)
+    private void OnRolChanged()
     {
-        if (string.IsNullOrEmpty(value))
-            return Task.FromResult(_roles.Take(20));
-        return Task.FromResult(_roles.Where(r =>
-            r.Nombre.Contains(value, StringComparison.OrdinalIgnoreCase) ||
-            r.Codigo.Contains(value, StringComparison.OrdinalIgnoreCase)).Take(20));
+        RecalcularReemplazo();
+    }
+
+    private void RecalcularReemplazo()
+    {
+        _accesoExistente = _appSelected is null ? null : ReglasAsignacionAcceso.BuscarAccesoExistente(_accesosUsuario, _appSelected.Id);
+        _textoReemplazo = ReglasAsignacionAcceso.TextoReemplazo(_accesoExistente, _rolSelected, _idTenantSesion, _tenantSesion?.Nombre);
     }
 
     private async Task Save()
     {
+        // S115 — los errores del servidor se muestran en el AlertaErrorDialogo; las validaciones locales, en el Snackbar
+        if (!_puedeAsignar)
+        {
+            Snackbar.Add("Elige usuario, app y rol de las listas antes de asignar.", Severity.Warning);
+            return;
+        }
+
+        if (_accesoExistente is not null)
+        {
+            var confirmacion = await DialogService.ShowAsync<ConfirmDialog>("", new DialogParameters
+            {
+                ["Title"] = "Confirmar reemplazo",
+                ["Message"] = _textoReemplazo ?? "El acceso será reemplazado.",
+                ["ConfirmText"] = "Sí, reemplazar",
+                ["CancelText"] = "Cancelar",
+                ["ConfirmColor"] = Color.Warning
+            });
+            var resultado = await confirmacion.Result;
+            if (resultado is null || resultado.Canceled) return;
+        }
+
         _saving = true;
         try
         {
-            var idUsuario = _usuarioSelected?.Id ?? 0;
-            var idTenant = _tenantSelected?.Id ?? 0;
-            var idApp = _appSelected?.Id ?? 0;
-            var idRol = _rolSelected?.Id ?? 0;
-            var result = await Api.PostAsync<AccesoDto>("api/accesos/asignar",
-                new { idUsuario, idTenant, idApp, idRol });
-            if (result is not null)
+            var (resultado, error) = await Api.PostWithErrorAsync<AccesoDto>("api/accesos/asignar", new
+            {
+                idUsuario = _usuarioSelected!.Id,
+                idTenant = _idTenantSesion,
+                idApp = _appSelected!.Id,
+                idRol = _rolSelected!.Id
+            });
+
+            if (resultado is not null)
             {
                 Snackbar.Add("Acceso asignado", Severity.Success);
-                MudDialog.Close(DialogResult.Ok(true));
+                MudDialog.Close(DialogResult.Ok(_usuarioSelected!.Id));
             }
             else
-                Snackbar.Add(Api.LastError ?? "Error al asignar acceso", Severity.Error);
+            {
+                _errorServidor = error ?? "Error al asignar acceso";
+            }
         }
         catch (Exception ex)
         {
-            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+            _errorServidor = Api.LastError ?? $"Error: {ex.Message}";
         }
         finally
         {

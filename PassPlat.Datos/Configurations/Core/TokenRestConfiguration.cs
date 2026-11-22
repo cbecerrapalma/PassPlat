@@ -15,7 +15,7 @@ public class TokenRestConfiguration : IEntityTypeConfiguration<TokenRest>
         builder.Property(t => t.IdUsuario).IsRequired();
         builder.Property(t => t.IdTenant).IsRequired();
         builder.Property(t => t.HashToken).HasMaxLength(255).IsRequired();
-        builder.Property(t => t.FecGeneracion).HasDefaultValueSql("sysutcdatetime()").IsRequired();
+        builder.Property(t => t.FecGeneracion).HasDefaultValueSql("sysdatetime()").IsRequired();
         builder.Property(t => t.FecVence).IsRequired();
         builder.Property(t => t.EsUtilizado).HasDefaultValue(false).IsRequired();
         builder.Property(t => t.IntentosFallidos).HasDefaultValue((byte)0).IsRequired();

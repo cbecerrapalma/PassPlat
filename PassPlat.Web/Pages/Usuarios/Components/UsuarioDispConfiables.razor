@@ -34,7 +34,7 @@ else
                 <MudTd DataLabel="Id">@context.Id</MudTd>
                 <MudTd DataLabel="Dispositivo">@context.DispModelo</MudTd>
                 <MudTd DataLabel="Nombre">@context.Nombre</MudTd>
-                <MudTd DataLabel="Alta">@context.FecAlta.ToLocalTime().ToShortDateString()</MudTd>
+                <MudTd DataLabel="Alta">@context.FecAlta.ToShortDateString()</MudTd>
                 <MudTd DataLabel="Confiable">
                     <MudChip T="string" Size="Size.Small" Color="@(context.Confiable ? Color.Success : Color.Error)">
                         @(context.Confiable ? "Sí" : "No")

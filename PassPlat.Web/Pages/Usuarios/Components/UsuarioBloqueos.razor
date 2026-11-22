@@ -33,8 +33,8 @@ else
             <RowTemplate>
                 <MudTd DataLabel="Id">@context.Id</MudTd>
                 <MudTd DataLabel="Tipo">@context.TipoBloqueoNombre</MudTd>
-                <MudTd DataLabel="Inicio">@context.FecInicio.ToLocalTime().ToString("g")</MudTd>
-                <MudTd DataLabel="Fin">@context.FecFin?.ToLocalTime().ToString("g")</MudTd>
+                <MudTd DataLabel="Inicio">@context.FecInicio.ToString("g")</MudTd>
+                <MudTd DataLabel="Fin">@context.FecFin?.ToString("g")</MudTd>
                 <MudTd DataLabel="Activo">
                     <MudChip T="string" Size="Size.Small" Color="@(context.Activo ? Color.Warning : Color.Default)">
                         @(context.Activo ? "Sí" : "No")

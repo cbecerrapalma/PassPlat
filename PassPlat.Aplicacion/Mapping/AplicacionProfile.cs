@@ -37,7 +37,13 @@ public class AplicacionProfile : Profile
         // Core - Usuario
         CreateMap<Usuario, UsuarioDto>()
             .ForMember(d => d.TenantNombre, o => o.MapFrom(s => s.Tenant != null ? s.Tenant.Nombre : null))
-            .ForMember(d => d.EstadoNombre, o => o.MapFrom(s => s.Estado != null ? s.Estado.Nombre : null));
+            .ForMember(d => d.EstadoNombre, o => o.MapFrom(s => s.Estado != null ? s.Estado.Nombre : null))
+            .ForMember(d => d.Apps, o => o.MapFrom(s => s.Accesos
+                .Where(a => a.Activo && a.App != null)
+                .Select(a => a.App!.Codigo)
+                .Distinct()
+                .OrderBy(c => c)
+                .ToList()));
         CreateMap<CrearUsuarioDto, Usuario>();
         CreateMap<ActualizarUsuarioDto, Usuario>()
             .ForAllMembers(o => o.Condition((src, dest, srcMember) => srcMember != null));
@@ -183,7 +189,10 @@ public class AplicacionProfile : Profile
         // Permisos
         CreateMap<Permiso, PermisoDto>()
             .ForMember(d => d.ModuloNombre, o => o.MapFrom(s => s.Modulo != null ? s.Modulo.Nombre : null))
-            .ForMember(d => d.ModuloCodigo, o => o.MapFrom(s => s.Modulo != null ? s.Modulo.Codigo : null));
+            .ForMember(d => d.ModuloCodigo, o => o.MapFrom(s => s.Modulo != null ? s.Modulo.Codigo : null))
+            .ForMember(d => d.IdApp, o => o.MapFrom(s => s.Modulo == null ? (int?)null : s.Modulo.AppsModulos.Where(am => am.Activo).Select(am => (int?)am.IdApp).FirstOrDefault()))
+            .ForMember(d => d.AppCodigo, o => o.MapFrom(s => s.Modulo == null ? null : s.Modulo.AppsModulos.Where(am => am.Activo && am.App != null).Select(am => am.App!.Codigo).FirstOrDefault()))
+            .ForMember(d => d.AppNombre, o => o.MapFrom(s => s.Modulo == null ? null : s.Modulo.AppsModulos.Where(am => am.Activo && am.App != null).Select(am => am.App!.Nombre).FirstOrDefault()));
         CreateMap<CrearPermisoDto, Permiso>();
 
         // Core - EmailTemplate
@@ -280,8 +289,6 @@ public class AplicacionProfile : Profile
         CreateMap<ProvIden, ProviderConfigurationInfoDto>()
             .ForMember(d => d.AuthorizationEndpoint, o => o.MapFrom(s => s.EndpointAutorizacion))
             .ForMember(d => d.TokenEndpoint, o => o.MapFrom(s => s.EndpointToken))
-            .ForMember(d => d.JwksUri, o => o.MapFrom(s => s.JwksUri))
-            .ForMember(d => d.Issuer, o => o.MapFrom(s => s.UrlIssuer))
             .ForMember(d => d.SoportaPKCE, o => o.MapFrom(s => s.SoportaPKCE))
             .ForMember(d => d.SoportaRefreshToken, o => o.MapFrom(s => s.SoportaRefreshToken))
             .ForMember(d => d.SoportaMFA, o => o.MapFrom(s => s.SoportaMFA));
@@ -292,10 +299,15 @@ public class AplicacionProfile : Profile
             .ForMember(d => d.TenantNombre, o => o.MapFrom(s => s.Tenant != null ? s.Tenant.Nombre : null))
             .ForMember(d => d.RolDefectoNombre, o => o.MapFrom(s => s.RolDefectoNav != null ? s.RolDefectoNav.Nombre : null))
             .ForMember(d => d.TieneClientSecret, o => o.MapFrom(s => !string.IsNullOrWhiteSpace(s.ClientSecret)))
-            .ForMember(d => d.FechaCambioSecret, o => o.MapFrom(s => s.FecMod));
-        CreateMap<CrearConfProvIdenDto, ConfProvIden>();
+            .ForMember(d => d.FechaCambioSecret, o => o.MapFrom(s => s.FecMod))
+            .ForMember(d => d.MotivoNoDisponible, o => o.Ignore())
+            .ForMember(d => d.IdsApps, o => o.MapFrom(s => s.Apps.Select(a => a.IdApp).ToList()));
+        // S126 · D4 — los enlaces se asignan con ConfProvIden.AsignarApps, no con el mapeo
+        CreateMap<CrearConfProvIdenDto, ConfProvIden>()
+            .ForMember(d => d.Apps, o => o.Ignore());
         CreateMap<ActualizarConfProvIdenDto, ConfProvIden>()
             .ForMember(d => d.ClientSecret, o => o.Ignore())
+            .ForMember(d => d.Apps, o => o.Ignore())
             .ForAllMembers(o => o.Condition((src, dest, srcMember) => srcMember != null));
 
         CreateMap<Rol, RolLookupDto>();

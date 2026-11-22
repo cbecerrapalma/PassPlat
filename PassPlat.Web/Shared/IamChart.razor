@@ -51,14 +51,14 @@ else
     [Parameter] public List<ChartPoint> Puntos { get; set; } = [];
     [Parameter] public List<ChartSegment> Segmentos { get; set; } = [];
     [Parameter] public bool MostrarLeyenda { get; set; } = true;
-    [Parameter] public string[] Paleta { get; set; } = { "#1976d2", "#388e3c", "#fbc02d", "#d32f2f", "#7b1fa2", "#00796b", "#ff7043", "#5d4037", "#455a64", "#c2185b" };
+    [Parameter] public string[] Paleta { get; set; } = { "var(--dat-azul)", "var(--dat-verde-osc)", "var(--dat-ambar)", "var(--dat-rojo)", "var(--dat-purpura)", "var(--dat-teal)", "var(--dat-naranja)", "var(--dat-marron)", "var(--dat-gris-azul)", "var(--dat-rosa)" };
     [Parameter] public EventCallback<ChartPoint> OnPointClick { get; set; }
 
     private ElementReference _svgRef;
     private List<ChartPoint> _puntos => Puntos ?? [];
     private List<ChartSegment> _segmentos => Segmentos ?? [];
 
-    private string[] _colores(int i) => Paleta.Length > 0 ? Paleta : new[] { "#1976d2" };
+    private string[] _colores(int i) => Paleta.Length > 0 ? Paleta : new[] { "var(--dat-azul)" };
 
     private RenderFragment RenderLineArea() => __builder =>
     {
@@ -161,7 +161,7 @@ else
             __builder.OpenElement(s + 0, "path");
             __builder.AddAttribute(s + 1, "d", $"M {cx:F1},{cy:F1} L {x1:F1},{y1:F1} A {radio:F1},{radio:F1} 0 {large} 1 {x2:F1},{y2:F1} Z");
             __builder.AddAttribute(s + 2, "fill", seg.Color);
-            __builder.AddAttribute(s + 3, "stroke", "#fff");
+            __builder.AddAttribute(s + 3, "stroke", "var(--dat-blanco)");
             __builder.AddAttribute(s + 4, "stroke-width", "1");
             __builder.CloseElement();
             ang = ang2;
@@ -172,7 +172,7 @@ else
             __builder.AddAttribute(9001, "cx", cx.ToString("F1", CultureInfo.InvariantCulture));
             __builder.AddAttribute(9002, "cy", cy.ToString("F1", CultureInfo.InvariantCulture));
             __builder.AddAttribute(9003, "r", inner.ToString("F1", CultureInfo.InvariantCulture));
-            __builder.AddAttribute(9004, "fill", "#fff");
+            __builder.AddAttribute(9004, "fill", "var(--dat-blanco)");
             __builder.CloseElement();
         }
     };
@@ -189,6 +189,6 @@ else
     {
         public string Etiqueta { get; set; } = "";
         public double Valor { get; set; }
-        public string Color { get; set; } = "#1976d2";
+        public string Color { get; set; } = "var(--dat-azul)";
     }
 }

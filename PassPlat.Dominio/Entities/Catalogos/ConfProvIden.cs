@@ -44,8 +44,6 @@ public class ConfProvIden
     public string? Descripcion { get; set; }
     public string? AuthorizationEndpoint { get; set; }
     public string? TokenEndpoint { get; set; }
-    public string? JwksUri { get; set; }
-    public string? Issuer { get; set; }
     public string ResponseType { get; set; } = "code";
     public string GrantType { get; set; } = "authorization_code";
     public string? ExtraParams { get; set; }
@@ -54,6 +52,20 @@ public class ConfProvIden
     public ProvIden? ProvIden { get; set; }
     public Rol? RolDefectoNav { get; set; }
 
+    // S126 · D2 — apps a las que sirve; vacía = todas
+    public ICollection<AppConfProvIden> Apps { get; set; } = [];
+
+    public bool SirveParaApp(int idApp) => Apps.Count == 0 || Apps.Any(a => a.IdApp == idApp);
+
+    public void AsignarApps(IEnumerable<int> idsApps)
+    {
+        var deseadas = idsApps.Where(id => id > 0).ToHashSet();
+        foreach (var sobra in Apps.Where(a => !deseadas.Contains(a.IdApp)).ToList())
+            Apps.Remove(sobra);
+        foreach (var idApp in deseadas.Where(id => Apps.All(a => a.IdApp != id)).ToList())
+            Apps.Add(AppConfProvIden.Crear(idApp));
+    }
+
     public static ConfProvIden Crear(int idTenant, int idProvIden, string clientId, string clientSecret, string callback,
         string? scopes = null, string? redirectUri = null, int? rolDefecto = null, bool guardarTokens = false,
         bool permitirAutoLink = false, bool autoProvisionar = false, bool requiereMFALocal = false, string? metadata = null,
@@ -61,7 +73,7 @@ public class ConfProvIden
         bool permitirPasswordLocal = true, bool obligaMFA = false, bool permitirCambioEmail = true, bool permitirCambioNombre = true,
         bool permitirSincronizarAvatar = true, bool permitirSincronizarPerfil = true, string frecuenciaSincronizacion = "Siempre", int prioridad = 0, int ordenVisual = 0,
         string? logo = null, string? color = null, string? tooltip = null, string? descripcion = null,
-        string? authorizationEndpoint = null, string? tokenEndpoint = null, string? jwksUri = null, string? issuer = null,
+        string? authorizationEndpoint = null, string? tokenEndpoint = null,
         string responseType = "code", string grantType = "authorization_code", string? extraParams = null,
         bool requireEmailVerified = true, bool allowLoginWithoutRefreshToken = true, bool allowRefreshTokenRotation = true)
     {
@@ -104,8 +116,6 @@ public class ConfProvIden
             Descripcion = descripcion,
             AuthorizationEndpoint = authorizationEndpoint,
             TokenEndpoint = tokenEndpoint,
-            JwksUri = jwksUri,
-            Issuer = issuer,
             ResponseType = responseType,
             GrantType = grantType,
             ExtraParams = extraParams

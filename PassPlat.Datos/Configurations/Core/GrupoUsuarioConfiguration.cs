@@ -14,7 +14,7 @@ public class GrupoUsuarioConfiguration : IEntityTypeConfiguration<GrupoUsuario>
         builder.Property(gu => gu.Id).ValueGeneratedOnAdd();
         builder.Property(gu => gu.IdGrupo).IsRequired();
         builder.Property(gu => gu.IdUsuario).IsRequired();
-        builder.Property(gu => gu.FecAlta).HasDefaultValueSql("sysutcdatetime()").IsRequired();
+        builder.Property(gu => gu.FecAlta).HasDefaultValueSql("sysdatetime()").IsRequired();
         builder.Property(gu => gu.IdUsrMod);
 
         builder.HasOne(gu => gu.Grupo)

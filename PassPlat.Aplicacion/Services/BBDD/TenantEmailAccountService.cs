@@ -1,6 +1,7 @@
 using AutoMapper;
 using CBP.Data.Abstractions;
 using CBP.Results;
+using CBP.Results.Errors;
 using CBP.Services.Abstractions;
 using CBP.Services.Async;
 using PassPlat.Aplicacion.Dtos.Core;
@@ -14,7 +15,7 @@ public interface ITenantEmailAccountService : IServiceAsync<TenantEmailAccount, 
 {
     Task<Result<IReadOnlyList<TenantEmailAccountDto>>> ObtenerPorTenantAsync(int idTenant, CancellationToken ct = default);
     Task<Result<TenantEmailAccountDto>> CrearAsync(CrearTenantEmailAccountDto dto, CancellationToken ct = default);
-    Task<Result> EliminarAsync(int id, CancellationToken ct = default);
+    Task<Result> EliminarAsync(int id, int? alcanceTenant, CancellationToken ct = default);
 }
 
 public class TenantEmailAccountService : ServiceAsync<TenantEmailAccount, TenantEmailAccountDto>, ITenantEmailAccountService
@@ -35,6 +36,11 @@ public class TenantEmailAccountService : ServiceAsync<TenantEmailAccount, Tenant
 
     public async Task<Result<TenantEmailAccountDto>> CrearAsync(CrearTenantEmailAccountDto dto, CancellationToken ct = default)
     {
+        var existe = await _repo.AnyAsync(e => e.IdTenant == dto.IdTenant && e.IdEmailAccount == dto.IdEmailAccount, ct);
+        if (existe.IsFailure)
+            return Result<TenantEmailAccountDto>.Failure(existe.Error!);
+        if (existe.Value)
+            return Result<TenantEmailAccountDto>.Failure("ASIGNACION_DUPLICADA", "La cuenta ya está asignada al tenant.");
         var entity = Mapper.Map<TenantEmailAccount>(dto);
         var addResult = _repo.Add(entity);
         if (addResult.IsFailure)
@@ -43,11 +49,13 @@ public class TenantEmailAccountService : ServiceAsync<TenantEmailAccount, Tenant
         return Result<TenantEmailAccountDto>.Success(Mapper.Map<TenantEmailAccountDto>(entity));
     }
 
-    public async Task<Result> EliminarAsync(int id, CancellationToken ct = default)
+    public async Task<Result> EliminarAsync(int id, int? alcanceTenant, CancellationToken ct = default)
     {
         var entityResult = await _repo.GetByIdAsync(id, ct);
         if (entityResult.IsFailure)
             return Result.Failure(entityResult.Error!);
+        if (alcanceTenant.HasValue && entityResult.Value.IdTenant != alcanceTenant.Value)
+            return Result.Failure(CommonErrors.NotFound.Entity("TenantEmailAccount", id));
         var removeResult = _repo.Remove(entityResult.Value);
         if (removeResult.IsFailure)
             return removeResult;

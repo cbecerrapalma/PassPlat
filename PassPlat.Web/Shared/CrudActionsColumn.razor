@@ -4,7 +4,7 @@
 @if (Mode == ActionMode.Menu)
 {
     <div @onclick:stopPropagation="true" class="table-actions">
-        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true">
+        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true" AriaLabel="@AriaLabel">
             @if (OnView.HasDelegate)
             {
                 <MudMenuItem OnClick="@(() => OnView.InvokeAsync(Item))">
@@ -36,20 +36,20 @@ else
         @if (OnView.HasDelegate)
         {
             <MudTooltip Text="@ViewText">
-                <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Color="Color.Info" OnClick="@(() => OnView.InvokeAsync(Item))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Color="Color.Info" OnClick="@(() => OnView.InvokeAsync(Item))" / aria-label="Ver" />
             </MudTooltip>
         }
         @if (OnEdit.HasDelegate)
         {
             <MudTooltip Text="@EditText">
-                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => OnEdit.InvokeAsync(Item))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => OnEdit.InvokeAsync(Item))" / aria-label="Editar" />
             </MudTooltip>
         }
         @ChildContent
         @if (OnDelete.HasDelegate)
         {
             <MudTooltip Text="@DeleteText">
-                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="@DeleteColor" OnClick="@(() => OnDelete.InvokeAsync(Item))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="@DeleteColor" OnClick="@(() => OnDelete.InvokeAsync(Item))" / aria-label="Eliminar" />
             </MudTooltip>
         }
     </span>
@@ -66,6 +66,8 @@ else
     [Parameter] public string ViewText { get; set; } = "Ver detalle";
     [Parameter] public Color DeleteColor { get; set; } = Color.Error;
     [Parameter] public RenderFragment? ChildContent { get; set; }
+    // S55.1 · K3 (D3) — nombre accesible del boton de acciones (boton de solo icono).
+    [Parameter] public string AriaLabel { get; set; } = "Acciones";
 
     public enum ActionMode { Individual, Menu }
 }

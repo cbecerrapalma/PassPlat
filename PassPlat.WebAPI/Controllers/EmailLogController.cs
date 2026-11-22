@@ -1,31 +1,28 @@
+using CBP.MultiTenant.Abstractions;
+using CBP.WebApi.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PassPlat.Aplicacion.Services;
+using PassPlat.WebAPI.Auth;
 
 namespace PassPlat.WebAPI.Controllers;
 
-[Route("api/[controller]")]
-[ApiController]
+// S105 · D3 — el propio usuario ve su historial; otro usuario exige EMAIL_LOG_VER y queda acotado al tenant de la sesión (P61)
 [Authorize]
-public class EmailLogController : ControllerBase
+public class EmailLogController : BaseApiController
 {
     private readonly IEmailLogService _service;
+    private readonly ITenantContext _tenantContext;
 
-    public EmailLogController(IEmailLogService service) => _service = service;
-
-    [HttpGet("pendientes")]
-    public async Task<IActionResult> GetPendientes(CancellationToken ct)
+    public EmailLogController(IEmailLogService service, ITenantContext tenantContext)
     {
-        var result = await _service.ObtenerPendientesAsync(ct);
-        if (result.IsFailure) return BadRequest(new { error = result.Error?.Message ?? "Error" });
-        return Ok(result.Value);
+        _service = service;
+        _tenantContext = tenantContext;
     }
 
-    [HttpGet("usuario/{idUsuario}")]
-    public async Task<IActionResult> GetByUsuario(int idUsuario, CancellationToken ct)
-    {
-        var result = await _service.ObtenerPorUsuarioAsync(idUsuario, ct);
-        if (result.IsFailure) return BadRequest(new { error = result.Error?.Message ?? "Error" });
-        return Ok(result.Value);
-    }
+    // S109 · D6 — historial general de envíos, acotado al tenant de la sesión
+    [HttpGet]
+    [Authorize(Policy = "EMAIL_LOG_VER")]
+    public async Task<IActionResult> GetRecientes([FromQuery] string? estado, [FromQuery] int? idUsuario, [FromQuery] int top = 200, CancellationToken ct = default) =>
+        FromResultQuery(await _service.ObtenerRecientesAsync(User.AlcanceTenant(_tenantContext), estado, idUsuario, top, ct));
 }

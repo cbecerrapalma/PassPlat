@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using CBP.Caching.Interfaces;
@@ -49,7 +50,39 @@ public partial class EmailTemplateStoreService : IEmailTemplateStoreService
 
         var context = BuildContext(variables);
         var rendered = await compiled.RenderAsync(context);
-        return Result<string>.Success(rendered);
+        return Result<string>.Success(TextoPlano(rendered, unaLinea: true));
+    }
+
+    public async Task<Result<string?>> RenderTextAsync(string templateCode, IReadOnlyDictionary<string, object?> variables, string cultura = "es", int? idTenant = null, CancellationToken ct = default)
+    {
+        var entity = await ResolveTemplateAsync(templateCode, cultura, idTenant, ct);
+        if (entity == null)
+            return Result<string?>.Failure("TEMPLATE_NOT_FOUND", $"Plantilla '{templateCode}' no encontrada");
+        if (string.IsNullOrWhiteSpace(entity.CuerpoTexto))
+            return Result<string?>.Success(null, allowNull: true);
+
+        var cacheKey = $"text:{entity.Nombre}:{entity.Cultura}:{entity.IdTenant}";
+        var compiled = await _cache.GetAsync<IFluidTemplate>(cacheKey, ct);
+        if (compiled == null)
+        {
+            compiled = _parser.Parse(entity.CuerpoTexto);
+            await _cache.SetAsync(cacheKey, compiled, new CacheEntryOptions { SlidingExpiration = CacheTtl }, ct);
+        }
+
+        var rendered = await compiled.RenderAsync(BuildContext(variables));
+        return Result<string?>.Success(TextoPlano(rendered, unaLinea: false), allowNull: true);
+    }
+
+    // S62.1: el asunto y el texto plano no son HTML. Las variables pueden venir codificadas para
+    // HTML (API pública: "&amp;", "&#123;", "&#xA;"), así que se decodifican después del render.
+    // El resultado no se vuelve a analizar como plantilla. En el asunto, además, se quitan los
+    // saltos de línea (una cabecera de correo no puede contenerlos).
+    internal static string TextoPlano(string renderizado, bool unaLinea)
+    {
+        var texto = WebUtility.HtmlDecode(renderizado);
+        if (unaLinea)
+            texto = Regex.Replace(texto, @"[\r\n]+", " ").Trim();
+        return texto;
     }
 
     public async Task<Result<string>> RenderBodyAsync(string templateCode, IReadOnlyDictionary<string, object?> variables, string cultura = "es", int? idTenant = null, CancellationToken ct = default)
@@ -76,6 +109,7 @@ public partial class EmailTemplateStoreService : IEmailTemplateStoreService
     {
         await _cache.RemoveAsync(BuildBodyCacheKey(templateCode, cultura, idTenant), ct);
         await _cache.RemoveAsync(BuildSubjectCacheKey(templateCode, cultura, idTenant), ct);
+        await _cache.RemoveAsync($"text:{templateCode}:{cultura}:{idTenant}", ct);
     }
 
     public Task InvalidateAllCacheAsync(CancellationToken ct = default)

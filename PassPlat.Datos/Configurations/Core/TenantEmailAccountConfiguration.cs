@@ -16,7 +16,7 @@ public class TenantEmailAccountConfiguration : IEntityTypeConfiguration<TenantEm
         builder.Property(e => e.IdEmailAccount).IsRequired();
         builder.Property(e => e.EsPredeterminada).HasDefaultValue(false).IsRequired();
         builder.Property(e => e.Activo).HasDefaultValue(true).IsRequired();
-        builder.Property(e => e.FecCrea).HasDefaultValueSql("sysutcdatetime()").IsRequired();
+        builder.Property(e => e.FecCrea).HasDefaultValueSql("sysdatetime()").IsRequired();
 
         builder.HasOne(e => e.Tenant)
             .WithMany(t => t.TenantEmailAccounts)

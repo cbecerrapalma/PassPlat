@@ -8,10 +8,6 @@ namespace PassPlat.Datos.Repositories;
 
 public interface IIdenExtTokensRepository : IRepositoryAsync<IdenExtTokens>
 {
-    Task<Result<IdenExtTokens?>> ObtenerTokenActivoAsync(long idIdenExt, CancellationToken ct = default);
-    Task<Result> RevocarTokensAsync(long idIdenExt, string? motivo = null, CancellationToken ct = default);
-    Task<Result<long?>> ExisteRefreshTokenHashAsync(string hash, CancellationToken ct = default);
-    Task<Result> ActualizarUltimoUsoAsync(long id, CancellationToken ct = default);
     Task<Result> MarcarTokenAnteriorInactivoAsync(long idIdenExt, int versionActual, CancellationToken ct = default);
     Task<Result<IReadOnlyList<IdenExtTokens>>> ObtenerTokensPorRenovarAsync(TimeSpan threshold, CancellationToken ct = default);
 }
@@ -19,74 +15,6 @@ public interface IIdenExtTokensRepository : IRepositoryAsync<IdenExtTokens>
 public class IdenExtTokensRepository : RepositoryAsync<IdenExtTokens>, IIdenExtTokensRepository
 {
     public IdenExtTokensRepository(PassPlatDbContext context) : base(context) { }
-
-    public async Task<Result<IdenExtTokens?>> ObtenerTokenActivoAsync(long idIdenExt, CancellationToken ct = default)
-    {
-        try
-        {
-            var token = await DbSet
-                .Where(t => t.IdIdenExt == idIdenExt && t.Activo && !t.Revocado)
-                .OrderByDescending(t => t.Version)
-                .FirstOrDefaultAsync(ct);
-            return Result<IdenExtTokens?>.Success(token, allowNull: true);
-        }
-        catch (Exception ex)
-        {
-            return Result<IdenExtTokens?>.Failure("DB_ERROR", ex.Message);
-        }
-    }
-
-    public async Task<Result> RevocarTokensAsync(long idIdenExt, string? motivo = null, CancellationToken ct = default)
-    {
-        try
-        {
-            var now = DateTime.Now;
-            foreach (var t in await DbSet.Where(t => t.IdIdenExt == idIdenExt && t.Activo && !t.Revocado).ToListAsync(ct))
-            {
-                t.Activo = false;
-                t.Revocado = true;
-                t.FechaRevocacion = now;
-                t.MotivoRevocacion = motivo;
-            }
-            return Result.Success();
-        }
-        catch (Exception ex)
-        {
-            return Result.Failure("DB_ERROR", ex.Message);
-        }
-    }
-
-    public async Task<Result<long?>> ExisteRefreshTokenHashAsync(string hash, CancellationToken ct = default)
-    {
-        try
-        {
-            var id = await DbSet
-                .Where(t => t.RefreshTokenHash == hash && t.Activo && !t.Revocado)
-                .Select(t => (long?)t.Id)
-                .FirstOrDefaultAsync(ct);
-            return Result<long?>.Success(id);
-        }
-        catch (Exception ex)
-        {
-            return Result<long?>.Failure("DB_ERROR", ex.Message);
-        }
-    }
-
-    public async Task<Result> ActualizarUltimoUsoAsync(long id, CancellationToken ct = default)
-    {
-        try
-        {
-            var entity = await DbSet.FindAsync([id], ct);
-            if (entity == null)
-                return Result.Failure("NOT_FOUND", "Token no encontrado");
-            entity.UltimoUso = DateTime.Now;
-            return Result.Success();
-        }
-        catch (Exception ex)
-        {
-            return Result.Failure("DB_ERROR", ex.Message);
-        }
-    }
 
     public async Task<Result> MarcarTokenAnteriorInactivoAsync(long idIdenExt, int versionActual, CancellationToken ct = default)
     {
@@ -104,7 +32,7 @@ public class IdenExtTokensRepository : RepositoryAsync<IdenExtTokens>, IIdenExtT
             }
             return Result.Success();
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result.Failure("DB_ERROR", ex.Message);
         }
@@ -123,7 +51,7 @@ public class IdenExtTokensRepository : RepositoryAsync<IdenExtTokens>, IIdenExtT
                 .ToListAsync(ct);
             return Result<IReadOnlyList<IdenExtTokens>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<IdenExtTokens>>.Failure("DB_ERROR", ex.Message);
         }

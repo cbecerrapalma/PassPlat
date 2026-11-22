@@ -10,7 +10,6 @@ public interface IUsuarioPermisoRepository : IRepositoryAsync<UsuarioPermiso>
 {
     Task<Result<IReadOnlyList<UsuarioPermiso>>> ObtenerPorUsuarioAsync(int idUsuario, CancellationToken ct = default);
     Task<Result<IReadOnlyList<UsuarioPermiso>>> ObtenerActivosPorUsuarioAsync(int idUsuario, int idTenant, CancellationToken ct = default);
-    Task<Result<UsuarioPermiso?>> ObtenerPorUsuarioPermisoAsync(int idUsuario, int idPermiso, CancellationToken ct = default);
 }
 
 public class UsuarioPermisoRepository : RepositoryAsync<UsuarioPermiso>, IUsuarioPermisoRepository
@@ -28,7 +27,7 @@ public class UsuarioPermisoRepository : RepositoryAsync<UsuarioPermiso>, IUsuari
                 .ToListAsync(ct);
             return Result<IReadOnlyList<UsuarioPermiso>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<UsuarioPermiso>>.Failure("DB_ERROR", ex.Message);
         }
@@ -44,22 +43,9 @@ public class UsuarioPermisoRepository : RepositoryAsync<UsuarioPermiso>, IUsuari
                 .ToListAsync(ct);
             return Result<IReadOnlyList<UsuarioPermiso>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<UsuarioPermiso>>.Failure("DB_ERROR", ex.Message);
-        }
-    }
-
-    public async Task<Result<UsuarioPermiso?>> ObtenerPorUsuarioPermisoAsync(int idUsuario, int idPermiso, CancellationToken ct = default)
-    {
-        try
-        {
-            var entity = await DbSet.FirstOrDefaultAsync(up => up.IdUsuario == idUsuario && up.IdPermiso == idPermiso, ct);
-            return Result<UsuarioPermiso?>.Success(entity, allowNull: true);
-        }
-        catch (Exception ex)
-        {
-            return Result<UsuarioPermiso?>.Failure("DB_ERROR", ex.Message);
         }
     }
 }

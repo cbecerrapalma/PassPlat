@@ -1,15 +1,18 @@
 @page "/federacion/providen"
 @inject ApiClient Api
+@inject AuthService Auth
 @inject ISnackbar Snackbar
 @inject IDialogService Dialog
 @inject NavigationManager Navigation
 
+@if (!Auth.TienePermiso("FED_PROVIDEN_VER"))
+{
+    <SinPermiso PermisoRequerido="FED_PROVIDEN_VER" />
+}
+else
+{
 <div class="iam-page">
-    <MudBreadcrumbs Class="mb-3">
-        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
-        <MudBreadcrumbItem>Federación</MudBreadcrumbItem>
-        <MudBreadcrumbItem>Proveedores</MudBreadcrumbItem>
-    </MudBreadcrumbs>
+<MigasDePan />
 
     <div class="page-header">
         <div class="page-title-row">
@@ -21,19 +24,19 @@
     </div>
 
     <div class="kpi-row mb-4">
-        <IamKpiCard Valor="@_totalCount" Label="Total Proveedores" Subtexto="Registrados" Icon="@Icons.Material.Filled.Dns" ColorClass="primary" Xs="12" Sm="6" Md="3" />
-        <IamKpiCard Valor="@_configuradosCount" Label="Configurados" Subtexto="Completos y activos" Icon="@Icons.Material.Filled.CheckCircle" ColorClass="success" Xs="12" Sm="6" Md="3" />
-        <IamKpiCard Valor="@_pendientesCount" Label="Pendientes" Subtexto="Sin configurar" Icon="@Icons.Material.Filled.HourglassEmpty" ColorClass="warning" Xs="12" Sm="6" Md="3" />
-        <IamKpiCard Valor="@_erroresCount" Label="Con errores" Subtexto="Requieren atención" Icon="@Icons.Material.Filled.Error" ColorClass="error" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_totalCount" Label="Total Proveedores" Subtexto="Registrados" Icon="@Icons.Material.Filled.Dns" ColorClass="primary" />
+        <IamKpiCard Valor="@_configuradosCount" Label="Configurados" Subtexto="Completos y activos" Icon="@Icons.Material.Filled.CheckCircle" ColorClass="success" />
+        <IamKpiCard Valor="@_pendientesCount" Label="Pendientes" Subtexto="Sin configurar" Icon="@Icons.Material.Filled.HourglassEmpty" ColorClass="warning" />
+        <IamKpiCard Valor="@_erroresCount" Label="Con errores" Subtexto="Requieren atención" Icon="@Icons.Material.Filled.Error" ColorClass="error" />
     </div>
 
     <div class="content-body">
         <div class="table-panel">
-            <CrudToolbar ShowSearch="true" ShowFilter="false"
+            <CrudToolbar ShowSearch="true"
                 SearchString="@_searchString" SearchStringChanged="@OnSearchChanged"
                 OnRefresh="@Refrescar" ShowCreate="false" />
             <div class="table-wrap">
-                <MudTable Items="@_items" Hover="true" Breakpoint="Breakpoint.Sm"
+                <MudTable Items="@_items" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@_loading"
                     RowStyle="cursor: pointer;" OnRowClick="@((TableRowClickEventArgs<ProvIdenCatalogDto> e) => AbrirDialog(e.Item!))">
                     <ColGroup>
                         <col style="width:80px;" /><col style="width:200px;" /><col style="width:100px;" /><col style="width:90px;" /><col style="width:140px;" /><col style="width:60px;" />
@@ -84,6 +87,7 @@
         </div>
     </div>
 </div>
+}
 
 @code {
     private IEnumerable<ProvIdenCatalogDto> _items = [];
@@ -93,10 +97,10 @@
     private string _configuradosCount = "0";
     private string _pendientesCount = "0";
     private string _erroresCount = "0";
-    private readonly DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
 
     protected override async Task OnInitializedAsync()
     {
+        if (!Auth.TienePermiso("FED_PROVIDEN_VER")) return; // S114 · D3
         await CargarCatalogAsync();
     }
 
@@ -148,7 +152,7 @@
     private async Task AbrirDialog(ProvIdenCatalogDto item)
     {
         var parameters = new DialogParameters { ["ProvIden"] = item.Proveedor };
-        await Dialog.ShowAsync<ProvIdenDialog>("Detalle del Proveedor", parameters, _dialogOptions);
+        await Dialog.ShowAsync<ProvIdenDialog>("Detalle del Proveedor", parameters, OpcionesDialogo.Dialogo(TamanoDialogo.Amplio));
     }
 
     private static string _textoEstado(EEstadoConfiguracionOAuth estado) => estado switch

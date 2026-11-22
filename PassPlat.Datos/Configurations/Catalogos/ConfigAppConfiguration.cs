@@ -21,7 +21,7 @@ public class ConfigAppConfiguration : IEntityTypeConfiguration<ConfigApp>
         builder.Property(c => c.EsEncriptado).HasDefaultValue(false).IsRequired();
         builder.Property(c => c.Activo).HasDefaultValue(true).IsRequired();
         builder.Property(c => c.IdUsrMod);
-        builder.Property(c => c.FecCrea).HasDefaultValueSql("sysutcdatetime()").IsRequired();
+        builder.Property(c => c.FecCrea).HasDefaultValueSql("sysdatetime()").IsRequired();
         builder.Property(c => c.FecMod);
 
         builder.HasOne(c => c.Tenant)

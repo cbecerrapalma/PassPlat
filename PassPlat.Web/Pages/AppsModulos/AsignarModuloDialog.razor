@@ -1,0 +1,102 @@
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog Class="dialogo-formulario">
+    <TitleContent>
+        <TituloDialogo Icono="@Icons.Material.Filled.Extension" Texto="Asignar módulo" />
+    </TitleContent>
+    <DialogContent>
+        <AlertaErrorDialogo Mensaje="@_errorServidor" />
+        <MudForm @ref="_form">
+            <div class="dialogo-campos">
+                <MudText Typo="Typo.body2">Módulos del catálogo que la app todavía no tiene.</MudText>
+                <MudSelect T="int" Label="Módulo" @bind-Value="_idModulo" Variant="Variant.Outlined" FullWidth="true"
+                    AnchorOrigin="Origin.BottomCenter" Required="true" data-testid="appmodulo-select"
+                    ToStringFunc="@(id => NombreModulo(id))">
+                    @foreach (var modulo in Disponibles)
+                    {
+                        <MudSelectItem T="int" Value="@modulo.Id">@($"{modulo.Codigo} · {modulo.Nombre}")</MudSelectItem>
+                    }
+                </MudSelect>
+                @if (_disponibles.Count == 0)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">La app ya tiene todos los módulos del catálogo.</MudText>
+                }
+            </div>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancelar" Disabled="@_guardando">Cancelar</MudButton>
+        <BotonGuardarDialogo Texto="Asignar" Guardando="@_guardando" OnClick="Guardar" />
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    private string? _errorServidor;
+    [Parameter] public int IdApp { get; set; }
+    [Parameter] public List<int> IdsAsignados { get; set; } = [];
+
+    private MudForm _form = null!;
+    private List<ModuloDto> _disponibles = [];
+    private int _idModulo;
+    private bool _guardando;
+
+    private IEnumerable<ModuloDto> Disponibles => _disponibles;
+
+    private string NombreModulo(int id) => _disponibles.FirstOrDefault(m => m.Id == id) is { } m
+        ? $"{m.Codigo} · {m.Nombre}"
+        : string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var arbol = await Api.GetAsync<List<ModuloDto>>("api/modulos") ?? [];
+            var todos = new List<ModuloDto>();
+            Aplanar(arbol, [], todos);
+            _disponibles = todos.Where(m => m.Activo && !IdsAsignados.Contains(m.Id)).ToList();
+        }
+        catch (Exception ex)
+        {
+            _errorServidor = Api.LastError ?? $"Error al cargar módulos: {ex.Message}";
+        }
+    }
+
+    private static void Aplanar(IEnumerable<ModuloDto> nodos, HashSet<int> visitados, List<ModuloDto> destino)
+    {
+        foreach (var nodo in nodos)
+        {
+            if (!visitados.Add(nodo.Id)) continue;
+            destino.Add(nodo);
+            Aplanar(nodo.SubModulos, visitados, destino);
+        }
+    }
+
+    private void Cancelar() => MudDialog.Cancel();
+
+    private async Task Guardar()
+    {
+        if (_idModulo <= 0)
+        {
+            Snackbar.Add("Selecciona un módulo", Severity.Warning);
+            return;
+        }
+        _guardando = true;
+        try
+        {
+            var (result, error) = await Api.PostWithErrorAsync<AppModuloDto>("api/AppsModulos", new CrearAppModuloDto
+            {
+                IdApp = IdApp,
+                IdModulo = _idModulo
+            });
+            if (result is not null) MudDialog.Close(DialogResult.Ok(true));
+            else _errorServidor = error ?? "No se pudo asignar el módulo";
+        }
+        catch (Exception ex)
+        {
+            _errorServidor = Api.LastError ?? $"Error al asignar el módulo: {ex.Message}";
+        }
+        finally { _guardando = false; }
+    }
+}

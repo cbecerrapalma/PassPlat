@@ -72,3 +72,15 @@ public class PublicarTemplateDto
     public int Id { get; set; }
     public string? Motivo { get; set; }
 }
+
+// S78: endpoint de envío de email por plantilla para aplicaciones externas
+public sealed record EnviarEmailPlantillaRequest(
+    string CodigoPlantilla,
+    string Destinatario,
+    string? NombreDestinatario = null,
+    Dictionary<string, string>? Variables = null,
+    string Cultura = "es");
+
+public sealed record EnviarEmailPlantillaResponse(
+    long? IdEmailLog,
+    string TrackingId);

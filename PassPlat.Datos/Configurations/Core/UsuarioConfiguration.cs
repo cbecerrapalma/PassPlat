@@ -34,8 +34,8 @@ public class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
         builder.Property(u => u.FecUltCambioPwd);
         builder.Property(u => u.FecVerifBrecha);
         builder.Property(u => u.FecEliminacion);
-        builder.Property(u => u.FecCrea).HasDefaultValueSql("sysutcdatetime()");
-        builder.Property(u => u.FecMod).HasDefaultValueSql("sysutcdatetime()");
+        builder.Property(u => u.FecCrea).HasDefaultValueSql("sysdatetime()");
+        builder.Property(u => u.FecMod).HasDefaultValueSql("sysdatetime()");
 
         builder.HasOne(u => u.Tenant)
             .WithMany(t => t.Usuarios)

@@ -37,7 +37,7 @@ public class MfaCodeStore : IMfaCodeStore
         var existing = await _cache.GetAsync<MfaCodeEntry>(key, ct);
         if (existing is not null)
         {
-            var remaining = existing.ExpiresAt - DateTime.UtcNow;
+            var remaining = existing.ExpiresAt - DateTime.Now;
             if (remaining > TimeSpan.FromSeconds(OverwriteWarnThresholdSeconds))
             {
                 _logger.LogWarning(
@@ -46,7 +46,7 @@ public class MfaCodeStore : IMfaCodeStore
             }
         }
 
-        await _cache.SetAsync(key, new MfaCodeEntry { Code = code, ExpiresAt = DateTime.UtcNow.Add(expiry) }, new CacheEntryOptions(expiry), ct);
+        await _cache.SetAsync(key, new MfaCodeEntry { Code = code, ExpiresAt = DateTime.Now.Add(expiry) }, new CacheEntryOptions(expiry), ct);
     }
 
     public async Task<bool> ValidateAndConsumeAsync(int idUsuario, int idTenant, string code, CancellationToken ct = default)
@@ -59,7 +59,7 @@ public class MfaCodeStore : IMfaCodeStore
 
         await _cache.RemoveAsync(key, ct);
 
-        if (entry.ExpiresAt < DateTime.UtcNow)
+        if (entry.ExpiresAt < DateTime.Now)
             return false;
 
         return entry.Code == code;

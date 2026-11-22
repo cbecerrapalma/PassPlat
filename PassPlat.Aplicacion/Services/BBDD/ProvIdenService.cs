@@ -16,10 +16,8 @@ public interface IProvIdenService : IServiceAsync<ProvIden, ProvIdenDto>
 {
     Task<Result<IReadOnlyList<ProvIdenDto>>> ObtenerActivosAsync(CancellationToken ct = default);
     Task<Result<ProvIdenDto?>> ObtenerPorCodigoAsync(string codigo, CancellationToken ct = default);
-    Task<Result<ProviderConfigurationInfoDto?>> ObtenerInfoConfiguracionAsync(int id, CancellationToken ct = default);
     Task<Result<ProvIdenDto>> CrearAsync(CrearProvIdenDto dto, CancellationToken ct = default);
     Task<Result<ProvIdenDto>> ActualizarAsync(int id, ActualizarProvIdenDto dto, CancellationToken ct = default);
-    Task<Result> DesactivarAsync(int id, CancellationToken ct = default);
     Task<Result<IReadOnlyList<ProvIdenCatalogDto>>> ObtenerCatalogAsync(int idTenant, CancellationToken ct = default);
 }
 
@@ -50,15 +48,6 @@ public class ProvIdenService : ServiceAsync<ProvIden, ProvIdenDto>, IProvIdenSer
         if (entityResult.IsFailure) return Result<ProvIdenDto?>.Failure(entityResult.Error!);
         var dto = entityResult.Value != null ? Mapper.Map<ProvIdenDto>(entityResult.Value) : null;
         return Result<ProvIdenDto?>.Success(dto, allowNull: true);
-    }
-
-    public async Task<Result<ProviderConfigurationInfoDto?>> ObtenerInfoConfiguracionAsync(int id, CancellationToken ct = default)
-    {
-        var r = await Repository.GetByIdAsync(id, ct);
-        if (r.IsFailure) return Result<ProviderConfigurationInfoDto?>.Failure(r.Error!);
-        if (r.Value is null) return Result<ProviderConfigurationInfoDto?>.Success(null, allowNull: true);
-        var dto = Mapper.Map<ProviderConfigurationInfoDto>(r.Value);
-        return Result<ProviderConfigurationInfoDto?>.Success(dto, allowNull: true);
     }
 
     public async Task<Result<IReadOnlyList<ProvIdenCatalogDto>>> ObtenerCatalogAsync(int idTenant, CancellationToken ct = default)
@@ -101,7 +90,7 @@ public class ProvIdenService : ServiceAsync<ProvIden, ProvIdenDto>, IProvIdenSer
         }
 
         var entity = ProvIden.Crear(dto.Codigo, dto.Nombre, dto.TipoProveedor, dto.Protocolo, dto.Version,
-            dto.UrlIssuer, dto.EndpointAutorizacion, dto.EndpointToken, dto.EndpointUserInfo, dto.JwksUri, dto.EndpointRevocacion,
+            dto.EndpointAutorizacion, dto.EndpointToken, dto.EndpointUserInfo, dto.EndpointRevocacion,
             dto.SoportaPKCE, dto.SoportaRefreshToken, dto.SoportaMFA, dto.Icono, dto.Orden, metadata);
 
         var addResult = Repository.Add(entity);
@@ -122,18 +111,5 @@ public class ProvIdenService : ServiceAsync<ProvIden, ProvIdenDto>, IProvIdenSer
 
         await _uow.SaveChangesAsync(ct);
         return Result<ProvIdenDto>.Success(Mapper.Map<ProvIdenDto>(r.Value));
-    }
-
-    public async Task<Result> DesactivarAsync(int id, CancellationToken ct = default)
-    {
-        var r = await Repository.GetByIdAsync(id, ct);
-        if (r.IsFailure) return Result.Failure(r.Error!);
-
-        r.Value.Activo = false;
-        var updResult = Repository.Update(r.Value);
-        if (updResult.IsFailure) return Result.Failure(updResult.Error!);
-
-        await _uow.SaveChangesAsync(ct);
-        return Result.Success();
     }
 }

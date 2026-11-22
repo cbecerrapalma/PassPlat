@@ -11,67 +11,93 @@ else if (_usuario is null)
 }
 else
 {
-    <MudContainer Class="mt-4">
-        <MudText Typo="Typo.subtitle2" Class="mb-4" Style="color:var(--mud-palette-text-secondary);">
-            Información básica del usuario. Los campos marcados con * son editables.
-        </MudText>
-        <MudPaper Elevation="0" Class="pa-4 mb-4" Style="border-radius:10px;background:var(--mud-palette-table-hover);">
-            <MudText Typo="Typo.subtitle2" Class="mb-3" Style="font-weight:500;">Datos de la cuenta</MudText>
-            <MudGrid>
-                <MudItem xs12 md3>
-                    <MudTextField @bind-Value="_usuario.NomUsuario" Label="Usuario" Variant="Variant.Outlined" Disabled="true" Class="mb-2" />
-                </MudItem>
-                <MudItem xs12 md3>
-                    <MudTextField @bind-Value="_editarEmail" Label="Email (opcional)" Variant="Variant.Outlined" Class="mb-2" />
-                </MudItem>
-                <MudItem xs12 md3>
-                    <MudTextField @bind-Value="_editarNombre" Label="Nombre *" Variant="Variant.Outlined" Class="mb-2" />
-                </MudItem>
-                <MudItem xs12 md3>
-                    <MudTextField @bind-Value="_editarApellido" Label="Apellido *" Variant="Variant.Outlined" Class="mb-2" />
-                </MudItem>
-            </MudGrid>
-            <MudGrid>
-                <MudItem xs12 md4>
-                    <MudSwitch @bind-Value="_usuario.EmailVerificado" Label="Email verificado" Color="Color.Primary" />
-                </MudItem>
-                <MudItem xs12 md4>
-                    <MudText Class="pt-3">Requiere cambio de contraseña: @(_usuario.ReqCambioPwd ? "Sí" : "No")</MudText>
-                </MudItem>
-                <MudItem xs12 md4>
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@GuardarUsuario" Disabled="@_saving" Class="mt-2">
-                        Guardar Cambios
-                    </MudButton>
-                </MudItem>
-            </MudGrid>
+    <div class="detail-tab-body">
+        @* ── Datos de solo lectura (pares etiqueta/valor) ── *@
+        <MudPaper Elevation="0" Outlined="true" Class="pa-4 mb-4">
+            <MudText Typo="Typo.subtitle2" Class="mb-3">Datos de la cuenta</MudText>
+            <div class="readonly-grid">
+                <div class="readonly-item">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Usuario</MudText>
+                    <MudText Typo="Typo.body2" Class="font-weight-medium">@_usuario.NomUsuario</MudText>
+                </div>
+                <div class="readonly-item">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Email</MudText>
+                    <MudText Typo="Typo.body2" Class="font-weight-medium">@(_usuario.Email ?? "Sin email")</MudText>
+                </div>
+                <div class="readonly-item">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Requiere cambio de contraseña</MudText>
+                    <MudText Typo="Typo.body2" Class="font-weight-medium">@(_usuario.ReqCambioPwd ? "Sí" : "No")</MudText>
+                </div>
+                <div class="readonly-item">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Email verificado</MudText>
+                    <MudText Typo="Typo.body2" Class="font-weight-medium">@(_usuario.EmailVerificado ? "Sí" : "No")</MudText>
+                </div>
+            </div>
         </MudPaper>
-        <MudPaper Elevation="0" Class="pa-4" Style="border-radius:10px;background:var(--mud-palette-table-hover);">
-            <MudText Typo="Typo.subtitle2" Class="mb-3" Style="font-weight:500;">Fechas del registro</MudText>
-            <MudGrid>
-                <MudItem xs6 sm3>
-                    <MudText Class="mb-1" Typo="Typo.caption">Creado</MudText>
-                    <MudText Typo="Typo.body2">@(_usuario.FecCrea?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "-")</MudText>
-                </MudItem>
-                <MudItem xs6 sm3>
-                    <MudText Class="mb-1" Typo="Typo.caption">Últ. modificación</MudText>
-                    <MudText Typo="Typo.body2">@(_usuario.FecMod?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "-")</MudText>
-                </MudItem>
-                <MudItem xs6 sm3>
-                    <MudText Class="mb-1" Typo="Typo.caption">Últ. cambio contraseña</MudText>
-                    <MudText Typo="Typo.body2">@(_usuario.FecUltCambioPwd?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "-")</MudText>
-                </MudItem>
-                <MudItem xs6 sm3>
-                    <MudText Class="mb-1" Typo="Typo.caption">Últ. intento fallido</MudText>
-                    <MudText Typo="Typo.body2">@(_usuario.FecUltIntentoFallido?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "-")</MudText>
-                </MudItem>
-            </MudGrid>
+
+        @* ── Formulario editable: 2 columnas desde 960 px ── *@
+        <MudPaper Elevation="0" Outlined="true" Class="pa-4 mb-4">
+            <MudText Typo="Typo.subtitle2" Class="mb-3">Editar usuario</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-3">Los campos marcados con * son editables.</MudText>
+            <div class="form-grid">
+                <div class="form-field">
+                    <MudTextField T="string" Value="_editarEmail" ValueChanged="@(v => _editarEmail = v ?? "")"
+                        Label="Email (opcional)" Variant="Variant.Outlined" />
+                </div>
+                <div class="form-field">
+                    <MudTextField T="string" Value="_editarNombre" ValueChanged="@(v => _editarNombre = v ?? "")"
+                        Label="Nombre *" Variant="Variant.Outlined" />
+                </div>
+                <div class="form-field">
+                    <MudTextField T="string" Value="_editarApellido" ValueChanged="@(v => _editarApellido = v ?? "")"
+                        Label="Apellido *" Variant="Variant.Outlined" />
+                </div>
+                <div class="form-field form-field-check">
+                    <MudSwitch T="bool" Value="@(_usuario.EmailVerificado)" ValueChanged="@(v => _usuario!.EmailVerificado = v)"
+                        Label="Email verificado" Color="Color.Primary" />
+                </div>
+            </div>
+            <div class="form-savebar">
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="flex-grow-1">
+                    Los cambios se aplican al guardar.
+                </MudText>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@GuardarUsuario" Disabled="@_saving"
+                    StartIcon="@Icons.Material.Filled.Save">
+                    Guardar cambios
+                </MudButton>
+            </div>
         </MudPaper>
-    </MudContainer>
+
+        @* ── Fechas del registro ── *@
+        <MudPaper Elevation="0" Outlined="true" Class="pa-4">
+            <MudText Typo="Typo.subtitle2" Class="mb-3">Fechas del registro</MudText>
+            <div class="readonly-grid readonly-grid-4">
+                <div class="readonly-item">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Creado</MudText>
+                    <MudText Typo="Typo.body2">@(_usuario.FecCrea?.ToString("dd/MM/yyyy HH:mm") ?? "-")</MudText>
+                </div>
+                <div class="readonly-item">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Última modificación</MudText>
+                    <MudText Typo="Typo.body2">@(_usuario.FecMod?.ToString("dd/MM/yyyy HH:mm") ?? "-")</MudText>
+                </div>
+                <div class="readonly-item">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Último cambio de contraseña</MudText>
+                    <MudText Typo="Typo.body2">@(_usuario.FecUltCambioPwd?.ToString("dd/MM/yyyy HH:mm") ?? "-")</MudText>
+                </div>
+                <div class="readonly-item">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Último intento fallido</MudText>
+                    <MudText Typo="Typo.body2">@(_usuario.FecUltIntentoFallido?.ToString("dd/MM/yyyy HH:mm") ?? "-")</MudText>
+                </div>
+            </div>
+        </MudPaper>
+    </div>
 }
 
 @code {
     [Parameter] public int UserId { get; set; }
     [Parameter] public bool IsActive { get; set; }
+    // S58 · D4 — la pagina ya carga el usuario: la ficha no lo vuelve a pedir.
+    [Parameter] public UsuarioDto? Usuario { get; set; }
 
     private UsuarioDto? _usuario;
     private string _editarNombre = "";
@@ -95,12 +121,12 @@ else
         _loading = true;
         try
         {
-            _usuario = await Api.GetAsync<UsuarioDto>($"api/usuarios/{UserId}");
+            _usuario = Usuario ?? await Api.GetAsync<UsuarioDto>($"api/usuarios/{UserId}");
             if (_usuario is not null)
             {
                 _editarNombre = _usuario.Nombre;
                 _editarApellido = _usuario.Apellido;
-                _editarEmail = _usuario.Email;
+                _editarEmail = _usuario.Email ?? "";
             }
         }
         catch (Exception ex)
@@ -133,7 +159,7 @@ else
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
         }
         finally
         {

@@ -1,0 +1,194 @@
+@page "/admin/herencia-roles"
+@inject ApiClient Api
+@inject AuthService Auth
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@using PassPlat.Web.Models
+@using PassPlat.Web.Shared
+
+@if (!Auth.TienePermiso("ROLES_HERENCIA_VER"))
+{
+    <SinPermiso PermisoRequerido="ROLES_HERENCIA_VER" />
+}
+else
+{
+<div class="iam-page">
+<MigasDePan />
+
+    <div class="page-header">
+        <div class="page-title-row">
+            <div>
+                <h1 class="page-title">Herencia de roles</h1>
+                <p class="page-subtitle">El rol hijo hereda los permisos del rol padre dentro del mismo tenant.</p>
+            </div>
+            <div class="page-actions">
+                @if (PuedeEscribir)
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@AbrirNueva"
+                        StartIcon="@Icons.Material.Filled.Add" Size="Size.Medium" data-testid="herencia-nueva">
+                        Nueva herencia
+                    </MudButton>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="kpi-row mb-4">
+        <IamKpiCard Valor="@_items.Count.ToString()" Label="Herencia" Subtexto="Relaciones registradas" Icon="@Icons.Material.Filled.AccountTree" ColorClass="primary" />
+        <IamKpiCard Valor="@_items.Select(h => h.IdRolPadre).Distinct().Count().ToString()" Label="Roles padre" Subtexto="Distintos en el tenant" Icon="@Icons.Material.Filled.Security" ColorClass="info" />
+    </div>
+
+    <div class="content-body">
+        <div class="table-panel">
+            <div class="table-toolbar filter-row">
+                @if (Auth.EsSistema)
+                {
+                    <MudSelect T="int" Label="Tenant" Value="_idTenant" ValueChanged="@CambiarTenant"
+                        Variant="Variant.Outlined" Dense="true" Class="lista-filtro" data-testid="herencia-tenant"
+                        ToStringFunc="@(id => NombreTenant(id))">
+                        @foreach (var tenant in _tenants)
+                        {
+                            <MudSelectItem T="int" Value="@tenant.Id">@tenant.Nombre</MudSelectItem>
+                        }
+                    </MudSelect>
+                }
+                <MudTextField @bind-Value="_busqueda" Label="Buscar rol..." Variant="Variant.Outlined"
+                    Immediate="true" Clearable="true" Class="lista-filtro"
+                    Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+                <div class="toolbar-spacer"></div>
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium" aria-label="Refrescar" OnClick="@CargarHerencia" />
+            </div>
+            <div class="table-wrap">
+                <MudTable T="RolesHerenciaDto" Items="@_filtrados" Hover="true" Loading="@_cargando" Breakpoint="Breakpoint.Sm">
+                    <HeaderContent>
+                        <MudTh>Rol padre</MudTh>
+                        <MudTh>Rol hijo</MudTh>
+                        <MudTh>Tenant</MudTh>
+                        <MudTh>Creado</MudTh>
+                        <MudTh>Acciones</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Rol padre" data-testid="herencia-fila">@(context.RolPadreNombre ?? context.IdRolPadre.ToString())</MudTd>
+                        <MudTd DataLabel="Rol hijo">@(context.RolHijoNombre ?? context.IdRolHijo.ToString())</MudTd>
+                        <MudTd DataLabel="Tenant">@(context.TenantNombre ?? context.IdTenant.ToString())</MudTd>
+                        <MudTd DataLabel="Creado">@context.FecCrea.ToString("g")</MudTd>
+                        <MudTd DataLabel="Acciones">
+                            @if (PuedeEscribir)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.LinkOff" Size="Size.Small" Color="Color.Error"
+                                    aria-label="Quitar herencia" data-testid="herencia-quitar"
+                                    OnClick="@(() => ConfirmarQuitar(context))" />
+                            }
+                            else
+                            {
+                                <span>—</span>
+                            }
+                        </MudTd>
+                    </RowTemplate>
+                    <NoRecordsContent>
+                        <MudText Align="Align.Center" Class="py-6">
+                            <MudIcon Icon="@Icons.Material.Filled.SearchOff" Class="mr-2" />
+                            No hay registros
+                        </MudText>
+                    </NoRecordsContent>
+                </MudTable>
+            </div>
+        </div>
+    </div>
+</div>
+}
+
+@code {
+    private List<RolesHerenciaDto> _items = [];
+    private List<TenantDto> _tenants = [];
+    private int _idTenant;
+    private string? _busqueda;
+    private bool _cargando;
+
+    private bool PuedeEscribir => Auth.TienePermiso("ROLES_EDITAR");
+
+    private IEnumerable<RolesHerenciaDto> _filtrados => string.IsNullOrWhiteSpace(_busqueda)
+        ? _items
+        : _items.Where(h => (h.RolPadreNombre ?? string.Empty).Contains(_busqueda, StringComparison.OrdinalIgnoreCase)
+            || (h.RolHijoNombre ?? string.Empty).Contains(_busqueda, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.TienePermiso("ROLES_HERENCIA_VER")) return;
+        if (Auth.EsSistema)
+        {
+            try { _tenants = await Api.GetAsync<List<TenantDto>>("api/tenants") ?? []; }
+            catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error al cargar tenants: {ex.Message}", Severity.Error); }
+            _idTenant = _tenants.FirstOrDefault()?.Id ?? 0;
+        }
+        else
+        {
+            _idTenant = Auth.IdTenant ?? 0;
+        }
+        await CargarHerencia();
+    }
+
+    private async Task CambiarTenant(int id)
+    {
+        _idTenant = id;
+        await CargarHerencia();
+    }
+
+    private string NombreTenant(int id) => _tenants.FirstOrDefault(t => t.Id == id)?.Nombre ?? id.ToString();
+
+    private async Task CargarHerencia()
+    {
+        if (_idTenant <= 0) { _items = []; return; }
+        _cargando = true;
+        try
+        {
+            var data = await Api.GetAsync<List<RolesHerenciaDto>>($"api/RolesHerencia/tenant/{_idTenant}");
+            if (data is null)
+            {
+                _items = [];
+                Snackbar.Add(Api.LastError ?? "No se pudo cargar la herencia", Severity.Error);
+                return;
+            }
+            _items = data;
+        }
+        catch (Exception ex)
+        {
+            _items = [];
+            Snackbar.Add(Api.LastError ?? $"Error al cargar: {ex.Message}", Severity.Error);
+        }
+        finally { _cargando = false; }
+    }
+
+    private async Task AbrirNueva()
+    {
+        var parametros = new DialogParameters { ["IdTenant"] = _idTenant };
+        var dialog = await Dialog.ShowAsync<HerenciaRolDialog>("Nueva herencia", parametros, OpcionesDialogo.Dialogo(TamanoDialogo.Compacto));
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            Snackbar.Add("Herencia creada", Severity.Success);
+            await CargarHerencia();
+        }
+    }
+
+    private async Task ConfirmarQuitar(RolesHerenciaDto item)
+    {
+        var parametros = new DialogParameters
+        {
+            ["Title"] = "Quitar herencia",
+            ["Message"] = $"¿Quitar la herencia de {item.RolHijoNombre} hacia {item.RolPadreNombre}?",
+            ["ConfirmText"] = "Quitar",
+            ["CancelText"] = "Cancelar",
+            ["ConfirmColor"] = Color.Error
+        };
+        var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parametros);
+        var result = await dialog.Result;
+        if (result is not { Canceled: false }) return;
+        if (await Api.DeleteAsync($"api/RolesHerencia/{item.Id}"))
+        {
+            Snackbar.Add("Herencia quitada", Severity.Success);
+            await CargarHerencia();
+        }
+        else Snackbar.Add(Api.LastError ?? "Error al quitar la herencia", Severity.Error);
+    }
+}

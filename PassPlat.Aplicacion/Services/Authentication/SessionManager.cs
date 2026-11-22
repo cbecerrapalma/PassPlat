@@ -55,27 +55,6 @@ public sealed class SessionManager
         return Result.Success();
     }
 
-    public async Task<Result> RevokeSessionAsync(Guid sessionId, CancellationToken ct)
-    {
-        var result = await _sesionRepo.RevocarSesionAsync(sessionId, ct);
-        if (result.IsFailure)
-            return Result.Failure(result.Error!);
-
-        _logger.LogInformation(AuthenticationEvents.SessionRevoked,
-            "Sesión revocada | SessionId={SessionId}", sessionId);
-
-        return Result.Success();
-    }
-
-    public async Task<Result<Datos.SPResults.CrearSesionResult?>> GetSessionAsync(Guid sessionId, CancellationToken ct)
-    {
-        var entity = await _sesionRepo.GetByIdAsync(sessionId, ct);
-        if (entity.IsFailure)
-            return Result<Datos.SPResults.CrearSesionResult?>.Failure(entity.Error!);
-
-        return Result<Datos.SPResults.CrearSesionResult?>.Success(null, allowNull: true);
-    }
-
     public async Task<Result<Guid?>> ResolveAndRevokeSessionByJtiAsync(int idUsuario, string jti, CancellationToken ct)
     {
         var sessionResult = await _sesionRepo.ObtenerSesionActivaPorJtiAsync(idUsuario, jti, ct);

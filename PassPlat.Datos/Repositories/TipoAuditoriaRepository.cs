@@ -24,7 +24,7 @@ public class TipoAuditoriaRepository : RepositoryAsync<TipoAuditoria>, ITipoAudi
             var list = await DbSet.Where(t => t.Activo).ToListAsync(ct);
             return Result<IReadOnlyList<TipoAuditoria>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<TipoAuditoria>>.Failure("DB_ERROR", ex.Message);
         }

@@ -12,7 +12,7 @@ using PassPlat.Dominio.Entities.Catalogos;
 
 namespace PassPlat.WebAPI.Controllers;
 
-[Authorize(Policy = "CONFIG_APP_VER")]
+[Authorize(Policy = "CONFIGAPP_VER")]
 public class ConfigAppController : BaseApiController
 {
     private readonly IConfigAppService _service;
@@ -57,7 +57,7 @@ public class ConfigAppController : BaseApiController
         return Created(string.Empty, result.Value);
     }
     [HttpPut("{id}")]
-    [Authorize(Policy = "CONFIG_APP_EDITAR")]
+    [Authorize(Policy = "CONFIGAPP_EDITAR")]
     public async Task<IActionResult> Update(int id, [FromBody] ActualizarConfigAppDto dto, CancellationToken ct)
     {
         var result = await _service.ActualizarAsync(id, dto, ct);

@@ -3,132 +3,116 @@
 @inject ISnackbar Snackbar
 @using PassPlat.Web.Models
 
-<MudDialog Options="_dialogOptions">
+<MudDialog Options="@OpcionesDialogo.Dialogo(TamanoDialogo.Estandar)" Class="dialogo-formulario">
     <TitleContent>
-        <MudText Typo="Typo.h6">@(IsEdit ? "Editar" : "Nuevo") Usuario</MudText>
+        <TituloDialogo Icono="@(IsEdit ? Icons.Material.Filled.Edit : Icons.Material.Filled.PersonAdd)" Texto="@(IsEdit ? "Editar Usuario" : "Nuevo Usuario")" />
     </TitleContent>
     <DialogContent>
+        <AlertaErrorDialogo Mensaje="@_errorServidor" />
+        <MudForm @ref="_form">
         <div class="usuario-dialog-columns">
-            <div class="usuario-dialog-left">
-                <MudPaper Elevation="0" Outlined="true" Class="pa-4" Style="border-radius:10px;height:100%;">
-                    <MudText Typo="Typo.subtitle2" Class="mb-3 d-flex align-center gap-1">
-                        <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
-                        Detalle del usuario
-                    </MudText>
-<MudTextField @bind-Value="_nomUsuario" Label="Usuario" Variant="Variant.Outlined" Class="mb-3"
-                              Disabled="@IsEdit" Autocomplete="off" Required="true"
-                              Error="@(_submitted && string.IsNullOrWhiteSpace(_nomUsuario))"
-                              ErrorText="El usuario es requerido" />
-                    <MudTextField @bind-Value="_email" Label="Email (opcional)" Variant="Variant.Outlined" Class="mb-3" Autocomplete="off"
-                                  Error="@(_submitted && !string.IsNullOrWhiteSpace(_email) && !IsValidEmail(_email))"
-                                  ErrorText="Formato de email inválido" />
-                    <MudTextField @bind-Value="_nombre" Label="Nombre" Variant="Variant.Outlined" Class="mb-3" Autocomplete="off" Required="true"
-                                  Error="@(_submitted && string.IsNullOrWhiteSpace(_nombre))"
-                                  ErrorText="El nombre es requerido" />
-                    <MudTextField @bind-Value="_apellido" Label="Apellido" Variant="Variant.Outlined" Class="mb-0" Autocomplete="off" Required="true"
-                                  Error="@(_submitted && string.IsNullOrWhiteSpace(_apellido))"
-                                  ErrorText="El apellido es requerido" />
-                    @if (!IsEdit)
-                    {
-                        <hr class="my-4" style="border-color:var(--mud-palette-lines-default);opacity:0.3;" />
-                        <MudText Typo="Typo.subtitle2" Class="mb-3 d-flex align-center gap-1">
-                            <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" />
-                            Contraseña
-                        </MudText>
-                        <div class="d-flex align-center gap-2 mb-3">
-                            <div class="d-flex align-center gap-2 flex-grow-1">
-                                @if (_showPassword)
-                                {
-                                    <MudTextField @bind-Value="_password" Label="Nueva contraseña" Variant="Variant.Outlined" Class="flex-grow-1 mb-0"
-                                                  InputType="InputType.Text" Immediate="true" Autocomplete="new-password"
-                                                  Error="@(!string.IsNullOrEmpty(_password) && _strengthResult != null && !_strengthResult.IsValid)"
-                                                  OnKeyDown="@HandleKeyDown" />
-                                }
-                                else
-                                {
-                                    <MudTextField @bind-Value="_password" Label="Nueva contraseña" Variant="Variant.Outlined" Class="flex-grow-1 mb-0"
-                                                  InputType="InputType.Password" Immediate="true" Autocomplete="new-password"
-                                                  Error="@(!string.IsNullOrEmpty(_password) && _strengthResult != null && !_strengthResult.IsValid)"
-                                                  OnKeyDown="@HandleKeyDown" />
-                                }
-                                <MudIconButton Icon="@(_showPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
-                                               Color="Color.Default" OnClick="@(() => _showPassword = !_showPassword)"
-                                               Size="Size.Small" />
-                            </div>
-                            <MudIconButton Icon="@Icons.Material.Filled.AutoAwesome" Color="Color.Primary"
-                                           Title="Generar contraseña segura (Ctrl+G)" Disabled="@_generating"
-                                           OnClick="@GenerarPassword" Size="Size.Small" />
+            <div class="usuario-dialog-left dialogo-campos">
+                <div class="dialogo-seccion">Detalle del usuario</div>
+                <MudTextField @bind-Value="_nomUsuario" Label="Usuario" Variant="Variant.Outlined"
+                              Disabled="@IsEdit" autocomplete="off" Required="true"
+                              RequiredError="El usuario es requerido" />
+                <MudTextField @bind-Value="_email" Label="Email (opcional)" Variant="Variant.Outlined" autocomplete="off"
+                              Validation="@(new Func<string, string?>(v => !string.IsNullOrWhiteSpace(v) && !IsValidEmail(v) ? "Formato de email inválido" : null))" />
+                <div class="dialogo-fila">
+                    <MudTextField @bind-Value="_nombre" Label="Nombre" Variant="Variant.Outlined" autocomplete="off" Required="true"
+                                  RequiredError="El nombre es requerido" />
+                    <MudTextField @bind-Value="_apellido" Label="Apellido" Variant="Variant.Outlined" autocomplete="off" Required="true"
+                                  RequiredError="El apellido es requerido" />
+                </div>
+                @if (!IsEdit)
+                {
+                    <div class="dialogo-seccion">Contraseña</div>
+                    <div class="d-flex align-center gap-2">
+                        <div class="d-flex align-center gap-2 flex-grow-1">
+                            @if (_showPassword)
+                            {
+                                <MudTextField @bind-Value="_password" Label="Nueva contraseña" Variant="Variant.Outlined" Class="flex-grow-1"
+                                              InputType="InputType.Text" Immediate="true" autocomplete="new-password"
+                                              Error="@(!string.IsNullOrEmpty(_password) && _strengthResult != null && !_strengthResult.IsValid)"
+                                              Validation="@(new Func<string, string?>(ValidarFortaleza))"
+                                              OnKeyDown="@HandleKeyDown" />
+                            }
+                            else
+                            {
+                                <MudTextField @bind-Value="_password" Label="Nueva contraseña" Variant="Variant.Outlined" Class="flex-grow-1"
+                                              InputType="InputType.Password" Immediate="true" autocomplete="new-password"
+                                              Error="@(!string.IsNullOrEmpty(_password) && _strengthResult != null && !_strengthResult.IsValid)"
+                                              Validation="@(new Func<string, string?>(ValidarFortaleza))"
+                                              OnKeyDown="@HandleKeyDown" />
+                            }
+                            <MudIconButton Icon="@(_showPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                           Color="Color.Default" OnClick="@(() => _showPassword = !_showPassword)"
+                                           Size="Size.Small" aria-label="Mostrar u ocultar contraseña" />
                         </div>
-                        @if (_showPassword)
-                        {
-                            <MudTextField @bind-Value="_confirmPassword" Label="Confirmar contraseña" Variant="Variant.Outlined" Class="mb-0"
-                                          InputType="InputType.Text" Immediate="true" Autocomplete="new-password"
-                                          Error="@(!string.IsNullOrEmpty(_confirmPassword) && _password != _confirmPassword)"
-                                          ErrorText="Las contraseñas no coinciden"
-                                          Adornment="Adornment.End"
-                                          AdornmentIcon="@GetConfirmIcon()"
-                                          AdornmentColor="@GetConfirmColor()" />
-                        }
-                        else
-                        {
-                            <MudTextField @bind-Value="_confirmPassword" Label="Confirmar contraseña" Variant="Variant.Outlined" Class="mb-0"
-                                          InputType="InputType.Password" Immediate="true" Autocomplete="new-password"
-                                          Error="@(!string.IsNullOrEmpty(_confirmPassword) && _password != _confirmPassword)"
-                                          ErrorText="Las contraseñas no coinciden"
-                                          Adornment="Adornment.End"
-                                          AdornmentIcon="@GetConfirmIcon()"
-                                          AdornmentColor="@GetConfirmColor()" />
-                        }
+                        <MudIconButton Icon="@Icons.Material.Filled.AutoAwesome" Color="Color.Primary"
+                                       title="Generar contraseña segura (Ctrl+G)" Disabled="@_generating"
+                                       OnClick="@GenerarPassword" Size="Size.Small" aria-label="Generar" />
+                    </div>
+                    @if (_showPassword)
+                    {
+                        <MudTextField @bind-Value="_confirmPassword" Label="Confirmar contraseña" Variant="Variant.Outlined"
+                                      InputType="InputType.Text" Immediate="true" autocomplete="new-password"
+                                      Validation="@(new Func<string, string?>(ValidarConfirmacion))"
+                                      Adornment="Adornment.End"
+                                      AdornmentIcon="@GetConfirmIcon()"
+                                      AdornmentColor="@GetConfirmColor()" />
                     }
-                </MudPaper>
+                    else
+                    {
+                        <MudTextField @bind-Value="_confirmPassword" Label="Confirmar contraseña" Variant="Variant.Outlined"
+                                      InputType="InputType.Password" Immediate="true" autocomplete="new-password"
+                                      Validation="@(new Func<string, string?>(ValidarConfirmacion))"
+                                      Adornment="Adornment.End"
+                                      AdornmentIcon="@GetConfirmIcon()"
+                                      AdornmentColor="@GetConfirmColor()" />
+                    }
+                }
             </div>
             @if (!IsEdit)
             {
-                <div class="usuario-dialog-right">
-                    <MudPaper Elevation="0" Outlined="true" Class="pa-4" Style="border-radius:10px;height:100%;">
-                        <MudText Typo="Typo.subtitle2" Class="mb-3 d-flex align-center gap-1">
-                            <MudIcon Icon="@Icons.Material.Filled.Shield" Size="Size.Small" />
-                            Seguridad de contraseña
-                        </MudText>
-                        @if (_policy != null)
-                        {
-                            <MudText Typo="Typo.caption" Class="mb-2 font-weight-bold">Requisitos</MudText>
-                            <div class="d-flex flex-wrap gap-1 mb-3">
-                                @if (_policy.LongMin > 0)
-                                {
-                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default">Mín. @_policy.LongMin car.</MudChip>
-                                }
-                                @if (_policy.ReqMayuscula)
-                                {
-                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default">Mayúscula</MudChip>
-                                }
-                                @if (_policy.ReqMinuscula)
-                                {
-                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default">Minúscula</MudChip>
-                                }
-                                @if (_policy.ReqNumero)
-                                {
-                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default">Número</MudChip>
-                                }
-                                @if (_policy.ReqEspecial)
-                                {
-                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default">Car. especial</MudChip>
-                                }
-                            </div>
-                        }
-                        <PasswordStrength Password="@_password" NomUsuario="@_nomUsuario" Email="@_email"
-                                          OnStrengthChanged="@OnStrengthChanged" />
-                    </MudPaper>
+                <div class="usuario-dialog-right dialogo-campos">
+                    <div class="dialogo-seccion">Seguridad de contraseña</div>
+                    @if (_policy != null)
+                    {
+                        <MudText Typo="Typo.caption" Class="font-weight-bold">Requisitos</MudText>
+                        <div class="d-flex flex-wrap gap-1">
+                            @if (_policy.LongMin > 0)
+                            {
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default">Mín. @_policy.LongMin car.</MudChip>
+                            }
+                            @if (_policy.ReqMayuscula)
+                            {
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default">Mayúscula</MudChip>
+                            }
+                            @if (_policy.ReqMinuscula)
+                            {
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default">Minúscula</MudChip>
+                            }
+                            @if (_policy.ReqNumero)
+                            {
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default">Número</MudChip>
+                            }
+                            @if (_policy.ReqEspecial)
+                            {
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default">Car. especial</MudChip>
+                            }
+                        </div>
+                    }
+                    <PasswordStrength Password="@_password" NomUsuario="@_nomUsuario" Email="@_email"
+                                      OnStrengthChanged="@OnStrengthChanged" />
                 </div>
             }
         </div>
+        </MudForm>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="@(() => MudDialog.Cancel())">Cancelar</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@Save"
-                   Disabled="@(IsEdit ? false : (!CanSave() || _saving))">
-            @(IsEdit ? "Guardar" : "Crear")
-        </MudButton>
+        <BotonGuardarDialogo Texto="@(IsEdit ? "Guardar" : "Crear")" Guardando="@_saving" OnClick="@Save" />
     </DialogActions>
 </MudDialog>
 
@@ -150,8 +134,7 @@
 
 @code {
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
-
-    private DialogOptions _dialogOptions = new() { CloseButton = true };
+    private string? _errorServidor;
 
     [Parameter] public bool IsEdit { get; set; }
     [Parameter] public UsuarioDto? Usuario { get; set; }
@@ -165,7 +148,7 @@
     private bool _saving;
     private bool _showPassword;
     private bool _generating;
-    private bool _submitted;
+    private MudForm _form = null!;
     private PoliticaPwdDto? _policy;
     private PasswordStrengthInfoDto? _strengthResult;
 
@@ -174,7 +157,7 @@
         if (Usuario is not null)
         {
             _nomUsuario = Usuario.NomUsuario;
-            _email = Usuario.Email;
+            _email = Usuario.Email ?? "";
             _nombre = Usuario.Nombre;
             _apellido = Usuario.Apellido;
         }
@@ -200,17 +183,18 @@
                 _password = result.Password;
                 _confirmPassword = result.Password;
                 _showPassword = true;
+                _errorServidor = null;
                 Snackbar.Add("Contraseña generada", Severity.Success);
             }
             else
             {
                 var err = result?.Errors?.FirstOrDefault() ?? "Error desconocido";
-                Snackbar.Add($"Error: {err}", Severity.Error);
+                _errorServidor = $"Error: {err}";
             }
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            _errorServidor = $"Error: {ex.Message}";
         }
         finally
         {
@@ -224,22 +208,13 @@
         StateHasChanged();
     }
 
-    private bool CanSave()
-    {
-        if (IsEdit) return true;
-        if (string.IsNullOrWhiteSpace(_nomUsuario)) return false;
-        if (string.IsNullOrWhiteSpace(_nombre)) return false;
-        if (string.IsNullOrWhiteSpace(_apellido)) return false;
-        if (string.IsNullOrWhiteSpace(_password) && string.IsNullOrWhiteSpace(_confirmPassword))
-            return true;
-        if (string.IsNullOrWhiteSpace(_password) || string.IsNullOrWhiteSpace(_confirmPassword))
-            return false;
-        if (_password != _confirmPassword)
-            return false;
-        if (_strengthResult != null && !_strengthResult.IsValid)
-            return false;
-        return true;
-    }
+    private string? ValidarFortaleza(string valor) =>
+        !string.IsNullOrEmpty(valor) && _strengthResult != null && !_strengthResult.IsValid
+            ? "La contraseña no cumple los requisitos de seguridad"
+            : null;
+
+    private string? ValidarConfirmacion(string valor) =>
+        _password != (valor ?? "") ? "Las contraseñas no coinciden" : null;
 
     private bool IsValidEmail(string email)
     {
@@ -253,22 +228,6 @@
         {
             return false;
         }
-    }
-
-    private string GetSaveTooltip()
-    {
-        if (IsEdit) return "";
-        if (string.IsNullOrWhiteSpace(_password) && string.IsNullOrWhiteSpace(_confirmPassword))
-            return "Sin contraseña — el usuario deberá cambiarla en el primer inicio";
-        if (!CanSave())
-        {
-            if (_password != _confirmPassword)
-                return "Las contraseñas no coinciden";
-            if (_strengthResult != null && !_strengthResult.IsValid)
-                return "La contraseña no cumple los requisitos de seguridad";
-            return "Verifica la contraseña";
-        }
-        return "";
     }
 
     private string GetConfirmIcon()
@@ -287,8 +246,8 @@
 
     private async Task Save()
     {
-        _submitted = true;
-        if (!CanSave()) return;
+        await _form.ValidateAsync();
+        if (!_form.IsValid) return;
         _saving = true;
         try
         {
@@ -301,8 +260,8 @@
                     Snackbar.Add("Usuario actualizado", Severity.Success);
                     MudDialog.Close(DialogResult.Ok(true));
                 }
-            else
-                Snackbar.Add(Api.LastError ?? "Error al actualizar", Severity.Error);
+                else
+                    _errorServidor = Api.LastError ?? "Error al actualizar";
             }
             else
             {
@@ -314,12 +273,12 @@
                     MudDialog.Close(DialogResult.Ok(true));
                 }
                 else
-                    Snackbar.Add(Api.LastError ?? "Error al crear", Severity.Error);
+                    _errorServidor = Api.LastError ?? "Error al crear";
             }
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            _errorServidor = $"Error: {ex.Message}";
         }
         finally
         {

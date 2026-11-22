@@ -15,8 +15,8 @@ public class RolPermisoConfiguration : IEntityTypeConfiguration<RolPermiso>
         builder.Property(r => r.IdRol).IsRequired();
         builder.Property(r => r.IdPermiso).IsRequired();
         builder.Property(r => r.Activo).HasDefaultValue(true).IsRequired();
-        builder.Property(r => r.FecCrea).HasDefaultValueSql("sysutcdatetime()").IsRequired();
-        builder.Property(r => r.FecMod).HasDefaultValueSql("sysutcdatetime()").IsRequired();
+        builder.Property(r => r.FecCrea).HasDefaultValueSql("sysdatetime()").IsRequired();
+        builder.Property(r => r.FecMod).HasDefaultValueSql("sysdatetime()").IsRequired();
 
         builder.HasOne(r => r.Rol)
             .WithMany(ro => ro.RolesPermisos)

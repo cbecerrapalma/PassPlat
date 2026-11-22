@@ -27,7 +27,6 @@ public static class DatosDependencyInjection
         // Contexto
         AddScopedWithInterface<DispRepository, IDispRepository>(services);
         AddScopedWithInterface<IPRepository, IIPRepository>(services);
-        AddScopedWithInterface<UserAgentRepository, IUserAgentRepository>(services);
 
         // Core
         AddScopedWithInterface<UsuarioRepository, IUsuarioRepository>(services);
@@ -42,7 +41,6 @@ public static class DatosDependencyInjection
         AddScopedWithInterface<NotificacionRepository, INotificacionRepository>(services);
         AddScopedWithInterface<EmailTemplateRepository, IEmailTemplateRepository>(services);
         AddScopedWithInterface<EmailTemplatePartialRepository, IEmailTemplatePartialRepository>(services);
-        AddScopedWithInterface<EmailTemplateHistorialRepository, IEmailTemplateHistorialRepository>(services);
         AddScopedWithInterface<PermisoRepository, IPermisoRepository>(services);
         AddScopedWithInterface<RolPermisoRepository, IRolPermisoRepository>(services);
         AddScopedWithInterface<ModuloRepository, IModuloRepository>(services);
@@ -90,8 +88,7 @@ public static class DatosDependencyInjection
         // A1.4: UsuarioTenant
         AddScopedWithInterface<UsuarioTenantRepository, IUsuarioTenantRepository>(services);
 
-        // S21: Outbox (standalone repository, no IRepositoryAsync)
-        services.AddScoped<IOutboxRepository, OutboxRepository>();
+        // S21 / S136 · D8: Outbox — OutboxRepository es el IOutboxStore de CBP.Outbox; lo registra AddCbpOutbox<OutboxRepository>() en Aplicacion
 
         return services;
     }

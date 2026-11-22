@@ -30,7 +30,7 @@ public class ConfProvIdenConfiguration : IEntityTypeConfiguration<ConfProvIden>
         builder.Property(c => c.Estado).HasDefaultValue((byte)1).IsRequired();
         builder.Property(c => c.Metadata).HasColumnType("nvarchar(max)");
         builder.Property(c => c.Activo).HasDefaultValue(true).IsRequired();
-        builder.Property(c => c.FecCrea).HasDefaultValueSql("sysutcdatetime()");
+        builder.Property(c => c.FecCrea).HasDefaultValueSql("sysdatetime()");
         builder.Property(c => c.FecMod);
 
         builder.Property(c => c.PermitirLogin).HasDefaultValue(true).IsRequired();
@@ -52,8 +52,6 @@ public class ConfProvIdenConfiguration : IEntityTypeConfiguration<ConfProvIden>
         builder.Property(c => c.Descripcion).HasMaxLength(500);
         builder.Property(c => c.AuthorizationEndpoint).HasMaxLength(500);
         builder.Property(c => c.TokenEndpoint).HasMaxLength(500);
-        builder.Property(c => c.JwksUri).HasMaxLength(500);
-        builder.Property(c => c.Issuer).HasMaxLength(500);
         builder.Property(c => c.ResponseType).HasMaxLength(50).HasDefaultValue("code").IsRequired();
         builder.Property(c => c.GrantType).HasMaxLength(50).HasDefaultValue("authorization_code").IsRequired();
         builder.Property(c => c.ExtraParams).HasMaxLength(1000);

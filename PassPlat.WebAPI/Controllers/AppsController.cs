@@ -49,5 +49,4 @@ public class AppsController : BaseApiController
         await _uow.SaveChangesAsync(ct);
         return FromResult(result);
     }
-    [HttpGet("count")] public async Task<IActionResult> Count(CancellationToken ct) => FromResultQuery(await _service.CountAsync(ct));
 }

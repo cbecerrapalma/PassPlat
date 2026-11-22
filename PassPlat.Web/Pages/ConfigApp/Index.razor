@@ -7,34 +7,40 @@
 @using PassPlat.Web.Models
 @using PassPlat.Web.Shared
 
-@if (!Auth.TienePermiso("CONFIG_APP_VER"))
+@if (!Auth.TienePermiso("CONFIGAPP_VER"))
 {
-    <SinPermiso PermisoRequerido="CONFIG_APP_VER" />
+    <SinPermiso PermisoRequerido="CONFIGAPP_VER" />
 }
 else
 {
-<MudContainer>
-    <MudBreadcrumbs Class="mb-3">
-        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
-        <MudBreadcrumbItem>Configuración</MudBreadcrumbItem>
-        <MudBreadcrumbItem>Config App</MudBreadcrumbItem>
-    </MudBreadcrumbs>
-    <MudPaper Class="pa-4 mb-4 d-flex flex-wrap align-center gap-4" Elevation="0" Outlined="true">
-        <MudText Typo="Typo.h5" Class="flex-grow-1 mb-0">Config App</MudText>
-        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium"
-            OnClick="@(async () => { if (_table is not null) await _table.ReloadServerData(); })" Class="mr-2" />
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@OpenCreateDialog"
-            StartIcon="@Icons.Material.Filled.Add" Size="Size.Medium">
-            Nueva Configuración
-        </MudButton>
-    </MudPaper>
-    <MudGrid Class="mb-4">
-        <MudItem xs="12" sm="6" md="4">
-            <MudTextField Value="@_searchString" ValueChanged="@(EventCallback.Factory.Create<string>(this, async (string value) => { _searchString = value; if (_table is not null) await _table.ReloadServerData(); }))" Label="Buscar..." Variant="Variant.Outlined"
-                Immediate="true" Clearable="true" FullWidth="true" />
-        </MudItem>
-    </MudGrid>
+<div class="iam-page">
+<MigasDePan />
 
+    <div class="page-header">
+        <div class="page-title-row">
+            <div>
+                <h1 class="page-title">Config App</h1>
+                <p class="page-subtitle">Parámetros de configuración de cada aplicación.</p>
+            </div>
+            <div class="page-actions">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@OpenCreateDialog"
+                    StartIcon="@Icons.Material.Filled.Add" Size="Size.Medium">
+                    Nueva Configuración
+                </MudButton>
+            </div>
+        </div>
+    </div>
+
+    <div class="content-body">
+        <div class="table-panel">
+            <div class="table-toolbar filter-row">
+                <MudTextField Value="@_searchString" ValueChanged="@(EventCallback.Factory.Create<string>(this, async (string value) => { _searchString = value; if (_table is not null) await _table.ReloadServerData(); }))" Class="lista-filtro" Label="Buscar..." Variant="Variant.Outlined"
+                    Immediate="true" Clearable="true" />
+                <div class="toolbar-spacer"></div>
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium"
+                    OnClick="@(async () => { if (_table is not null) await _table.ReloadServerData(); })" Class="mr-2" aria-label="Refrescar" />
+            </div>
+            <div class="table-wrap">
     <MudTable @ref="_table" T="ConfigAppDto" ServerData="@_serverReload" Items="@_items" Hover="true" Breakpoint="Breakpoint.Sm" Class="mt-2">
         <ColGroup>
             <col style="width: 80px;" />
@@ -91,10 +97,10 @@ else
             </MudTd>
             <MudTd DataLabel="Acciones">
                 <MudTooltip Text="Editar">
-                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => OpenEditDialog(context))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => OpenEditDialog(context))" aria-label="Editar" />
                 </MudTooltip>
                 <MudTooltip Text="Eliminar">
-                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => ConfirmDeactivate(context))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => ConfirmDeactivate(context))" aria-label="Eliminar" />
                 </MudTooltip>
             </MudTd>
         </RowTemplate>
@@ -108,7 +114,16 @@ else
             </MudText>
         </NoRecordsContent>
     </MudTable>
-</MudContainer>
+            </div>
+        </div>
+    </div>
+
+    <MudOverlay Visible="@_loading" />
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" Class="mt-4" />
+    }
+</div>
 }
 
 @code {
@@ -140,6 +155,7 @@ else
         finally
         {
             _loading = false;
+            StateHasChanged();
         }
         return new TableData<ConfigAppDto> { Items = [], TotalItems = 0 };
     }
@@ -147,9 +163,9 @@ else
     private async Task OpenCreateDialog()
     {
         var parameters = new DialogParameters { ["IsEdit"] = false };
-        var dialog = await Dialog.ShowAsync<ConfigAppDialog>("Nueva Configuración", parameters, _dialogOptions);
+        var dialog = await Dialog.ShowAsync<ConfigAppDialog>("Nueva Configuración", parameters, OpcionesDialogo.Dialogo(TamanoDialogo.Estandar));
         var result = await dialog.Result;
-        if (!result.Canceled && _table != null)
+        if (result is { Canceled: false } && _table != null)
             await _table.ReloadServerData();
     }
 
@@ -160,9 +176,9 @@ else
             ["IsEdit"] = true,
             ["ConfigApp"] = item
         };
-        var dialog = await Dialog.ShowAsync<ConfigAppDialog>("Editar Configuración", parameters, _dialogOptions);
+        var dialog = await Dialog.ShowAsync<ConfigAppDialog>("Editar Configuración", parameters, OpcionesDialogo.Dialogo(TamanoDialogo.Estandar));
         var result = await dialog.Result;
-        if (!result.Canceled && _table != null)
+        if (result is { Canceled: false } && _table != null)
             await _table.ReloadServerData();
     }
 
@@ -177,7 +193,7 @@ else
         };
         var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parameters);
         var result = await dialog.Result;
-        if (!result.Canceled)
+        if (result is { Canceled: false })
         {
             var ok = await Api.DeleteAsync($"api/configapp/{item.Id}");
             if (ok)
@@ -190,6 +206,4 @@ else
                 Snackbar.Add(Api.LastError ?? "Error al desactivar", Severity.Error);
         }
     }
-
-    private static readonly DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Large, FullWidth = true, CloseButton = true };
 }

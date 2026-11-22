@@ -15,7 +15,7 @@ public class IntentoAccesoConfiguration : IEntityTypeConfiguration<IntentoAcceso
         builder.Property(i => i.IdResultado).IsRequired();
         builder.Property(i => i.NomUsuarioIntentado).HasMaxLength(100).IsRequired();
         builder.Property(i => i.MetodoAutenticacion).HasMaxLength(20).HasDefaultValue("Local").IsRequired();
-        builder.Property(i => i.FecIntento).HasDefaultValueSql("sysutcdatetime()").IsRequired();
+        builder.Property(i => i.FecIntento).HasDefaultValueSql("sysdatetime()").IsRequired();
         builder.Property(i => i.Exitoso).HasDefaultValue(false).IsRequired();
         builder.Property(i => i.DetResultado).HasMaxLength(200);
         builder.Property(i => i.TpoRespuesta);

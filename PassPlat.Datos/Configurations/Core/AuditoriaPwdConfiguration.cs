@@ -17,7 +17,7 @@ public class AuditoriaPwdConfiguration : IEntityTypeConfiguration<AuditoriaPwd>
         builder.Property(a => a.NivelRiesgo);
         builder.Property(a => a.Detalles).HasMaxLength(500);
         builder.Property(a => a.Metadata).HasMaxLength(-1);
-        builder.Property(a => a.FecAccion).HasDefaultValueSql("sysutcdatetime()");
+        builder.Property(a => a.FecAccion).HasDefaultValueSql("sysdatetime()");
 
         builder.Property(a => a.FecRetencion)
             .HasComputedColumnSql("DATEADD(YEAR, 1, FecAccion)", stored: true);

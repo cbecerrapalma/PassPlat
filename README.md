@@ -1,105 +1,99 @@
 # PassPlat
 
-**Identity & Access Management Platform — Work in Progress**
+**Plataforma de identidad y acceso (IAM) multi-tenant en .NET 10**
 
-Plataforma en desarrollo para gestión de identidad, acceso y permisos para múltiples aplicaciones y tenants.
+Gestión centralizada de usuarios, aplicaciones, tenants, roles, permisos y auditoría para un ecosistema de aplicaciones, con autenticación moderna, MFA, OAuth y correo transaccional. Es el proveedor de identidad de [InventaNet](https://github.com/cbecerrapalma/InventaNet) y se construye sobre el framework [CBP](https://github.com/cbecerrapalma/CBP).
 
-## Estado
-
-**Proyecto en desarrollo (WIP)** — no production-ready. Enfocado en arquitectura limpia, seguridad y multi-tenancy.
-
-## Objetivo
-
-Resolver la gestión centralizada de usuarios, aplicaciones, roles, permisos y auditoría para un ecosistema de aplicaciones con organizaciones/tenants aislados, con autenticación moderna y correo transaccional.
+> Proyecto en desarrollo: enfocado en arquitectura limpia, seguridad y multi-tenancy; aún no está en producción.
 
 ## Características
 
-- Usuarios, aplicaciones, tenants, roles, permisos, matriz de permisos
-- Autenticación (login, refresh token, bloqueo, recuperación password), sesiones, dispositivos confiables
-- Password management (políticas, historial, expiración, `PasswordService`)
-- MFA (TOTP, `MfaService` `AppName=PassPlat`)
-- Sesiones y bloqueo (`SesionService`, `BloqueoService`, `IntentoAccesoService`)
-- Email subsystem (`EmailTemplate` → `EmailJob` → `Queue` → `Background` → `SMTP`)
-- Eventos y Outbox (`EventBase`, `OutboxProcessor`, `DispConfiableEventHandlers`)
-- Auditoría (`AuditoriaPwd`, `AudIdenExt`, `DashboardEnterprise`)
-- Dashboards operacional y enterprise
-- Background jobs (`PasswordExpirationBackgroundService`, `IdenExtTokensRotacionJob`)
+- Usuarios, aplicaciones, tenants, roles, permisos y matriz de permisos
+- Catálogo de acceso por aplicación: las aplicaciones cliente publican sus módulos y permisos, y PassPlat los administra
+- Autenticación: login, refresh token, bloqueo por intentos, recuperación y cambio de contraseña, sesiones y dispositivos confiables
+- Políticas de contraseña: historial, expiración y medidor de fortaleza
+- MFA con TOTP
+- OAuth2 / OIDC con proveedores externos: Google, Microsoft, GitHub, Facebook e Instagram
+- Correo transaccional con plantillas editables y cola en segundo plano
+- Eventos de dominio y patrón Outbox
+- Auditoría y dashboards operacional y enterprise
+- Tareas en segundo plano: expiración de contraseñas y rotación de tokens externos
+- `PassPlat.Client`: cliente HTTP para que otras aplicaciones consuman la API
 
 ## Multi-tenancy
 
-- **Platform scope** (`is_system`) vs **Tenant scope** (`IdTenant`)
-- `UsuarioTenant` (usuario pertenece a tenant), `TenantSwitcher`, `ITenantContext`
-- Aislamiento contextual `IdTenant` FK `Restrict`, `ICollection<T> = []`, filtered indexes, `DeleteBehavior.Restrict`
+- Ámbito de plataforma (`is_system`) y ámbito de tenant (`IdTenant`)
+- `UsuarioTenant` (pertenencia de un usuario a tenants), selector de tenant y `ITenantContext`
+- Aislamiento por `IdTenant` con claves foráneas `Restrict` e índices filtrados
 
 ## Seguridad
 
-- `JWT` (HS256, `JwtTokenService`, `CBP.Authentication.JwtBearer`, `kid` ambiental documentado)
-- `Argon2id` (pepper externo/versionado), `PBKDF2` soportado por `CBP` (`HashingService` `100k` floor)
-- `MFA` local tras OAuth externo
-- `OAuth2`/`OIDC` `Authorization Code + PKCE S256`, `state`/`nonce`, replay protection, callback server-side `ConfProvIden.Callback` (HTTPS)
-- `AES-256` para secrets/refresh tokens, `CorrelationId` W3C (`EmailQueue` choke point), `SQL` sin `ConcurrentDictionary` en prod
+- JWT HS256 (`CBP.Authentication.JwtBearer`)
+- Hash de contraseñas Argon2id con pepper; PBKDF2 soportado por CBP
+- OAuth2 / OIDC con Authorization Code + PKCE S256, `state`/`nonce`, protección contra replay y callback del lado del servidor
+- MFA local después del login externo
+- AES-256 para secretos y refresh tokens guardados
+- Correlación de peticiones con W3C Trace Context
 
 ## Arquitectura
 
+```text
+PassPlat.Web       (Blazor WebAssembly, MudBlazor)
+        ↓ HTTP
+PassPlat.WebAPI    (ASP.NET Core, JWT, middleware)
+        ↓
+PassPlat.Aplicacion (+ .Dtos)   (servicios, validadores, seguridad, correo)
+        ↓
+PassPlat.Datos     (EF Core, DbContext, repositorios)
+        ↓
+PassPlat.Dominio   (entidades, fábricas, reglas de dominio)
 ```
-PassPlat.Web (Blazor WASM, MudBlazor 9.8.0, Monaco)
-  ↓
-PassPlat.WebAPI (HTTP, JWT, Middleware, DI)
-  ↓
-PassPlat.Aplicacion (DTOs, Validators, Services, Security, Email)
-  ↓
-PassPlat.Datos (EF Core, DbContext, Repositories, SP/RawQuery)
-  ↓
-PassPlat.Dominio (Entities, Factories, Enums, Domain Rules)
-```
 
-- `Aplicacion → Datos → Dominio` (Dominio nunca depende de `WebAPI`/`UI`/`SQL`)
-- `RepositoryAsync<TEntity>` `Task<Result<T>>` `DB_ERROR`, `BaseApiController` `FromResult`, `EventBase` dispatch
-- `CBP` desacoplado, compatible `InventaNet`
+| Proyecto | Responsabilidad |
+|---|---|
+| `PassPlat.Dominio` | Entidades y reglas de dominio; no depende de Web, API ni SQL |
+| `PassPlat.Datos` | EF Core, repositorios `Task<Result<T>>`, Outbox |
+| `PassPlat.Aplicacion` / `.Dtos` | Servicios de aplicación, DTOs y validación |
+| `PassPlat.WebAPI` | API HTTP |
+| `PassPlat.Web` | Consola de administración (Blazor WASM) |
+| `PassPlat.Client` | Cliente HTTP para aplicaciones consumidoras |
+| `PassPlat.Consola` | Herramienta de línea de comandos |
+| `*.Tests` | Pruebas de aplicación, de arquitectura (dependencias con CBP) y de UI con bUnit |
 
-## Email Subsystem
+## Correo
 
-`EmailTemplate` (`Asunto`/`CuerpoHtml`/`CuerpoTexto`) → `EmailJob` (`EmailJobKind`) → `EmailQueue.EnqueueAsync` (CorrelationId) → `EmailBackgroundService`/`OutboxProcessor` → `PassPlatEmailService` (Fluid `{{AppName}}`) → `MailKit`/`MimeKit` → `SMTP` (Gmail) → `EmailLog` (`W3C` `CorrelationId`)
-
-## OAuth
-
-Providers implementados: **Google**, **Microsoft**, **GitHub**, **LinkedIn**, **Apple**, **Facebook** (+ `ExternalAuthService` DI factory, `PKCE S256`, `state`/`nonce`, `JWKS`/`issuer`/`audience`/`lifetime`, `clock skew 5m`, `IdenExt`/`IdenExtTokens`).
-
-## Framework CBP
-
-PassPlat utiliza **CBP**, framework reutilizable local `D:\CODIGOS\CBP` (11 módulos):
-
-`Core` (`CBP`, `Results`, `Events`), `Data` (`Abstractions`, `Asynchronous`, `Specifications`, `Synchronous`, `Utilities`), `Services` (`Abstractions`, `Async`, `Sync`), `Security.Cryptography` (`Argon2`, `Password`), `Logging`, `Caching` (`Abstractions`, `Memory`, `Redis`, `NCache`), `MultiTenant`, `Emails`, `Excel` (`EPPlus`), `Authentication` (`JwtBearer`), `WebApi`.
-
-**CBP será publicado posteriormente en su propio repositorio** (`https://github.com/cbecerrapalma/CBP` futuro).
+`EmailTemplate` → `EmailJob` → `EmailQueue` (con CorrelationId) → servicio en segundo plano / Outbox → plantillas Fluid → MailKit/MimeKit → SMTP → `EmailLog`.
 
 ## Tecnologías
 
-`C#` · `.NET 10` · `ASP.NET Core` · `Blazor WebAssembly` · `MudBlazor 9.8.0` · `SQL Server` · `T-SQL` · `Entity Framework Core` · `OAuth2/OIDC` · `JWT` · `Argon2id` · `MailKit`/`MimeKit` · `Fluid` · `Monaco`/`BlazorMonaco 3.5.0`
+C# · .NET 10 · ASP.NET Core · Blazor WebAssembly · MudBlazor 9.13.0 · Entity Framework Core 10.0.13 (SQL Server) · OAuth2/OIDC · JWT · Argon2id · MailKit/MimeKit 5.0 · Fluid 2.41 · BlazorMonaco 3.5 · AutoMapper 17 · FluentValidation 12.2 · xUnit v3 · Moq · bUnit
 
-## Solución
+## Compilar
 
-```
-PassPlat.slnx (29 proyectos)
-├── PassPlat.Dominio
-├── PassPlat.Datos
-├── PassPlat.Aplicacion
-├── PassPlat.Aplicacion.Dtos
-├── PassPlat.WebAPI
-├── PassPlat.Web (Blazor WASM)
-├── PassPlat.Consola
-├── PassPlat.Aplicacion.Test
-└── PassPlat.CBP.Architecture.Test
+Requisito: SDK de .NET 10. PassPlat referencia proyectos de CBP por ruta relativa, así que ambos repositorios van como carpetas hermanas:
+
+```text
+<carpeta>/
+├── CBP/        https://github.com/cbecerrapalma/CBP
+└── PassPlat/   este repositorio
 ```
 
-## Aviso técnico CBP
+```bash
+dotnet build PassPlat.slnx
+dotnet test --project PassPlat.Aplicacion.Tests/PassPlat.Aplicacion.Tests.csproj
+```
 
-PassPlat depende del framework **CBP** externo en `D:\CODIGOS\CBP` (47 `ProjectReference` `../CBP/`). El repositorio `PassPlat` no contiene `CBP`. Clonar `PassPlat` requiere disponer de `CBP` en la ruta esperada actualmente — no indica repositorio roto.
+Para ejecutarlo se necesita SQL Server. Los valores locales (cadena de conexión, claves JWT, credenciales SMTP y de proveedores OAuth) van en `appsettings.Development.json` o en user-secrets, que no se publican.
 
-## Estado del proyecto
+## Repositorios relacionados
 
-**WIP / In Development** — S47 publicado en GitHub (`master` `9e800ef`), S45 `CBP 25 proj` `56/56`, S46 `EmailTemplates` Monaco `500px` + `iframe sandbox`.
+- [CBP](https://github.com/cbecerrapalma/CBP): framework base
+- [InventaNet](https://github.com/cbecerrapalma/InventaNet): inventario, ventas y tienda en línea; consume PassPlat
 
 ## Autor
 
-**Claudio Becerra Palma** — .NET / C# Backend Developer
+**Claudio Becerra Palma** ([cbecerrapalma](https://github.com/cbecerrapalma)), desarrollador .NET / C#.
+
+---
+
+Este repositorio publica solo el código C# y los archivos de la solución .NET; documentación interna, scripts y datos quedan fuera.

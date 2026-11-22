@@ -17,7 +17,7 @@ public class RolConfiguration : IEntityTypeConfiguration<Rol>
         builder.Property(r => r.Nombre).HasMaxLength(50).IsRequired();
         builder.Property(r => r.Descripcion).HasMaxLength(200);
         builder.Property(r => r.Activo).HasDefaultValue(true).IsRequired();
-        builder.Property(r => r.FecCrea).HasDefaultValueSql("sysutcdatetime()").IsRequired();
+        builder.Property(r => r.FecCrea).HasDefaultValueSql("sysdatetime()").IsRequired();
 
         builder.HasOne(r => r.Tenant)
             .WithMany(t => t.Roles)

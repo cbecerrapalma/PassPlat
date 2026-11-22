@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using CBP.Data.Abstractions;
 using CBP.MultiTenant.Abstractions;
+using PassPlat.WebAPI.Auth;
 using CBP.WebApi.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -15,8 +16,10 @@ public class AccesosController : BaseApiController
     private readonly IAccesoService _service;
     private readonly ITenantContext _tenantContext;
     private readonly IUnitOfWorkAsync _uow;
-    public AccesosController(IAccesoService service, ITenantContext tenantContext, IUnitOfWorkAsync uow)
+    private readonly IConcesionPermisosService _concesion;
+    public AccesosController(IAccesoService service, ITenantContext tenantContext, IUnitOfWorkAsync uow, IConcesionPermisosService concesion)
     {
+        _concesion = concesion;
         _service = service;
         _tenantContext = tenantContext;
         _uow = uow;
@@ -26,20 +29,18 @@ public class AccesosController : BaseApiController
     [Authorize(Policy = "ACCESOS_VER")]
     public async Task<IActionResult> TieneAcceso(int idUsuario, int idApp, CancellationToken ct)
     {
-        var uid = GetIdUsuario();
+        var uid = User.IdUsuario();
         if (uid != idUsuario) return Unauthorized(new { codigo = "ACCESO_DENEGADO" });
         return FromResultQuery(await _service.TieneAccesoAsync(idUsuario, idApp, ct));
     }
 
+    // S105 · D4 — el propio usuario ve todos sus Accesos; con USUARIOS_VER, solo los del tenant de la sesión (P66)
     [HttpGet("usuario/{idUsuario}")]
     public async Task<IActionResult> GetByUsuario(int idUsuario, CancellationToken ct)
     {
-        var uid = GetIdUsuario();
-        var isSystem = User.HasClaim("is_system", "true");
-        var hasUsuariosVer = User.HasClaim("permiso", "USUARIOS_VER");
-        if (uid != idUsuario && !isSystem && !hasUsuariosVer)
-            return Unauthorized(new { codigo = "ACCESO_DENEGADO" });
-        return FromResultQuery(await _service.ObtenerAccesosUsuarioAsync(idUsuario, ct));
+        if (!User.EsPropio(idUsuario) && !User.EsSistema() && !User.HasClaim("permiso", "USUARIOS_VER"))
+            return Forbid();
+        return FromResultQuery(await _service.ObtenerAccesosUsuarioAsync(idUsuario, User.AlcanceTenantDe(_tenantContext, idUsuario), ct));
     }
 
     [HttpGet("tenant-app/{idApp}")]
@@ -56,9 +57,15 @@ public class AccesosController : BaseApiController
     [Authorize(Policy = "ACCESOS_ASIGNAR")]
     public async Task<IActionResult> Asignar([FromBody] AsignarAccesoDto dto, CancellationToken ct)
     {
-        var uid = GetIdUsuario();
+        var uid = User.IdUsuario();
         if (uid == null) return Unauthorized(new { codigo = "ACCESO_DENEGADO" });
         dto.IdTenant = _tenantContext.CurrentId;
+        // S113 · D3 — un no-sistema solo asigna un rol cuyos permisos tiene él en su tenant (un rol global como PLATFORM_ADMIN, no)
+        if (!User.EsSistema())
+        {
+            var concesion = await _concesion.ValidarRolAsync(dto.IdRol, uid.Value, dto.IdTenant, ct);
+            if (concesion.IsFailure) return FromResult(concesion);
+        }
         var result = await _service.AsignarAccesoAsync(dto, ct);
         if (result.IsFailure) return FromResult(result);
         return Ok(result.Value);
@@ -73,7 +80,4 @@ public class AccesosController : BaseApiController
         await _uow.SaveChangesAsync(ct);
         return NoContent();
     }
-
-    private int? GetIdUsuario() =>
-        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
 }

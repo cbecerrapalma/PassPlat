@@ -1,0 +1,247 @@
+@typeparam T
+@using System.Globalization
+
+@* S54 · D6 / S54.1 · D1-D4 — Selector de catalogo comun.
+   - Sin tope oculto: se entrega todo lo que coincide y el propio MudBlazor dibuja
+     hasta MaximoVisible; si sobra, MoreItemsTemplate muestra el pie con el total real.
+   - Busqueda por nombre y codigo, sin distinguir mayusculas ni tildes.
+   - Strict real (D4): al salir del campo, si el texto ya no es el del valor elegido,
+     el valor pasa a nulo, el texto queda y se ve el error. *@
+
+<style>
+    /* S54.1 · D2 — La lista, el pie y «Sin resultados» se dibujan en el MudPopoverProvider
+       (portal fuera del arbol del componente): el CSS con aislamiento no llega a ese DOM. */
+    .selector-catalogo-lista { overscroll-behavior: contain; }
+    .selector-catalogo-pie {
+        padding: 8px 16px;
+        font-size: 12px;
+        opacity: .75;
+        border-top: 1px solid var(--mud-palette-lines-default, rgba(0, 0, 0, .12));
+    }
+    .selector-catalogo-vacio { padding: 12px 16px; font-size: 13px; opacity: .75; }
+</style>
+
+<div class="selector-catalogo">
+    <MudAutocomplete T="T"
+        Value="@Value"
+        ValueChanged="@OnValueChangedAsync"
+        Text="@_texto"
+        TextChanged="@OnTextoCambiado"
+        SearchFunc="@Buscar"
+        ToStringFunc="@TextoDe"
+        Label="@Label"
+        Variant="@Variant"
+        Class="@Class"
+        Placeholder="@Placeholder"
+        HelperText="@HelperText"
+        Disabled="@Disabled"
+        Required="@Required"
+        Clearable="@Clearable"
+        Error="@(Error || _campoVacio)"
+        ErrorText="@(string.IsNullOrWhiteSpace(ErrorText) ? RequiredError : ErrorText)"
+        RequiredError="@RequiredError"
+        MaxItems="@MaximoVisible"
+        CoerceText="false"
+        ListClass="selector-catalogo-lista"
+        MoreItemsTemplate="@_templatePie"
+        NoItemsTemplate="@_templateSinResultados"
+        OnBlur="@OnBlurAsync"
+        AdornmentAriaLabel="@(string.IsNullOrWhiteSpace(Label) ? "Abrir lista" : $"Abrir lista de {Label}")"
+        aria-label="@AriaLabel" />
+    @if (_textoInvalido)
+    {
+        <MudText Typo="Typo.caption" Color="Color.Error" Class="selector-catalogo-error" data-testid="selector-catalogo-error">
+            &#171;@_texto&#187; no coincide con ninguna opci&#243;n. Elige un elemento de la lista.
+        </MudText>
+    }
+</div>
+
+@code {
+    /// <summary>Catalogo completo: el componente filtra, sin Take(...) del llamador.</summary>
+    [Parameter] public IReadOnlyList<T> Items { get; set; } = [];
+
+    /// <summary>Texto sobre el que se busca (nombre + codigo, normalmente).</summary>
+    [Parameter] public Func<T, string?>? SearchTextSelector { get; set; }
+
+    [Parameter] public Func<T, string>? ToStringFunc { get; set; }
+
+    [Parameter] public T? Value { get; set; }
+    [Parameter] public EventCallback<T?> ValueChanged { get; set; }
+
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public Variant Variant { get; set; } = Variant.Outlined;
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public string? HelperText { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public bool Clearable { get; set; } = true;
+    [Parameter] public bool Error { get; set; }
+    [Parameter] public string? ErrorText { get; set; }
+
+    /// <summary>Mensaje del campo obligatorio cuando se sale de el vacio (D7).</summary>
+    [Parameter] public string? RequiredError { get; set; }
+
+    [Parameter] public string? AriaLabel { get; set; }
+
+    /// <summary>Cantidad maxima de filas dibujadas. El resto se avisa en el pie (D1).</summary>
+    [Parameter] public int MaximoVisible { get; set; } = 50;
+
+    private string _texto = "";
+    private T? _valorSincronizado;
+    private int _totalCoincidencias;
+    private bool _textoInvalido;
+    private bool _campoVacio;
+    private bool _listo;
+
+    private string TextoPie => $"Mostrando {MaximoVisible} de {_totalCoincidencias}: escribe para filtrar";
+
+    // Plantillas con referencia estable: si cambian en cada render, MudBlazor rehace el
+    // contenido del popover y este pierde el anclaje (se queda en -9999, fuera de pantalla).
+    private RenderFragment? _templatePie;
+    private RenderFragment? _templateSinResultados;
+
+    protected override void OnInitialized()
+    {
+        _templatePie = @<div class="selector-catalogo-pie" data-testid="selector-catalogo-pie">@TextoPie</div>;
+        _templateSinResultados = @<div class="selector-catalogo-vacio" data-testid="selector-catalogo-vacio">Sin resultados</div>;
+    }
+
+    protected override void OnParametersSet()
+    {
+        AriaLabel ??= Label;
+
+        // Al elegir un valor se muestra su texto completo; al dejarlo vacio el texto escrito
+        // se conserva (D4), por eso solo se sincroniza cuando hay valor.
+        if (Value is not null && !ReferenceEquals(_valorSincronizado, Value))
+        {
+            _valorSincronizado = Value;
+            _texto = TextoDe(Value);
+            _campoVacio = false;
+        }
+        else if (Value is null)
+        {
+            _valorSincronizado = default(T?);
+        }
+
+        // El error depende del estado real (D3): texto escrito, valor nulo y sin coincidencias.
+        // Se recalcula aqui porque el padre puede dejar el valor en nulo tras el blur (D4).
+        ActualizarEstadoError();
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender) _listo = true;
+    }
+
+    /// <summary>Texto del elemento seleccionado; nunca null (MudAutocomplete la llama con null al inicio).</summary>
+    private string TextoDe(T? item) => item is null ? "" : (ToStringFunc?.Invoke(item) ?? "");
+
+    private async Task<IEnumerable<T>> Buscar(string? value, CancellationToken _)
+    {
+        var filtrados = Coincidentes(value ?? string.Empty);
+
+        _totalCoincidencias = filtrados.Count;
+        ActualizarEstadoError();
+        // D1: se devuelven TODAS las coincidencias; MudBlazor dibuja hasta MaximoVisible
+        // y el pie (MoreItemsTemplate) aparece solo si sobra.
+        // La busqueda la dispara el hijo: hay que pedir redibujado para mostrar el error.
+        // Solo despues del primer render: durante la inicializacion MudBlazor todavia esta
+        // construyendo el popover y un redibujado en ese momento lo deja sin anclar.
+        if (_listo) await InvokeAsync(StateHasChanged);
+        return filtrados;
+    }
+
+    /// <summary>
+    /// Coincidencias del texto sobre el catalogo. MudBlazor llama a la busqueda con el texto
+    /// del valor ya elegido; si ese texto no aparece en el catalogo (p.ej. "sistema (Usuario
+    /// Sistema)"), la lista saldria vacia y en ese caso se ofrece el catalogo completo
+    /// (el usuario no escribio nada).
+    /// </summary>
+    private List<T> Coincidentes(string texto)
+    {
+        var filtrados = Filtrar(texto).ToList();
+
+        var valor = Value;
+        if (filtrados.Count == 0 && valor is not null && string.Equals(texto, TextoDe(valor), StringComparison.Ordinal))
+            filtrados = Items.ToList();
+
+        return filtrados;
+    }
+
+    private async Task OnTextoCambiado(string texto)
+    {
+        _texto = texto;
+        _campoVacio = false;
+        ActualizarEstadoError();
+        if (_listo) await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnBlurAsync()
+    {
+        // D3 — el conteo se recalcula aqui de forma sincrona: la busqueda de MudBlazor
+        // llega con retardo y el error «no coincide con ninguna opcion» no puede depender
+        // de ese tiempo de espera.
+        _totalCoincidencias = Coincidentes(_texto).Count();
+
+        // D4 — Strict real: al salir del campo, si el texto ya no es el del valor elegido,
+        // el valor pasa a nulo y el texto se conserva para poder ver el error (D3).
+        if (string.IsNullOrWhiteSpace(_texto))
+        {
+            _campoVacio = Required;
+            if (Value is not null) await ValueChanged.InvokeAsync(default(T?));
+            ActualizarEstadoError();
+            if (_listo) await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        if (Value is not null && !string.Equals(_texto, TextoDe(Value), StringComparison.Ordinal))
+        {
+            await ValueChanged.InvokeAsync(default(T?));
+            ActualizarEstadoError();
+            if (_listo) await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        if (Value is null && _totalCoincidencias == 0)
+        {
+            _campoVacio = false;
+            ActualizarEstadoError();
+            if (_listo) await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    /// <summary>D3 — el error depende del estado real: hay texto, el valor es nulo y no hay coincidencias.</summary>
+    private void ActualizarEstadoError()
+        => _textoInvalido = !string.IsNullOrWhiteSpace(_texto) && Value is null && _totalCoincidencias == 0;
+
+    private IEnumerable<T> Filtrar(string texto)
+    {
+        if (string.IsNullOrWhiteSpace(texto)) return Items;
+        return Items.Where(i => Coincide(SearchTextSelector?.Invoke(i), texto));
+    }
+
+    /// <summary>Comparacion sin distinguir mayusculas ni tildes (IgnoreNonSpace ignora los diacriticos).</summary>
+    public static bool Coincide(string? haystack, string? texto)
+    {
+        if (string.IsNullOrWhiteSpace(texto)) return true;
+        if (string.IsNullOrEmpty(haystack)) return false;
+        return CultureInfo.InvariantCulture.CompareInfo.IndexOf(
+            haystack, texto, CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace) >= 0;
+    }
+
+    private async Task OnValueChangedAsync(T? value)
+    {
+        if (value is not null)
+        {
+            _valorSincronizado = value;
+            _texto = TextoDe(value);
+        }
+        else
+        {
+            _valorSincronizado = default(T?);
+        }
+        ActualizarEstadoError();
+        await ValueChanged.InvokeAsync(value);
+    }
+}

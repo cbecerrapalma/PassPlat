@@ -12,6 +12,9 @@ public class PermisoDto
     public DateTime FecCrea { get; set; }
     public string? ModuloNombre { get; set; }
     public string? ModuloCodigo { get; set; }
+    public int? IdApp { get; set; }
+    public string? AppCodigo { get; set; }
+    public string? AppNombre { get; set; }
 }
 
 public class CrearPermisoDto

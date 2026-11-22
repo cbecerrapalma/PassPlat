@@ -15,9 +15,10 @@ public class TenantsController : BaseApiController
 {
     private readonly ITenantService _service;
     private readonly IUnitOfWorkAsync _uow;
+    private readonly ILogger<TenantsController> _logger;
 
-    public TenantsController(ITenantService service, IUnitOfWorkAsync uow)
-    { _service = service; _uow = uow; }
+    public TenantsController(ITenantService service, IUnitOfWorkAsync uow, ILogger<TenantsController> logger)
+    { _service = service; _uow = uow; _logger = logger; }
 
     [HttpGet]
     public async Task<IActionResult> GetAll(CancellationToken ct)
@@ -83,9 +84,11 @@ public class TenantsController : BaseApiController
         {
             await _uow.SaveChangesAsync(ct);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return Problem($"Error al desactivar tenant: {ex.InnerException?.Message ?? ex.Message}", statusCode: 500);
+            // S65.1: el texto de la excepción no se devuelve al cliente.
+            _logger.LogError(ex, "Error al desactivar tenant {IdTenant} trace {TraceId}", id, HttpContext.TraceIdentifier);
+            return Problem("Error al desactivar el tenant. Intente nuevamente.", statusCode: 500);
         }
         return FromResult(result);
     }

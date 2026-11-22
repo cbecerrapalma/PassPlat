@@ -25,7 +25,7 @@ public class TenantRepository : RepositoryAsync<Tenant>, ITenantRepository
             var entity = await DbSet.FirstOrDefaultAsync(t => t.Codigo == codigo, ct);
             return Result<Tenant?>.Success(entity, allowNull: true);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<Tenant?>.Failure("DB_ERROR", ex.Message);
         }
@@ -38,7 +38,7 @@ public class TenantRepository : RepositoryAsync<Tenant>, ITenantRepository
             var items = await DbSet.Where(t => t.Activo).ToListAsync(ct);
             return Result<IReadOnlyList<Tenant>>.Success(items);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<Tenant>>.Failure("DB_ERROR", ex.Message);
         }
@@ -51,7 +51,7 @@ public class TenantRepository : RepositoryAsync<Tenant>, ITenantRepository
             var count = await DbSet.CountAsync(t => t.Activo, ct);
             return Result<int>.Success(count);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<int>.Failure("DB_ERROR", ex.Message);
         }
@@ -73,7 +73,7 @@ public class TenantRepository : RepositoryAsync<Tenant>, ITenantRepository
                 .ToListAsync(ct);
             return Result<(IReadOnlyList<Tenant> Items, int TotalCount)>.Success((items, total));
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<(IReadOnlyList<Tenant> Items, int TotalCount)>.Failure("DB_ERROR", ex.Message);
         }

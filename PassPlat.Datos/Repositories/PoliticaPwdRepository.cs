@@ -52,7 +52,8 @@ public class PoliticaPwdRepository : RepositoryAsync<PoliticaPwd>, IPoliticaPwdR
             }
 
             var swDb = Stopwatch.StartNew();
-            var entity = await DbSet.AsNoTracking().FirstOrDefaultAsync(p => p.IdTenant == idTenant && p.Activa, ct);
+            // S60 · D1 — una politica SoloPorRol = 1 nunca se elige por alcance.
+            var entity = await DbSet.AsNoTracking().FirstOrDefaultAsync(p => p.IdTenant == idTenant && p.Activa && !p.SoloPorRol, ct);
             swDb.Stop();
             EmitCacheEvent(LoggingEvents.CacheMiss, LoggingCacheResults.Miss, LoggingSources.SqlServer, key, idTenant, nameof(ObtenerActivaPorTenantAsync), swDb);
             if (entity != null)
@@ -62,7 +63,7 @@ public class PoliticaPwdRepository : RepositoryAsync<PoliticaPwd>, IPoliticaPwdR
             }
             return Result<PoliticaPwd?>.Success(entity, allowNull: true);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<PoliticaPwd?>.Failure("DB_ERROR", ex.Message);
         }
@@ -83,7 +84,7 @@ public class PoliticaPwdRepository : RepositoryAsync<PoliticaPwd>, IPoliticaPwdR
             }
 
             var swDb = Stopwatch.StartNew();
-            var entity = await DbSet.AsNoTracking().FirstOrDefaultAsync(p => p.IdTenant == idTenant && p.IdApp == idApp && p.Activa, ct);
+            var entity = await DbSet.AsNoTracking().FirstOrDefaultAsync(p => p.IdTenant == idTenant && p.IdApp == idApp && p.Activa && !p.SoloPorRol, ct);
             swDb.Stop();
             EmitCacheEvent(LoggingEvents.CacheMiss, LoggingCacheResults.Miss, LoggingSources.SqlServer, key, idTenant, nameof(ObtenerActivaPorTenantYAppAsync), swDb);
             if (entity != null)
@@ -93,7 +94,7 @@ public class PoliticaPwdRepository : RepositoryAsync<PoliticaPwd>, IPoliticaPwdR
             }
             return Result<PoliticaPwd?>.Success(entity, allowNull: true);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<PoliticaPwd?>.Failure("DB_ERROR", ex.Message);
         }
@@ -114,7 +115,8 @@ public class PoliticaPwdRepository : RepositoryAsync<PoliticaPwd>, IPoliticaPwdR
             }
 
             var swDb = Stopwatch.StartNew();
-            var entity = await DbSet.AsNoTracking().FirstOrDefaultAsync(p => p.IdTenant == null && p.IdApp == null && p.Activa, ct);
+            // S60 · D1 — una politica SoloPorRol = 1 nunca se elige por alcance.
+            var entity = await DbSet.AsNoTracking().FirstOrDefaultAsync(p => p.IdTenant == null && p.IdApp == null && p.Activa && !p.SoloPorRol, ct);
             swDb.Stop();
             EmitCacheEvent(LoggingEvents.CacheMiss, LoggingCacheResults.Miss, LoggingSources.SqlServer, key, null, nameof(ObtenerPoliticaGlobalAsync), swDb);
             if (entity != null)
@@ -124,7 +126,7 @@ public class PoliticaPwdRepository : RepositoryAsync<PoliticaPwd>, IPoliticaPwdR
             }
             return Result<PoliticaPwd?>.Success(entity, allowNull: true);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<PoliticaPwd?>.Failure("DB_ERROR", ex.Message);
         }
@@ -146,7 +148,7 @@ public class PoliticaPwdRepository : RepositoryAsync<PoliticaPwd>, IPoliticaPwdR
 
             return await ObtenerPoliticaGlobalAsync(ct);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<PoliticaPwd?>.Failure("DB_ERROR", ex.Message);
         }
@@ -160,7 +162,7 @@ public class PoliticaPwdRepository : RepositoryAsync<PoliticaPwd>, IPoliticaPwdR
                 .AsNoTracking().FirstOrDefaultAsync(ct);
             return Result<PoliticaPwd?>.Success(entity, allowNull: true);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<PoliticaPwd?>.Failure("DB_ERROR", ex.Message);
         }
@@ -174,7 +176,7 @@ public class PoliticaPwdRepository : RepositoryAsync<PoliticaPwd>, IPoliticaPwdR
                 .OrderByDescending(p => p.Activa).ThenBy(p => p.Codigo).AsNoTracking().ToListAsync(ct);
             return Result<IReadOnlyList<PoliticaPwd>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<PoliticaPwd>>.Failure("DB_ERROR", ex.Message);
         }
@@ -192,7 +194,7 @@ public class PoliticaPwdRepository : RepositoryAsync<PoliticaPwd>, IPoliticaPwdR
             _ = InvalidarCacheAsync();
             return Result.Success();
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result.Failure("DB_ERROR", ex.Message);
         }

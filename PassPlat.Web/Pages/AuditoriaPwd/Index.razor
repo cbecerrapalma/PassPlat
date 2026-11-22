@@ -12,26 +12,52 @@
 }
 else
 {
-<MudContainer>
-    <MudBreadcrumbs Class="mb-3">
-        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
-        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/auditoria"))">Auditoría</MudBreadcrumbItem>
-        <MudBreadcrumbItem>Auditoría de Contraseñas</MudBreadcrumbItem>
-    </MudBreadcrumbs>
+<div class="iam-page">
+<MigasDePan />
 
-    <div class="mud-grid mud-grid-spacing-3 mb-4">
-        <IamKpiCard Valor="@_items.Count().ToString()" Label="Registros" Subtexto="En página actual" Icon="@Icons.Material.Filled.HistoryToggleOff" ColorClass="primary" Xs="12" Sm="6" Md="3" />
-        <IamKpiCard Valor="@_items.Select(i => i.TipoAccionNombre).Distinct().Count().ToString()" Label="Tipos" Subtexto="De acciones" Icon="@Icons.Material.Filled.Category" ColorClass="success" Xs="12" Sm="6" Md="3" />
-        <IamKpiCard Valor="@_items.Select(i => i.NivelRiesgo.ToString()).Distinct().Count().ToString()" Label="Niveles" Subtexto="De riesgo" Icon="@Icons.Material.Filled.Speed" ColorClass="warning" Xs="12" Sm="6" Md="3" />
-        <IamKpiCard Valor="@_items.Select(i => i.UsuarioNombre).Distinct().Count().ToString()" Label="Usuarios" Subtexto="Afectados" Icon="@Icons.Material.Filled.People" ColorClass="info" Xs="12" Sm="6" Md="3" />
+    <div class="page-header">
+        <div class="page-title-row">
+            <div>
+                <h1 class="page-title">Auditoría de Contraseñas</h1>
+                <p class="page-subtitle">Cambios y eventos de contraseña registrados.</p>
+            </div>
+        </div>
     </div>
 
-    <MudPaper Class="pa-4 mb-4 d-flex flex-wrap align-center gap-4" Elevation="0" Outlined="true">
-        <MudText Typo="Typo.h5" Class="flex-grow-1 mb-0">Auditoría de Contraseñas</MudText>
-        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium"
-            OnClick="@(() => _table.ReloadServerData())" />
-    </MudPaper>
+    <div class="kpi-row mb-4">
+        <IamKpiCard Valor="@_items.Count().ToString()" Label="Registros" Subtexto="En página actual" Icon="@Icons.Material.Filled.HistoryToggleOff" ColorClass="primary" />
+        <IamKpiCard Valor="@_items.Select(i => i.TipoAccionNombre).Distinct().Count().ToString()" Label="Tipos" Subtexto="De acciones" Icon="@Icons.Material.Filled.Category" ColorClass="success" />
+        <IamKpiCard Valor="@_items.Select(i => i.NivelRiesgo.ToString()).Distinct().Count().ToString()" Label="Niveles" Subtexto="De riesgo" Icon="@Icons.Material.Filled.Speed" ColorClass="warning" />
+        <IamKpiCard Valor="@_items.Select(i => i.UsuarioNombre).Distinct().Count().ToString()" Label="Usuarios" Subtexto="Afectados" Icon="@Icons.Material.Filled.People" ColorClass="info" />
+    </div>
 
+    <div class="content-body">
+        <div class="table-panel">
+            <CrudToolbar ShowSearch="true" SearchLabel="Buscar usuario o mensaje..."
+                SearchString="@_searchString" SearchStringChanged="@OnSearchChanged"
+                OnRefresh="@Recargar" ShowCreate="false">
+                <Filtros>
+                    <MudSelect T="int?" Value="_idTipoAccion" ValueChanged="@OnTipoChanged" Label="Tipo"
+                               Variant="Variant.Outlined" Dense="true" Clearable="true" Class="lista-filtro">
+                        @foreach (var t in _tipos)
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)t.Id)">@t.Nombre</MudSelectItem>
+                        }
+                    </MudSelect>
+                    <MudSelect T="int?" Value="_nivelMinimo" ValueChanged="@OnNivelChanged" Label="Nivel mínimo"
+                               Variant="Variant.Outlined" Dense="true" Clearable="true" Class="lista-filtro">
+                        @foreach (var n in NivelesRiesgo)
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)n)">@n</MudSelectItem>
+                        }
+                    </MudSelect>
+                    <MudDatePicker Date="_desde" DateChanged="@OnDesdeChanged" Label="Desde"
+                                   Variant="Variant.Outlined" Clearable="true" Class="lista-filtro" />
+                    <MudDatePicker Date="_hasta" DateChanged="@OnHastaChanged" Label="Hasta"
+                                   Variant="Variant.Outlined" Clearable="true" Class="lista-filtro" />
+                </Filtros>
+            </CrudToolbar>
+            <div class="table-wrap">
     <MudTable @ref="_table" T="AuditoriaPwdDto" ServerData="@_serverReload" Items="@_items" Hover="true" Breakpoint="Breakpoint.Sm">
         <ColGroup>
             <col style="width: 80px;" /><col /><col /><col /><col style="width: 80px;" /><col style="width: 160px;" />
@@ -47,7 +73,7 @@ else
             </MudTd>
             <MudTd DataLabel="Mensaje">@context.Detalles</MudTd>
             <MudTd DataLabel="Nivel">@context.NivelRiesgo</MudTd>
-            <MudTd DataLabel="Fecha">@context.FecAccion?.ToLocalTime().ToString("g")</MudTd>
+            <MudTd DataLabel="Fecha">@context.FecAccion?.ToString("g")</MudTd>
         </RowTemplate>
         <PagerContent>
             <MudTablePager PageSizeOptions="new int[]{10, 25, 50}" />
@@ -59,29 +85,56 @@ else
             </MudText>
         </NoRecordsContent>
     </MudTable>
+            </div>
+        </div>
+    </div>
 
     <MudOverlay Visible="@_loading" />
     @if (_loading)
     {
         <MudProgressCircular Indeterminate="true" Class="mt-4" />
     }
-</MudContainer>
+</div>
 }
 
 @code {
     private MudTable<AuditoriaPwdDto> _table = default!;
     private IEnumerable<AuditoriaPwdDto> _items = [];
     private bool _loading;
+    // S95 · D4 — filtros que aplica la API (api/auditoriapwd/page); el tenant lo fija la API según la sesión
+    private static readonly int[] NivelesRiesgo = [1, 2, 3, 4, 5];
+    private string _searchString = "";
+    private int? _idTipoAccion;
+    private int? _nivelMinimo;
+    private DateTime? _desde;
+    private DateTime? _hasta;
+    private List<TipoAuditoriaDto> _tipos = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _tipos = (await Api.GetAsync<List<TipoAuditoriaDto>>("api/tiposauditoria") ?? [])
+                .Where(t => t.Activo)
+                .OrderBy(t => t.Nombre)
+                .ToList();
+        }
+        catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error al cargar los tipos: {ex.Message}", Severity.Error); }
+    }
 
     private async Task<TableData<AuditoriaPwdDto>> _serverReload(TableState state, CancellationToken ct)
     {
         _loading = true;
         try
         {
-            var idTenant = Auth.IdTenant ?? 0;
-            var tenantSuffix = idTenant > 0 ? $"/tenant/{idTenant}" : "";
+            var filtros = string.Concat(
+                string.IsNullOrWhiteSpace(_searchString) ? "" : $"&search={Uri.EscapeDataString(_searchString.Trim())}",
+                _idTipoAccion is int tipo ? $"&idTipoAccion={tipo}" : "",
+                _nivelMinimo is int nivel ? $"&nivelMinimo={nivel}" : "",
+                _desde is DateTime desde ? $"&desde={desde:yyyy-MM-dd}" : "",
+                _hasta is DateTime hasta ? $"&hasta={hasta:yyyy-MM-dd}" : "");
             var response = await Api.GetAsync<PagedResponse<AuditoriaPwdDto>>(
-                $"api/auditoriapwd/page{tenantSuffix}?pageNumber={state.Page + 1}&pageSize={state.PageSize}");
+                $"api/auditoriapwd/page?pageNumber={state.Page + 1}&pageSize={state.PageSize}{filtros}");
             if (response != null)
             {
                 _items = response.Items;
@@ -89,7 +142,18 @@ else
             }
         }
         catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error al cargar: {ex.Message}", Severity.Error); }
-        finally { _loading = false; }
+        finally { _loading = false; StateHasChanged(); }
         return new TableData<AuditoriaPwdDto> { Items = [], TotalItems = 0 };
     }
+
+    private async Task Recargar()
+    {
+        if (_table is not null) await _table.ReloadServerData();
+    }
+
+    private async Task OnSearchChanged(string value) { _searchString = value; await Recargar(); }
+    private async Task OnTipoChanged(int? value) { _idTipoAccion = value; await Recargar(); }
+    private async Task OnNivelChanged(int? value) { _nivelMinimo = value; await Recargar(); }
+    private async Task OnDesdeChanged(DateTime? value) { _desde = value; await Recargar(); }
+    private async Task OnHastaChanged(DateTime? value) { _hasta = value; await Recargar(); }
 }

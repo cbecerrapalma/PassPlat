@@ -14,11 +14,7 @@
 else
 {
 <MudContainer>
-    <MudBreadcrumbs Class="mb-3">
-        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
-        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/auditoria"))">Auditoría</MudBreadcrumbItem>
-        <MudBreadcrumbItem>Mantenimiento</MudBreadcrumbItem>
-    </MudBreadcrumbs>
+<MigasDePan />
     <MudPaper Class="pa-4 mb-4 d-flex flex-wrap align-center gap-4" Elevation="0" Outlined="true">
         <MudText Typo="Typo.h5" Class="flex-grow-1 mb-0">Mantenimiento del Sistema</MudText>
     </MudPaper>
@@ -82,7 +78,7 @@ else
                 ["CancelText"] = "Cancelar"
             });
         var result = await confirm.Result;
-        if (result.Canceled) return;
+        if (result is not { Canceled: false }) return;
 
         _purgando = true;
         try

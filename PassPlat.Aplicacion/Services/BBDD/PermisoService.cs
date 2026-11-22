@@ -14,7 +14,7 @@ public interface IPermisoService : IServiceAsync<Permiso, PermisoDto>
 {
     Task<Result<IReadOnlyList<PermisoDto>>> ObtenerTodosAsync(CancellationToken ct = default);
     Task<Result<IReadOnlyList<PermisoDto>>> ObtenerActivosAsync(CancellationToken ct = default);
-    Task<Result<IReadOnlyList<PermisoDto>>> ObtenerPorModuloAsync(string modulo, CancellationToken ct = default);
+    Task<Result<IReadOnlyList<PermisoDto>>> ObtenerPorAppsAsync(IReadOnlyCollection<int> idsApp, bool soloActivos, CancellationToken ct = default);
     Task<Result<PermisoDto?>> ObtenerPorIdAsync(int id, CancellationToken ct = default);
     Task<Result<PermisoDto>> CrearAsync(CrearPermisoDto dto, CancellationToken ct = default);
     Task<Result<PermisoDto>> ActualizarAsync(int id, ActualizarPermisoDto dto, CancellationToken ct = default);
@@ -43,16 +43,17 @@ public class PermisoService : ServiceAsync<Permiso, PermisoDto>, IPermisoService
         return Result<IReadOnlyList<PermisoDto>>.Success(Mapper.Map<IReadOnlyList<PermisoDto>>(result.Value));
     }
 
-    public async Task<Result<IReadOnlyList<PermisoDto>>> ObtenerPorModuloAsync(string modulo, CancellationToken ct = default)
+    public async Task<Result<IReadOnlyList<PermisoDto>>> ObtenerPorAppsAsync(IReadOnlyCollection<int> idsApp, bool soloActivos, CancellationToken ct = default)
     {
-        var result = await _repo.ObtenerPorModuloAsync(modulo, ct);
+        var result = await _repo.ObtenerPorAppsAsync(idsApp, soloActivos, ct);
         if (result.IsFailure) return Result<IReadOnlyList<PermisoDto>>.Failure(result.Error!);
         return Result<IReadOnlyList<PermisoDto>>.Success(Mapper.Map<IReadOnlyList<PermisoDto>>(result.Value));
     }
 
     public async Task<Result<PermisoDto?>> ObtenerPorIdAsync(int id, CancellationToken ct = default)
     {
-        var result = await Repository.GetByIdAsync(id, ct);
+        // S104 · D2 — con módulo y app (el GetByIdAsync genérico no incluye relaciones)
+        var result = await _repo.ObtenerPorIdConAppAsync(id, ct);
         if (result.IsFailure)
             return Result<PermisoDto?>.Failure(result.Error!);
         return Result<PermisoDto?>.Success(Mapper.Map<PermisoDto?>(result.Value), allowNull: true);

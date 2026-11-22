@@ -60,7 +60,6 @@ public class DashboardOAuthDto
 {
     public int UsuariosGoogle { get; set; }
     public int UsuariosGithub { get; set; }
-    public int UsuariosLinkedIn { get; set; }
     public int UsuariosFacebook { get; set; }
     public int UsuariosInstagram { get; set; }
     public string ProveedorMasUtilizado { get; set; } = string.Empty;

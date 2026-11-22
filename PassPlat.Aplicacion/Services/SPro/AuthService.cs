@@ -4,6 +4,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using CBP.Authentication.JwtBearer;
+using CBP.Data.Abstractions;
 using CBP.Logging;
 using CBP.Logging.Models;
 using CBP.Results;
@@ -29,22 +30,32 @@ public interface IAuthService : ICustomService
     Task<Result<LoginResult>> LoginAsync(string? nomUsuario, string? email, int idApp, string hashPwdCalculado, int idTenant, int? idDisp, int? idIP, int? idAgente, CancellationToken ct = default);
     Task<Result<AuthResponseDto>> LoginConTokenAsync(string? nomUsuario, string? email, int idApp, string hashPwdCalculado, int idTenant, int? idDisp, int? idIP, int? idAgente, CancellationToken ct = default);
     Task<Result<AuthResponseDto>> CompletarLoginConMFAAsync(int idUsuario, int idTenant, int idApp, int idMFAPrincipal, string codigoMFA, int? idDisp, int? idIP, int? idAgente, CancellationToken ct = default);
+    /// <summary>S125 · D4 — MFA del login externo: devuelve el tipo y envía el código (Email), como el login normal.</summary>
+    Task<Result<int?>> PrepararMfaLoginAsync(int idUsuario, int idTenant, int idApp, CancellationToken ct = default);
     Task<Result<AuthResponseDto>> RefreshTokenAsync(string refreshToken, CancellationToken ct = default);
-    Task<Result> RevocarSesionAsync(Guid idSesion, CancellationToken ct = default);
     Task<Result> RevocarSesionPorJtiAsync(int idUsuario, string jti, CancellationToken ct = default);
     Task<Result<AuthResponseDto>> PlatformLoginAsync(string nomUsuario, string password, int idApp, int? idDisp, int? idIP, int? idAgente, CancellationToken ct = default);
     Task<Result<AuthResponseDto>> SwitchTenantAsync(int idUsuario, int idTenant, int idApp, int? idDisp, int? idIP, int? idAgente, CancellationToken ct = default);
-    Task<Result<AuthResponseDto>> SwitchToPlatformAsync(int idUsuario, string jti, int idApp, int? idDisp, int? idIP, int? idAgente, CancellationToken ct = default);
+    Task<Result<IReadOnlyList<Dtos.Catalogos.TenantDto>>> ObtenerMisTenantsAsync(int idUsuario, CancellationToken ct = default);
 }
 
 public class AuthService : IAuthService
 {
+    /// <summary>
+    /// S60 · D5 — mensaje que devuelve el login cuando la contraseña está vencida
+    /// (código PWD_EXPIRADA, HTTP 403 en la API).
+    /// </summary>
+    public const string MensajePwdExpirada =
+        "Tu contraseña venció. Restablécela con «¿Olvidaste tu contraseña?» o pide a un administrador que la cambie.";
+
     private static readonly Random _rng = Random.Shared;
 
-    private readonly AuthRepository _authRepo;
+    // S60 · K5 — la interfaz permite verificar el resultado del SP sin base de datos.
+    private readonly IAuthRepository _authRepo;
     private readonly SesionRepository _sesionRepo;
     private readonly IIntentoAccesoService _intentoAccesoService;
-    private readonly AuditoriaPwdRepository _auditoriaRepo;
+    // S60 · K5 — la interfaz permite auditar el login fallido en pruebas sin base de datos.
+    private readonly IAuditoriaPwdRepository _auditoriaRepo;
     private readonly IJwtTokenService _jwtService;
     private readonly CBP.Security.Cryptography.Services.IPasswordService _pwdService;
     private readonly JwtOptions _jwtOptions;
@@ -60,12 +71,16 @@ public class AuthService : IAuthService
     private readonly IUsuarioTenantRepository _usuarioTenantRepo;
     private readonly SessionManager _sessionManager;
     private readonly CBP.Logging.Interfaces.ILoggerService _olog;
+    private readonly IAppService _appService;
+    private readonly ITenantService _tenantService;
+    private readonly IAccesoRepository _accesoRepo;
+    private readonly IUnitOfWorkAsync _uow;
 
     public AuthService(
-        AuthRepository authRepo,
+        IAuthRepository authRepo,
         SesionRepository sesionRepo,
         IIntentoAccesoService intentoAccesoService,
-        AuditoriaPwdRepository auditoriaRepo,
+        IAuditoriaPwdRepository auditoriaRepo,
         IJwtTokenService jwtService,
         CBP.Security.Cryptography.Services.IPasswordService pwdService,
         JwtOptions jwtOptions,
@@ -80,7 +95,11 @@ public class AuthService : IAuthService
         IAuthenticationTokenService tokenService,
         IUsuarioTenantRepository usuarioTenantRepo,
         SessionManager sessionManager,
-        CBP.Logging.Interfaces.ILoggerService olog)
+        CBP.Logging.Interfaces.ILoggerService olog,
+        IAppService appService,
+        ITenantService tenantService,
+        IAccesoRepository accesoRepo,
+        IUnitOfWorkAsync uow)
     {
         _authRepo = authRepo;
         _sesionRepo = sesionRepo;
@@ -101,6 +120,10 @@ public class AuthService : IAuthService
         _usuarioTenantRepo = usuarioTenantRepo;
         _sessionManager = sessionManager;
         _olog = olog;
+        _appService = appService;
+        _tenantService = tenantService;
+        _accesoRepo = accesoRepo;
+        _uow = uow;
     }
 
     private void LogAuthEvent(string eventName, string message, string? userId, int? tenantId)
@@ -121,8 +144,72 @@ public class AuthService : IAuthService
         });
     }
 
+    // S57.19 H-1: distingue "no existe" (400) de fallo de infraestructura (500).
+    // CBP usa ENTITY_NOT_FOUND/RESOURCE_NOT_FOUND; servicios propios NO_ENCONTRADO/*_NO_ENCONTRADO.
+    private static bool IsNotFoundError(string? code)
+        => code is not null
+            && (code.EndsWith("NOT_FOUND", StringComparison.OrdinalIgnoreCase)
+                || code.EndsWith("NO_ENCONTRADO", StringComparison.OrdinalIgnoreCase));
+
+    // S57.19 H-1+H-3: validación App en todos los métodos de login (scope plataforma: sin tenant).
+    // Retorna Success(AppCodigo) para H-2 (audiencia por Apps.Codigo, nunca numérica).
+    private async Task<Result<string>> ValidarAppAsync(int idApp, CancellationToken ct)
+    {
+        if (idApp <= 0)
+            return Result<string>.Failure("LOGIN_VALIDATION", "IdApp es requerido y debe ser mayor que cero.");
+        Result<Dtos.Catalogos.AppDto?> appResult;
+        try { appResult = await _appService.ObtenerPorIdAsync(idApp, ct); }
+        catch (Exception ex) { return Result<string>.Failure("APP_VALIDATION_ERROR", $"No fue posible validar la aplicación: {ex.Message}"); }
+        if (appResult.IsFailure)
+            return IsNotFoundError(appResult.Error?.Code)
+                ? Result<string>.Failure("LOGIN_VALIDATION", $"Aplicación inexistente (IdApp={idApp}). [APP_INEXISTENTE]")
+                : Result<string>.Failure("APP_VALIDATION_ERROR", "No fue posible validar la aplicación.");
+        if (appResult.Value is null)
+            return Result<string>.Failure("LOGIN_VALIDATION", $"Aplicación inexistente (IdApp={idApp}). [APP_INEXISTENTE]");
+        if (!appResult.Value.Activa)
+            return Result<string>.Failure("LOGIN_VALIDATION", $"Aplicación inactiva (IdApp={idApp}). [APP_INACTIVA]");
+        return Result<string>.Success(appResult.Value.Codigo ?? string.Empty);
+    }
+
+    // S57.19 H-1+H-3: validación App/Tenant en métodos de login con tenant.
+    // Orden: rango > existencia app > app activa > existencia tenant > tenant activo.
+    private async Task<Result<string>> ValidarAppTenantAsync(int idApp, int idTenant, CancellationToken ct)
+    {
+        var appCheck = await ValidarAppAsync(idApp, ct);
+        if (appCheck.IsFailure)
+            return appCheck;
+        if (idTenant <= 0)
+            return Result<string>.Failure("LOGIN_VALIDATION", "IdTenant es requerido y debe ser mayor que cero.");
+        Result<Dtos.Catalogos.TenantDto?> tenantResult;
+        try { tenantResult = await _tenantService.ObtenerPorIdAsync(idTenant, ct); }
+        catch (Exception ex) { return Result<string>.Failure("TENANT_VALIDATION_ERROR", $"No fue posible validar el tenant: {ex.Message}"); }
+        if (tenantResult.IsFailure)
+            return IsNotFoundError(tenantResult.Error?.Code)
+                ? Result<string>.Failure("LOGIN_VALIDATION", $"Tenant inexistente (IdTenant={idTenant}). [TENANT_INEXISTENTE]")
+                : Result<string>.Failure("TENANT_VALIDATION_ERROR", "No fue posible validar el tenant.");
+        if (tenantResult.Value is null)
+            return Result<string>.Failure("LOGIN_VALIDATION", $"Tenant inexistente (IdTenant={idTenant}). [TENANT_INEXISTENTE]");
+        if (!tenantResult.Value.Activo)
+            return Result<string>.Failure("LOGIN_VALIDATION", $"Tenant inactivo (IdTenant={idTenant}). [TENANT_INACTIVO]");
+        return appCheck;
+    }
+
+    // S57.19 H-3: EsSistema también requiere acceso tenant-scoped explícito.
+    // Sin acceso: 403 SIN_ACCESO_APP (onboarding). Con acceso: flujo normal.
+    private async Task<Result> ExigirAccesoEsSistemaAsync(int idUsuario, bool esSistema, int idTenant, int idApp, CancellationToken ct)
+    {
+        if (!esSistema) return Result.Success();
+        var accesoResult = await _accesoRepo.TieneAccesoTenantAsync(idUsuario, idTenant, idApp, ct);
+        if (accesoResult.IsFailure || !accesoResult.Value)
+            return Result.Failure("SIN_ACCESO_APP", "Usuario de sistema sin acceso asignado a esta aplicación/tenant. Solicite onboarding. [SIN_ACCESO_APP]");
+        return Result.Success();
+    }
+
     public async Task<Result<LoginResult>> LoginAsync(string? nomUsuario, string? email, int idApp, string hashPwdCalculado, int idTenant, int? idDisp, int? idIP, int? idAgente, CancellationToken ct = default)
     {
+        var appCheck = await ValidarAppTenantAsync(idApp, idTenant, ct);
+        if (appCheck.IsFailure)
+            return Result<LoginResult>.Failure(appCheck.Error!);
         var result = await _authRepo.LoginAsync(nomUsuario, email, idApp, hashPwdCalculado, idTenant, idDisp, idIP, idAgente, ct);
         if (result.IsFailure)
             return Result<LoginResult>.Failure(result.Error!);
@@ -131,6 +218,10 @@ public class AuthService : IAuthService
 
     public async Task<Result<AuthResponseDto>> LoginConTokenAsync(string? nomUsuario, string? email, int idApp, string hashPwdCalculado, int idTenant, int? idDisp, int? idIP, int? idAgente, CancellationToken ct = default)
     {
+        var appCheck = await ValidarAppTenantAsync(idApp, idTenant, ct);
+        if (appCheck.IsFailure)
+            return Result<AuthResponseDto>.Failure(appCheck.Error!);
+        var appCodigo = appCheck.Value;
         var usuarioResult = await _authRepo.ObtenerUsuarioPorNomAsync(nomUsuario, email, ct);
         if (usuarioResult.IsFailure) return Result<AuthResponseDto>.Failure(usuarioResult.Error!);
         var usuario = usuarioResult.Value;
@@ -164,9 +255,24 @@ public class AuthService : IAuthService
             hashParaSP = hashPwdCalculado;
         }
 
+        // S57.19 H-3: EsSistema requiere acceso tenant-scoped explícito (sin bypass silencioso).
+        if (usuario is not null)
+        {
+            var gate = await ExigirAccesoEsSistemaAsync(usuario.Id, usuario.EsSistema, idTenant, idApp, ct);
+            if (gate.IsFailure)
+                return Result<AuthResponseDto>.Failure(gate.Error!);
+        }
+
         var loginResult = await _authRepo.LoginAsync(nomUsuario, email, idApp, hashParaSP, idTenant, idDisp, idIP, idAgente, ct);
         if (loginResult.IsFailure)
+        {
+            // S57.19 H-3 anti-enumeración: sin acceso + no-EsSistema = credenciales genéricas.
+            if (loginResult.Error?.Code == "SinAccesoApp" && (usuario?.EsSistema != true))
+                return Result<AuthResponseDto>.Failure("CredencialesInvalidas", "Usuario o contraseña incorrectos.");
+            if (loginResult.Error?.Code == "SinAccesoApp")
+                return Result<AuthResponseDto>.Failure("SIN_ACCESO_APP", "Usuario sin acceso asignado a esta aplicación/tenant. Solicite onboarding. [SIN_ACCESO_APP]");
             return Result<AuthResponseDto>.Failure(loginResult.Error!);
+        }
 
         var login = loginResult.Value;
 
@@ -188,6 +294,13 @@ public class AuthService : IAuthService
 
             LogAuthEvent(LoggingEvents.LoginFailed, "Login rechazado",
                 login.IdUsuario?.ToString() ?? nomUsuario ?? email ?? "?", login.IdTenant);
+
+            // S60 · D4/D5 — contraseña vencida: se rechaza antes de cualquier MFA y sin
+            // emitir token. El mensaje es el del plan: la Web lo muestra con el enlace a
+            // «¿Olvidaste tu contraseña?».
+            if (login.Resultado == LoginResult.IdPwdExpirada)
+                return Result<AuthResponseDto>.Failure("PWD_EXPIRADA", MensajePwdExpirada);
+
             return Result<AuthResponseDto>.Failure("LOGIN_FAILED", login.Mensaje ?? "Error de autenticación");
         }
 
@@ -224,7 +337,8 @@ public class AuthService : IAuthService
                 login.IdUsuario!.Value, login.IdTenant!.Value, idApp,
                 (short?)idDisp, idIP, AuthenticationOrigin.Login,
                 EsSistema: login.EsSistema,
-                IdUsuarioTenant: idUsuarioTenant);
+                IdUsuarioTenant: idUsuarioTenant,
+                AppCodigo: appCodigo);
             var tokenResult = await _tokenService.LoginAsync(authContext, ct);
             if (tokenResult.IsFailure) return Result<AuthResponseDto>.Failure(tokenResult.Error!);
 
@@ -249,11 +363,14 @@ public class AuthService : IAuthService
             });
         }
 
-        return await GenerarAuthResponseAsync(login, idApp, idDisp, idIP, ct);
+        return await GenerarAuthResponseAsync(login, idApp, idDisp, idIP, ct, appCodigo);
     }
 
     public async Task<Result<AuthResponseDto>> CompletarLoginConMFAAsync(int idUsuario, int idTenant, int idApp, int idMFAPrincipal, string codigoMFA, int? idDisp, int? idIP, int? idAgente, CancellationToken ct = default)
     {
+        var appCheck = await ValidarAppTenantAsync(idApp, idTenant, ct);
+        if (appCheck.IsFailure)
+            return Result<AuthResponseDto>.Failure(appCheck.Error!);
         var mfaResult = await _mfaRepo.ObtenerMetodoPrincipalAsync(idUsuario, ct);
         if (mfaResult.IsFailure) return Result<AuthResponseDto>.Failure(mfaResult.Error!);
         var metodoMfa = mfaResult.Value;
@@ -303,7 +420,8 @@ public class AuthService : IAuthService
             idUsuario, idTenant, idApp,
             (short?)idDisp, idIP, AuthenticationOrigin.Login,
             EsSistema: usuario.EsSistema,
-            IdUsuarioTenant: idUsuarioTenant);
+            IdUsuarioTenant: idUsuarioTenant,
+            AppCodigo: appCheck.Value);
         var tokenResult = await _tokenService.LoginAsync(authContext, ct);
         if (tokenResult.IsFailure) return Result<AuthResponseDto>.Failure(tokenResult.Error!);
 
@@ -353,6 +471,29 @@ public class AuthService : IAuthService
         if (sesion.FecExpira <= DateTime.Now)
             return Result<AuthResponseDto>.Failure("REFRESH_EXPIRED", "Refresh token expirado");
 
+        // S57.19 H-1: la app de la sesión debe seguir activa. S61 D4: el tenant solo se
+        // valida en sesiones con tenant; las de plataforma (IdTenant 0) no tienen tenant.
+        var appCheck = sesion.IdTenant <= 0
+            ? await ValidarAppAsync(sesion.IdApp, ct)
+            : await ValidarAppTenantAsync(sesion.IdApp, sesion.IdTenant, ct);
+        if (appCheck.IsFailure)
+            return Result<AuthResponseDto>.Failure(appCheck.Error!);
+
+        // S61 D4: una sesión sin tenant (IdTenant 0) debe seguir cumpliendo D1 al renovar.
+        if (sesion.IdTenant <= 0)
+        {
+            var accesoPlatformResult = await _authRepo.ExisteAccesoPlatformActivoAsync(sesion.IdUsuario, sesion.IdApp, ct);
+            if (accesoPlatformResult.IsFailure)
+                return Result<AuthResponseDto>.Failure(accesoPlatformResult.Error!);
+            if (!accesoPlatformResult.Value)
+            {
+                await _sesionRepo.RevocarSesionAsync(sesion.Id, ct);
+                await _uow.SaveChangesAsync(ct);
+                _logger.LogWarning("Refresh rechazado: la sesión {IdSesion} ya no cumple el alcance de plataforma", sesion.Id);
+                return Result<AuthResponseDto>.Failure("SIN_ACCESO_PLATFORM", "No tienes autorización para el scope de plataforma");
+            }
+        }
+
         var idUsuarioTenant = await ResolverIdUsuarioTenantAsync(sesion.IdUsuario, sesion.IdTenant, ct);
         var usuarioResult = await _authRepo.ObtenerUsuarioBasicoAsync(sesion.IdUsuario, ct);
         if (usuarioResult.IsFailure) return Result<AuthResponseDto>.Failure(usuarioResult.Error!);
@@ -364,7 +505,8 @@ public class AuthService : IAuthService
             sesion.IdUsuario, sesion.IdTenant, sesion.IdApp,
             IdDispositivo: null, IdIp: null, AuthenticationOrigin.Refresh,
             EsSistema: usuario.EsSistema,
-            IdUsuarioTenant: idUsuarioTenant);
+            IdUsuarioTenant: idUsuarioTenant,
+            AppCodigo: appCheck.Value);
         var tokenResult = await _tokenService.RefreshAsync(authContext, sesion.HashRefresh, sesion.Id, ct);
         if (tokenResult.IsFailure) return Result<AuthResponseDto>.Failure(tokenResult.Error!);
 
@@ -396,25 +538,6 @@ public class AuthService : IAuthService
         });
     }
 
-    public async Task<Result> RevocarSesionAsync(Guid idSesion, CancellationToken ct = default)
-    {
-        var repoResult = await _sesionRepo.RevocarSesionAsync(idSesion, ct);
-        if (repoResult.IsFailure) return Result.Failure(repoResult.Error!);
-        _olog.LogInformation(new LogEvent
-        {
-            EventName = LoggingEvents.Logout,
-            Scope = LoggingScopes.Authentication,
-            Message = "Sesión revocada (logout)",
-            Properties = new Dictionary<string, object?>
-            {
-                [LoggingPropertyNames.Category] = LoggingCategories.ApplicationAuth,
-                [LoggingPropertyNames.Operation] = LoggingOperations.Execute,
-                [LoggingPropertyNames.CorrelationId] = _httpContextAccessor.HttpContext?.Items[LoggingPropertyNames.HttpCorrelationIdKey] as string,
-            }
-        });
-        return Result.Success();
-    }
-
     public async Task<Result> RevocarSesionPorJtiAsync(int idUsuario, string jti, CancellationToken ct = default)
     {
         var resolved = await _sessionManager.ResolveAndRevokeSessionByJtiAsync(idUsuario, jti, ct);
@@ -434,6 +557,22 @@ public class AuthService : IAuthService
             }
         });
         return Result.Success();
+    }
+
+    public async Task<Result<int?>> PrepararMfaLoginAsync(int idUsuario, int idTenant, int idApp, CancellationToken ct = default)
+    {
+        var tipoMfaResult = await ObtenerTipoMfaAsync(idUsuario, ct);
+        if (tipoMfaResult.IsFailure)
+            return tipoMfaResult;
+
+        var envioResult = await EnviarCodigoMfaAsync(idUsuario, idTenant, idApp, ct);
+        if (envioResult.IsFailure)
+        {
+            _logger.LogError("No se pudo enviar el código MFA del login externo; se rechaza para evitar bypass de verificación. Error: {Error}", envioResult.Error?.Message);
+            return Result<int?>.Failure(envioResult.Error!);
+        }
+
+        return tipoMfaResult;
     }
 
     private async Task<Result<int?>> ObtenerTipoMfaAsync(int idUsuario, CancellationToken ct)
@@ -497,14 +636,15 @@ public class AuthService : IAuthService
         }
     }
 
-    private async Task<Result<AuthResponseDto>> GenerarAuthResponseAsync(LoginResult login, int idApp, int? idDisp, int? idIP, CancellationToken ct)
+    private async Task<Result<AuthResponseDto>> GenerarAuthResponseAsync(LoginResult login, int idApp, int? idDisp, int? idIP, CancellationToken ct, string? appCodigo = null)
     {
         var idUsuarioTenant = await ResolverIdUsuarioTenantAsync(login.IdUsuario!.Value, login.IdTenant!.Value, ct);
         var authContext = new AuthenticationContext(
             login.IdUsuario!.Value, login.IdTenant!.Value, idApp,
             (short?)idDisp, idIP, AuthenticationOrigin.Login,
             EsSistema: login.EsSistema,
-            IdUsuarioTenant: idUsuarioTenant);
+            IdUsuarioTenant: idUsuarioTenant,
+            AppCodigo: appCodigo);
         var tokenResult = await _tokenService.LoginAsync(authContext, ct);
         if (tokenResult.IsFailure) return Result<AuthResponseDto>.Failure(tokenResult.Error!);
 
@@ -637,6 +777,10 @@ public class AuthService : IAuthService
     {
         try
         {
+            // S57.19 H-1: scope plataforma valida app (sin tenant).
+            var appCheck = await ValidarAppAsync(idApp, ct);
+            if (appCheck.IsFailure)
+                return Result<AuthResponseDto>.Failure(appCheck.Error!);
             var usuarioResult = await _authRepo.ObtenerUsuarioPorNomAsync(nomUsuario, null, ct);
             if (usuarioResult.IsFailure || usuarioResult.Value == null)
             {
@@ -672,10 +816,32 @@ public class AuthService : IAuthService
                 return Result<AuthResponseDto>.Failure("LOGIN_FAILED", "Credenciales inválidas");
             }
 
+            // S60 · D10 (adenda 3.1): el login de plataforma también respeta el vencimiento,
+            // antes del control de acceso y de emitir el token.
+            var pwdExpiradaResult = await _authRepo.ObtenerPwdExpiradaAsync(usuario.Id, usuario.IdTenant, ct);
+            if (pwdExpiradaResult.IsFailure)
+                return Result<AuthResponseDto>.Failure(pwdExpiradaResult.Error!);
+            if (pwdExpiradaResult.Value)
+            {
+                LogAuthEvent(LoggingEvents.LoginFailed, "Login rechazado (plataforma): contraseña vencida", usuario.Id.ToString(), null);
+                return Result<AuthResponseDto>.Failure("PWD_EXPIRADA", MensajePwdExpirada);
+            }
+
+            // S57.19 H-3: platform login stub cerrado — exige acceso platform activo (incluye EsSistema).
+            var accesoPlatformResult = await _authRepo.ExisteAccesoPlatformActivoAsync(usuario.Id, idApp, ct);
+            if (accesoPlatformResult.IsFailure)
+                return Result<AuthResponseDto>.Failure(accesoPlatformResult.Error!);
+            if (!accesoPlatformResult.Value)
+            {
+                LogAuthEvent(LoggingEvents.LoginFailed, "Login rechazado (plataforma): sin acceso platform", usuario.Id.ToString(), null);
+                return Result<AuthResponseDto>.Failure("SIN_ACCESO_PLATFORM", "No tienes autorización para el scope de plataforma");
+            }
+
             var authContext = new AuthenticationContext(
                 usuario.Id, null, idApp,
                 (short?)idDisp, idIP, AuthenticationOrigin.Login,
-                EsSistema: usuario.EsSistema);
+                EsSistema: usuario.EsSistema,
+                AppCodigo: appCheck.Value);
 
             var tokenResult = await _tokenService.LoginAsync(authContext, ct);
             if (tokenResult.IsFailure)
@@ -704,17 +870,50 @@ public class AuthService : IAuthService
         }
     }
 
+    // S97 · D1 — un usuario de sistema ve todos los tenants activos; los demás, sus membresías activas
+    public async Task<Result<IReadOnlyList<Dtos.Catalogos.TenantDto>>> ObtenerMisTenantsAsync(int idUsuario, CancellationToken ct = default)
+    {
+        var usuarioResult = await _authRepo.ObtenerUsuarioBasicoAsync(idUsuario, ct);
+        if (usuarioResult.IsFailure)
+            return Result<IReadOnlyList<Dtos.Catalogos.TenantDto>>.Failure(usuarioResult.Error!);
+        if (usuarioResult.Value == null)
+            return Result<IReadOnlyList<Dtos.Catalogos.TenantDto>>.Failure("USUARIO_NO_ENCONTRADO", "Usuario no encontrado");
+
+        if (usuarioResult.Value.EsSistema)
+            return await _tenantService.ObtenerActivosAsync(ct);
+
+        var membresias = await _usuarioTenantRepo.ObtenerActivosPorUsuarioAsync(idUsuario, ct);
+        if (membresias.IsFailure)
+            return Result<IReadOnlyList<Dtos.Catalogos.TenantDto>>.Failure(membresias.Error!);
+
+        IReadOnlyList<Dtos.Catalogos.TenantDto> tenants = membresias.Value
+            .Where(ut => ut.Tenant != null)
+            .Select(ut => new Dtos.Catalogos.TenantDto
+            {
+                Id = ut.IdTenant,
+                Codigo = ut.Tenant!.Codigo,
+                Nombre = ut.Tenant!.Nombre,
+                Activo = ut.Tenant!.Activo
+            })
+            .ToList();
+        return Result<IReadOnlyList<Dtos.Catalogos.TenantDto>>.Success(tenants);
+    }
+
     public async Task<Result<AuthResponseDto>> SwitchTenantAsync(int idUsuario, int idTenant, int idApp, int? idDisp, int? idIP, int? idAgente, CancellationToken ct = default)
     {
         try
         {
+            // S57.19 H-1: el tenant destino debe existir y estar activo; la app también.
+            var appCheck = await ValidarAppTenantAsync(idApp, idTenant, ct);
+            if (appCheck.IsFailure)
+                return Result<AuthResponseDto>.Failure(appCheck.Error!);
             var membresiaResult = await _usuarioTenantRepo.ObtenerActivoPorTenantAsync(idUsuario, idTenant, ct);
-            if (membresiaResult.IsFailure || membresiaResult.Value == null)
+            if (membresiaResult.IsFailure)
                 return Result<AuthResponseDto>.Failure("SIN_ACCESO_TENANT", "No tienes acceso a este tenant");
 
             var membresia = membresiaResult.Value;
 
-            if (!membresia.Activo || membresia.IdEstado != (int)EEstadoUsuario.Activo)
+            if (membresia != null && (!membresia.Activo || membresia.IdEstado != (int)EEstadoUsuario.Activo))
                 return Result<AuthResponseDto>.Failure("SIN_ACCESO_TENANT", "No tienes acceso activo a este tenant");
 
             var usuarioResult = await _authRepo.ObtenerUsuarioBasicoAsync(idUsuario, ct);
@@ -724,11 +923,26 @@ public class AuthService : IAuthService
             if (usuario == null)
                 return Result<AuthResponseDto>.Failure("USUARIO_NO_ENCONTRADO", "Usuario no encontrado");
 
+            // S97 · D2 — sin membresía solo entra un usuario de sistema; sus permisos salen del bypass de SP_Permisos_Usuario_Efectivos
+            if (membresia == null && !usuario.EsSistema)
+                return Result<AuthResponseDto>.Failure("SIN_ACCESO_TENANT", "No tienes acceso a este tenant");
+
+            // Una membresía existente pero inactiva es un bloqueo explícito, también para sistema
+            if (membresia == null)
+            {
+                var existeResult = await _usuarioTenantRepo.ExisteMembresiaAsync(idUsuario, idTenant, ct);
+                if (existeResult.IsFailure)
+                    return Result<AuthResponseDto>.Failure("SIN_ACCESO_TENANT", "No tienes acceso a este tenant");
+                if (existeResult.Value)
+                    return Result<AuthResponseDto>.Failure("SIN_ACCESO_TENANT", "No tienes acceso activo a este tenant");
+            }
+
             var authContext = new AuthenticationContext(
                 idUsuario, idTenant, idApp,
                 (short?)idDisp, idIP, AuthenticationOrigin.SwitchTenant,
                 EsSistema: usuario.EsSistema,
-                IdUsuarioTenant: membresia.Id);
+                IdUsuarioTenant: membresia?.Id,
+                AppCodigo: appCheck.Value);
 
             var tokenResult = await _tokenService.LoginAsync(authContext, ct);
             if (tokenResult.IsFailure)
@@ -751,66 +965,6 @@ public class AuthService : IAuthService
         {
             _logger.LogError(ex, "Error en switch tenant para usuario {IdUsuario} tenant {IdTenant}", idUsuario, idTenant);
             return Result<AuthResponseDto>.Failure("SWITCH_ERROR", "Error interno al cambiar de tenant");
-        }
-    }
-
-    public async Task<Result<AuthResponseDto>> SwitchToPlatformAsync(int idUsuario, string jti, int idApp, int? idDisp, int? idIP, int? idAgente, CancellationToken ct = default)
-    {
-        try
-        {
-            var usuarioResult = await _authRepo.ObtenerUsuarioBasicoAsync(idUsuario, ct);
-            if (usuarioResult.IsFailure || usuarioResult.Value == null)
-                return Result<AuthResponseDto>.Failure("USUARIO_NO_ENCONTRADO", "Usuario no encontrado");
-
-            var usuario = usuarioResult.Value;
-
-            if (usuario.Eliminado || usuario.IdEstado == (int)EEstadoUsuario.Eliminado)
-                return Result<AuthResponseDto>.Failure("CUENTA_ELIMINADA", "La cuenta ha sido eliminada");
-
-            if (usuario.IdEstado != (int)EEstadoUsuario.Activo)
-                return Result<AuthResponseDto>.Failure("CUENTA_INACTIVA", "La cuenta no está activa");
-
-            var accesoPlatformResult = await _authRepo.ExisteAccesoPlatformActivoAsync(idUsuario, idApp, ct);
-            if (accesoPlatformResult.IsFailure)
-                return Result<AuthResponseDto>.Failure(accesoPlatformResult.Error!);
-
-            if (!accesoPlatformResult.Value)
-                return Result<AuthResponseDto>.Failure("SIN_ACCESO_PLATFORM", "No tienes autorización para el scope de plataforma");
-
-            var revokeResult = await _sessionManager.ResolveAndRevokeSessionByJtiAsync(idUsuario, jti, ct);
-            if (revokeResult.IsFailure)
-                return Result<AuthResponseDto>.Failure(revokeResult.Error!);
-
-            if (revokeResult.Value == null)
-                return Result<AuthResponseDto>.Failure("SESION_REVOCADA", "El JWT ya no tiene una sesión activa");
-
-            var authContext = new AuthenticationContext(
-                idUsuario, null, idApp,
-                (short?)idDisp, idIP, AuthenticationOrigin.SwitchToPlatform,
-                EsSistema: usuario.EsSistema);
-
-            var tokenResult = await _tokenService.LoginAsync(authContext, ct);
-            if (tokenResult.IsFailure)
-                return Result<AuthResponseDto>.Failure(tokenResult.Error!);
-
-            return Result<AuthResponseDto>.Success(new AuthResponseDto
-            {
-                AccessToken = tokenResult.Value.AccessToken,
-                RefreshToken = tokenResult.Value.RefreshToken,
-                ExpiresAt = tokenResult.Value.ExpiresAt,
-                IdUsuario = idUsuario,
-                IdTenant = 0,
-                NomUsuario = usuario.NomUsuario ?? string.Empty,
-                Email = usuario.Email ?? string.Empty,
-                Nombre = usuario.Nombre ?? string.Empty,
-                Apellido = usuario.Apellido ?? string.Empty,
-                ReqCambioPwd = false
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error en switch-to-platform para usuario {IdUsuario}", idUsuario);
-            return Result<AuthResponseDto>.Failure("SWITCH_PLATFORM_ERROR", "Error interno al cambiar a platform scope");
         }
     }
 

@@ -1,0 +1,91 @@
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog Class="dialogo-formulario">
+    <TitleContent>
+        <TituloDialogo Icono="@Icons.Material.Filled.AccountTree" Texto="Nueva herencia" />
+    </TitleContent>
+    <DialogContent>
+        <AlertaErrorDialogo Mensaje="@_errorServidor" />
+        <MudForm @ref="_form">
+            <div class="dialogo-campos">
+                <MudText Typo="Typo.body2">El rol hijo heredará los permisos del rol padre.</MudText>
+                <MudSelect T="RolDto" Label="Rol padre" @bind-Value="_padre" Variant="Variant.Outlined"
+                    FullWidth="true" AnchorOrigin="Origin.BottomCenter" Required="true" data-testid="herencia-padre"
+                    ToStringFunc="@(r => $"{r.Codigo} · {r.Nombre}")">
+                    @foreach (var rol in _roles)
+                    {
+                        <MudSelectItem @key="rol.Id" Value="rol">@rol.Nombre</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudSelect T="RolDto" Label="Rol hijo" @bind-Value="_hijo" Variant="Variant.Outlined"
+                    FullWidth="true" AnchorOrigin="Origin.BottomCenter" Required="true" data-testid="herencia-hijo"
+                    ToStringFunc="@(r => $"{r.Codigo} · {r.Nombre}")">
+                    @foreach (var rol in _roles)
+                    {
+                        <MudSelectItem @key="rol.Id" Value="rol">@rol.Nombre</MudSelectItem>
+                    }
+                </MudSelect>
+                @if (_padre is not null && _hijo is not null && _padre.Id == _hijo.Id)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Error">El rol padre y el rol hijo deben ser distintos.</MudText>
+                }
+            </div>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancelar" Disabled="@_guardando">Cancelar</MudButton>
+        <BotonGuardarDialogo Texto="Guardar" Guardando="@_guardando" OnClick="Guardar" />
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    private string? _errorServidor;
+    [Parameter] public int IdTenant { get; set; }
+
+    private MudForm _form = null!;
+    private List<RolDto> _roles = [];
+    private RolDto _padre = null!;
+    private RolDto _hijo = null!;
+    private bool _guardando;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { _roles = await Api.GetAsync<List<RolDto>>($"api/roles/para-tenant/{IdTenant}") ?? []; }
+        catch (Exception ex) { _errorServidor = Api.LastError ?? $"Error al cargar roles: {ex.Message}"; }
+    }
+
+    private void Cancelar() => MudDialog.Cancel();
+
+    private async Task Guardar()
+    {
+        if (_padre is null || _hijo is null || _padre.Id == 0 || _hijo.Id == 0)
+        {
+            Snackbar.Add("Selecciona el rol padre y el rol hijo", Severity.Warning);
+            return;
+        }
+        if (_padre.Id == _hijo.Id)
+        {
+            Snackbar.Add("El rol padre y el rol hijo deben ser distintos", Severity.Warning);
+            return;
+        }
+        _guardando = true;
+        try
+        {
+            var (result, error) = await Api.PostWithErrorAsync<RolesHerenciaDto>("api/RolesHerencia", new CrearRolesHerenciaDto
+            {
+                IdRolPadre = _padre.Id,
+                IdRolHijo = _hijo.Id,
+                IdTenant = IdTenant
+            });
+            if (result is not null) MudDialog.Close(DialogResult.Ok(true));
+            else _errorServidor = error ?? "No se pudo crear la herencia";
+        }
+        catch (Exception ex)
+        {
+            _errorServidor = Api.LastError ?? $"Error al crear la herencia: {ex.Message}";
+        }
+        finally { _guardando = false; }
+    }
+}

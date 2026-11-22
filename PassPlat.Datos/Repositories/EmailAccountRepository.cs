@@ -23,7 +23,7 @@ public class EmailAccountRepository : RepositoryAsync<EmailAccount>, IEmailAccou
             var list = await DbSet.Where(e => e.Activo).Include(e => e.Provider).AsNoTracking().ToListAsync(ct);
             return Result<IReadOnlyList<EmailAccount>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<EmailAccount>>.Failure("DB_ERROR", ex.Message);
         }
@@ -36,7 +36,7 @@ public class EmailAccountRepository : RepositoryAsync<EmailAccount>, IEmailAccou
             var entity = await DbSet.Where(e => e.EsPredeterminada && e.Activo).Include(e => e.Provider).FirstOrDefaultAsync(ct);
             return Result<EmailAccount?>.Success(entity, allowNull: true);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<EmailAccount?>.Failure("DB_ERROR", ex.Message);
         }

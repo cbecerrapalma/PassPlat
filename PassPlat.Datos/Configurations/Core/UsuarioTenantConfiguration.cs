@@ -16,7 +16,7 @@ public class UsuarioTenantConfiguration : IEntityTypeConfiguration<UsuarioTenant
         builder.Property(ut => ut.IdTenant).IsRequired();
         builder.Property(ut => ut.IdEstado).IsRequired();
         builder.Property(ut => ut.Activo).HasDefaultValue(true).IsRequired();
-        builder.Property(ut => ut.FecAlta).HasDefaultValueSql("sysutcdatetime()").IsRequired();
+        builder.Property(ut => ut.FecAlta).HasDefaultValueSql("sysdatetime()").IsRequired();
         builder.Property(ut => ut.FecMod);
         builder.Property(ut => ut.IdUsrMod);
 

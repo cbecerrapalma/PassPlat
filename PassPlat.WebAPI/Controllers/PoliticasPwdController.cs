@@ -36,7 +36,7 @@ public class PoliticasPwdController : BaseApiController
     [HttpGet("global")] public async Task<IActionResult> GetGlobal(CancellationToken ct) => FromResultQuery(await _service.ObtenerPoliticaGlobalAsync());
     [HttpGet("rol/{idRol}")] public async Task<IActionResult> GetParaRol(int idRol, CancellationToken ct) => FromResultQuery(await _service.ObtenerPoliticaParaRolAsync(_tenantContext.CurrentId, idRol));
     [HttpPost]
-    [Authorize(Policy = "POLITICAS_PWD_CREAR")]
+    [Authorize(Policy = "POLITICASPWD_CREAR")]
     public async Task<IActionResult> Create([FromBody] CrearPoliticaPwdDto dto, CancellationToken ct)
     {
         var result = await _service.CrearAsync(dto);
@@ -45,7 +45,7 @@ public class PoliticasPwdController : BaseApiController
         return CreatedAtAction(nameof(GetById), new { id = result.Value.Id }, result.Value);
     }
     [HttpPut("{id}")]
-    [Authorize(Policy = "POLITICAS_PWD_EDITAR")]
+    [Authorize(Policy = "POLITICASPWD_EDITAR")]
     public async Task<IActionResult> Update(int id, [FromBody] ActualizarPoliticaPwdDto dto, CancellationToken ct)
     {
         var result = await _service.ActualizarAsync(id, dto, ct);

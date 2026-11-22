@@ -39,7 +39,7 @@ public class AppRepository : RepositoryAsync<App>, IAppRepository
             var entity = await DbSet.FirstOrDefaultAsync(a => a.Codigo == codigo, ct);
             return Result<App?>.Success(entity, allowNull: true);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<App?>.Failure("DB_ERROR", ex.Message);
         }
@@ -67,7 +67,7 @@ public class AppRepository : RepositoryAsync<App>, IAppRepository
             EmitCacheEvent(LoggingEvents.CacheSet, LoggingCacheResults.Refreshed, LoggingSources.Memory, key, null, nameof(ObtenerActivasAsync), swDb);
             return Result<IReadOnlyList<App>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<App>>.Failure("DB_ERROR", ex.Message);
         }
@@ -89,7 +89,7 @@ public class AppRepository : RepositoryAsync<App>, IAppRepository
                 .ToListAsync(ct);
             return Result<(IReadOnlyList<App>, int)>.Success((items, total));
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<(IReadOnlyList<App>, int)>.Failure("DB_ERROR", ex.Message);
         }

@@ -1,0 +1,304 @@
+@* S106 · D3-D4 — editor de permisos único (usuario y rol): buscar, vistas con contador, selección por acción CRUD,
+   módulos plegables con progreso, casillas por permiso y barra de cambios. No carga ni guarda: el padre es dueño de los datos. *@
+@using CBP.Acceso
+
+@{
+    var grupos = Grupos();
+}
+
+<div class="permisos-filtros d-flex flex-wrap align-center gap-3 mb-3">
+    <MudTextField T="string" @bind-Value="_busqueda" Label="Buscar" Variant="Variant.Outlined" Margin="Margin.Dense"
+        Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+        Immediate="true" Clearable="true" Style="min-width:240px" />
+    @foreach (var v in Vistas)
+    {
+        var activa = _vista == v;
+        <MudChip @key="v" T="string" Size="Size.Small" Class="vista-chip" Variant="@(activa ? Variant.Filled : Variant.Outlined)"
+            Color="@(activa ? Color.Primary : Color.Default)" OnClick="@(() => FijarVista(v))">@v (@CuentaVista(v))</MudChip>
+    }
+</div>
+
+<div class="d-flex flex-wrap align-center gap-3 mb-3">
+    @if (!Bloqueado)
+    {
+        <MudCheckBox T="bool?" TriState="true" Class="seleccionar-visibles" Dense="true" Label="Seleccionar visibles"
+            Value="@EstadoVisibles" ValueChanged="@(_ => SeleccionarVisiblesAsync())" />
+    }
+    <MudButton Variant="Variant.Text" Size="Size.Small" Class="expandir-todo" Disabled="@Forzado" OnClick="@AlternarExpandirTodo">@(TodosAbiertos ? "Contraer todo" : "Expandir todo")</MudButton>
+    @if (ConOrigen)
+    {
+        <MudText Typo="Typo.caption" Class="mud-text-secondary d-flex align-center gap-1">
+            <MudIcon Icon="@Icons.Material.Filled.Shield" Size="Size.Small" /> = viene del rol
+        </MudText>
+    }
+</div>
+
+@if (!Bloqueado)
+{
+    var acciones = Acciones();
+    @if (acciones.Count > 0)
+    {
+        <div class="permisos-acciones d-flex flex-wrap align-center gap-3 mb-3">
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">Seleccionar por acción:</MudText>
+            @foreach (var a in acciones)
+            {
+                <MudCheckBox @key="a.Clave" T="bool?" TriState="true" Dense="true" Color="Color.Primary" Class="@($"accion-casilla accion-{a.Clave}")"
+                    Label="@($"{a.Nombre} ({a.Cuenta})")" Value="@a.Estado" ValueChanged="@(_ => SeleccionarAccionAsync(a.Clave))" />
+            }
+        </div>
+    }
+}
+
+@if (grupos.Count == 0)
+{
+    <MudText Typo="Typo.body2" Class="mud-text-secondary pa-4">Ningún permiso coincide con el filtro.</MudText>
+}
+@foreach (var g in grupos)
+{
+    var marcadosGrupo = g.Permisos.Count(Marcado);
+    var abierto = Abierto(g);
+    var completo = marcadosGrupo == g.Permisos.Count;
+    <MudPaper @key="g.IdModulo" Elevation="0" Outlined="true" Class="@("permiso-grupo mb-1" + (abierto ? "" : " plegado"))">
+        <div class="px-3 py-1 d-flex align-center gap-2 permiso-grupo-cabecera" @onclick="() => AlternarGrupoAbierto(g.IdModulo)">
+            <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" Class="@("permiso-grupo-flecha" + (abierto ? " abierto" : ""))" />
+            <MudText Typo="Typo.subtitle2" Class="font-weight-bold flex-grow-1">@g.Nombre</MudText>
+            <MudProgressLinear Class="permiso-grupo-progreso" Color="@(completo ? Color.Success : Color.Primary)" Value="@(marcadosGrupo * 100.0 / g.Permisos.Count)" Size="Size.Small" />
+            <MudText Typo="Typo.caption" Class="permiso-grupo-conteo">@marcadosGrupo/@g.Permisos.Count</MudText>
+            <span @onclick:stopPropagation="true">
+                <MudCheckBox T="bool?" TriState="true" Dense="true" Color="Color.Primary" Disabled="@Bloqueado" Class="permiso-grupo-casilla"
+                    Value="@(marcadosGrupo == 0 ? false : completo ? true : (bool?)null)" ValueChanged="@(_ => AlternarMarcaGrupoAsync(g))" />
+            </span>
+        </div>
+        <div class="permiso-grilla" hidden="@(!abierto)">
+        @foreach (var p in g.Permisos)
+        {
+            var marcado = Marcado(p);
+            <div @key="p.IdPermiso" class="permiso-fila d-flex align-center pa-2 gap-2">
+                <MudCheckBox T="bool" Dense="true" Color="Color.Primary" Disabled="@Bloqueado"
+                    Value="@marcado" ValueChanged="@((bool v) => MarcarAsync(p, v))" />
+                <div class="flex-grow-1" style="min-width:0">
+                    <MudText Typo="Typo.body2" Class="font-weight-medium">@p.Nombre</MudText>
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">@p.Codigo</MudText>
+                </div>
+                <div class="d-flex flex-wrap align-center gap-1 justify-end">
+                    @if (ConOrigen)
+                    {
+                        @if (p.PorRol)
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.Shield" Size="Size.Small" Class="permiso-por-rol" Title="@p.RolOrigen" />
+                        }
+                        @if (p.IdTipoAsigDirecto == 1 && p.DirectoVigente && !p.PorRol)
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Success" Class="permiso-agregado" title="@Detalle(p)">Agregado</MudChip>
+                        }
+                        @if (p.IdTipoAsigDirecto == 2 && p.DirectoVigente)
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" Class="permiso-quitado" title="@Detalle(p)">Quitado</MudChip>
+                        }
+                        @if (p.IdTipoAsigDirecto is not null && !p.DirectoVigente)
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning" Class="permiso-vencido" title="@Detalle(p)">Vencido</MudChip>
+                        }
+                    }
+                    @if (Cambios.ContainsKey(p.IdPermiso))
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="@(marcado ? Color.Success : Color.Error)" Class="permiso-cambio">
+                            @(marcado ? "Se agregará" : ConOrigen && p.PorRol ? "Se quitará solo a este usuario" : "Se quitará")
+                        </MudChip>
+                    }
+                </div>
+            </div>
+        }
+        </div>
+    </MudPaper>
+}
+
+@if (Cambios.Count > 0)
+{
+    <div class="barra-cambios d-flex flex-wrap align-center gap-3 pa-3">
+        <MudText Typo="Typo.body2" Class="flex-grow-1">Cambios: +@Agregados, −@Quitados</MudText>
+        <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@DescartarAsync" Disabled="@Guardando">Descartar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="@OnGuardar" Disabled="@Guardando">Guardar cambios</MudButton>
+    </div>
+}
+
+@code {
+    /// <summary>Todos los permisos de la aplicación mostrada, con <c>Tiene</c> = lo que hoy tiene el usuario o el rol.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<PermisoEditorDto> Permisos { get; set; } = [];
+    /// <summary>permiso → valor deseado; instancia del padre: el editor la modifica y avisa con <see cref="OnCambio"/>.</summary>
+    [Parameter, EditorRequired] public Dictionary<int, bool> Cambios { get; set; } = [];
+    [Parameter] public bool Bloqueado { get; set; }
+    [Parameter] public bool Guardando { get; set; }
+    /// <summary>Usuario: leyenda «viene del rol», vista «Excepciones» y chips Agregado/Quitado/Vencido.</summary>
+    [Parameter] public bool ConOrigen { get; set; }
+    [Parameter] public EventCallback OnGuardar { get; set; }
+    [Parameter] public EventCallback OnCambio { get; set; }
+
+    private const string VistaTodos = "Todos";
+    private const string VistaTiene = "Los que tiene";
+    private const string VistaExcepciones = "Excepciones";
+    private const string VistaCambios = "Cambios sin guardar";
+    private static readonly string[] _vistasUsuario = [VistaTodos, VistaTiene, VistaExcepciones, VistaCambios];
+    private static readonly string[] _vistasRol = [VistaTodos, VistaTiene, VistaCambios];
+
+    // acciones estándar con su texto de UI; el resto de códigos cae en «Otras»
+    private const string Otras = "OTRAS";
+    private static readonly (string Clave, string Nombre)[] _acciones =
+        [("VER", "Leer"), ("CREAR", "Crear"), ("EDITAR", "Editar"), ("ELIMINAR", "Eliminar"), (Otras, "Otras")];
+
+    private sealed record Grupo(int IdModulo, string Nombre, List<PermisoEditorDto> Permisos);
+    private sealed record AccionOpcion(string Clave, string Nombre, int Cuenta, bool? Estado);
+
+    // módulos abiertos por el usuario; el padre reinicia el componente (@key) al cambiar de contexto
+    private readonly HashSet<int> _abiertos = [];
+    private string _busqueda = "";
+    private string _vista = VistaTodos;
+
+    private string[] Vistas => ConOrigen ? _vistasUsuario : _vistasRol;
+    private int Agregados => Cambios.Count(c => c.Value);
+    private int Quitados => Cambios.Count(c => !c.Value);
+
+    private bool Marcado(PermisoEditorDto p) => Cambios.TryGetValue(p.IdPermiso, out var deseado) ? deseado : p.Tiene;
+
+    private async Task MarcarAsync(PermisoEditorDto p, bool valor)
+    {
+        Marcar(p, valor);
+        await OnCambio.InvokeAsync();
+    }
+
+    private void Marcar(PermisoEditorDto p, bool valor)
+    {
+        if (Bloqueado) return;
+        if (valor == p.Tiene) Cambios.Remove(p.IdPermiso);
+        else Cambios[p.IdPermiso] = valor;
+    }
+
+    // todos marcados → desmarca el grupo; en cualquier otro caso (ninguno o parcial) marca los que faltan
+    private async Task AlternarMarcaGrupoAsync(Grupo g)
+    {
+        var valor = g.Permisos.Count(Marcado) != g.Permisos.Count;
+        foreach (var p in g.Permisos) Marcar(p, valor);
+        await OnCambio.InvokeAsync();
+    }
+
+    // con búsqueda o una vista distinta de «Todos» los módulos se abren solos
+    private bool Forzado => !string.IsNullOrWhiteSpace(_busqueda) || _vista != VistaTodos;
+
+    private bool Abierto(Grupo g) => Forzado || _abiertos.Contains(g.IdModulo);
+
+    private bool TodosAbiertos => Grupos().All(Abierto);
+
+    private void AlternarGrupoAbierto(int idModulo)
+    {
+        if (!_abiertos.Remove(idModulo)) _abiertos.Add(idModulo);
+    }
+
+    private void AlternarExpandirTodo()
+    {
+        if (TodosAbiertos) _abiertos.Clear();
+        else foreach (var g in Grupos()) _abiertos.Add(g.IdModulo);
+    }
+
+    private void FijarVista(string vista) => _vista = vista;
+
+    private int CuentaVista(string vista) => vista switch
+    {
+        VistaTiene => Permisos.Count(p => p.Tiene),
+        VistaExcepciones => Permisos.Count(p => p.IdTipoAsigDirecto is not null),
+        VistaCambios => Cambios.Count,
+        _ => Permisos.Count
+    };
+
+    private List<PermisoEditorDto> Visibles() => [.. Permisos.Where(Coincide)];
+
+    private bool Coincide(PermisoEditorDto p)
+    {
+        var vista = _vista switch
+        {
+            VistaTiene => p.Tiene,
+            VistaExcepciones => p.IdTipoAsigDirecto is not null,
+            VistaCambios => Cambios.ContainsKey(p.IdPermiso),
+            _ => true
+        };
+        if (!vista) return false;
+        if (string.IsNullOrWhiteSpace(_busqueda)) return true;
+        return p.Nombre.Contains(_busqueda, StringComparison.OrdinalIgnoreCase)
+            || p.Codigo.Contains(_busqueda, StringComparison.OrdinalIgnoreCase)
+            || (p.Descripcion?.Contains(_busqueda, StringComparison.OrdinalIgnoreCase) ?? false)
+            || p.ModuloNombre.Contains(_busqueda, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private List<Grupo> Grupos() => [.. Visibles()
+        .GroupBy(p => (p.IdModulo, p.ModuloNombre))
+        .OrderBy(g => g.Key.ModuloNombre, StringComparer.CurrentCultureIgnoreCase)
+        .Select(g => new Grupo(g.Key.IdModulo, g.Key.ModuloNombre, [.. g.OrderBy(p => p.Orden)]))];
+
+    private bool? EstadoVisibles
+    {
+        get
+        {
+            var visibles = Visibles();
+            if (visibles.Count == 0) return false;
+            var marcados = visibles.Count(Marcado);
+            return marcados == 0 ? false : marcados == visibles.Count ? true : null;
+        }
+    }
+
+    // todos marcados → desmarca los visibles; en cualquier otro caso los marca
+    private async Task SeleccionarVisiblesAsync()
+    {
+        var visibles = Visibles();
+        var valor = visibles.Count(Marcado) != visibles.Count;
+        foreach (var p in visibles) Marcar(p, valor);
+        await OnCambio.InvokeAsync();
+    }
+
+    // la acción estándar de un permiso es lo que sigue al último «_» de su código (CBP); otra cosa (ADMIN, ASIGNAR…) es «Otras»
+    private static string Accion(PermisoEditorDto p)
+    {
+        var accion = ReglasAcceso.AccionDePermiso(p.Codigo);
+        return _acciones.Any(a => a.Clave != Otras && a.Clave == accion) ? accion : Otras;
+    }
+
+    // solo las acciones con al menos un permiso visible: respetan buscar, vista y aplicación
+    private List<AccionOpcion> Acciones()
+    {
+        var visibles = Visibles();
+        List<AccionOpcion> lista = [];
+        foreach (var (clave, nombre) in _acciones)
+        {
+            var deLaAccion = visibles.Where(p => Accion(p) == clave).ToList();
+            if (deLaAccion.Count == 0) continue;
+            var marcados = deLaAccion.Count(Marcado);
+            lista.Add(new AccionOpcion(clave, nombre, deLaAccion.Count, marcados == 0 ? false : marcados == deLaAccion.Count ? true : null));
+        }
+        return lista;
+    }
+
+    // misma regla que el grupo: todos marcados → desmarca los visibles de la acción; si no, los marca
+    private async Task SeleccionarAccionAsync(string clave)
+    {
+        var deLaAccion = Visibles().Where(p => Accion(p) == clave).ToList();
+        var valor = deLaAccion.Count(Marcado) != deLaAccion.Count;
+        foreach (var p in deLaAccion) Marcar(p, valor);
+        await OnCambio.InvokeAsync();
+    }
+
+    private async Task DescartarAsync()
+    {
+        Cambios.Clear();
+        await OnCambio.InvokeAsync();
+    }
+
+    private static string Detalle(PermisoEditorDto p)
+    {
+        var vigencia = (p.FecInicio, p.FecFin) switch
+        {
+            ({ } ini, { } fin) => $"{ini:dd/MM/yy} - {fin:dd/MM/yy}",
+            ({ } ini, null) => $"Desde {ini:dd/MM/yy}",
+            (null, { } fin) => $"Hasta {fin:dd/MM/yy}",
+            _ => "Permanente"
+        };
+        return string.IsNullOrWhiteSpace(p.Motivo) ? vigencia : $"{p.Motivo} · {vigencia}";
+    }
+}

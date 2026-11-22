@@ -20,7 +20,6 @@ public interface IConfigAppService : IServiceAsync<ConfigApp, ConfigAppDto>
     Task<Result<ConfigAppDto>> CrearAsync(CrearConfigAppDto dto, CancellationToken ct = default);
     Task<Result<ConfigAppDto>> ActualizarAsync(int id, ActualizarConfigAppDto dto, CancellationToken ct = default);
     Task<Result> DesactivarAsync(int id, CancellationToken ct = default);
-    Task<Result<ConfigAppDto>> SetValorAsync(string grupo, string clave, string valor, string tipo = "string", string? descripcion = null, CancellationToken ct = default);
     Task<Result<IPagedResult<ConfigAppDto>>> ObtenerPaginadoConBusquedaAsync(PaginationOptions<ConfigApp> options, string search, CancellationToken ct = default);
 }
 
@@ -145,14 +144,6 @@ public class ConfigAppService : ServiceAsync<ConfigApp, ConfigAppDto>, IConfigAp
         Repository.Update(r.Value);
         await InvalidateEmailCacheIfRelevant(r.Value.Grupo, ct);
         return Result.Success();
-    }
-
-    public async Task<Result<ConfigAppDto>> SetValorAsync(string grupo, string clave, string valor, string tipo = "string", string? descripcion = null, CancellationToken ct = default)
-    {
-        var result = await _repo.SetValorAsync(grupo, clave, valor, tipo, descripcion, null, ct);
-        if (result.IsFailure) return Result<ConfigAppDto>.Failure(result.Error!);
-        await InvalidateEmailCacheIfRelevant(grupo, ct);
-        return Result<ConfigAppDto>.Success(Mapper.Map<ConfigAppDto>(result.Value));
     }
 
     private async Task InvalidateEmailCacheIfRelevant(string grupo, CancellationToken ct = default)

@@ -24,7 +24,7 @@ public class JwtTenantContext : ITenantContext
     }
 
     public int CurrentId => Current?.Id
-        ?? throw new InvalidOperationException("Tenant not set in JWT. Ensure the endpoint is [Authorize] and the token contains TenantId claim.");
+        ?? throw new TenantRequeridoException();
 
     public bool HasTenant => Current is not null;
 

@@ -39,16 +39,26 @@ public class SesionRepository : RepositoryAsync<Sesion>, ISesionRepository
         return await SpHelper.ExecuteSPAsync<CrearSesionResult>(_rawQuery, "SP_Sesiones_Crear", parameters, "Sin resultado del SP", ct);
     }
 
+    // S116 · D3 — SP_Sesiones_RevocarTodas nunca existió en la BD: mismo patrón que RevocarTodasPorTenantAsync.
     public async Task<Result<RevocarSesionesResult>> RevocarTodasAsync(int idUsuario, int idTenant, Guid? idSesionExcluir = null, CancellationToken ct = default)
     {
-        var parameters = new[]
+        try
         {
-            RawParameter.Int("@IdUsuario", idUsuario),
-            RawParameter.Int("@IdTenant", idTenant),
-            RawParameter.In("@IdSesionExcluir", idSesionExcluir, System.Data.DbType.Guid)
-        };
-
-        return await SpHelper.ExecuteSPAsync<RevocarSesionesResult>(_rawQuery, "SP_Sesiones_RevocarTodas", parameters, "Sin resultado del SP", ct);
+            var count = await DbSet
+                .Where(s => s.IdUsuario == idUsuario && s.IdTenant == idTenant && s.EsActiva
+                            && (idSesionExcluir == null || s.Id != idSesionExcluir))
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(s => s.EsActiva, false)
+                    .SetProperty(s => s.HashRefresh, (string?)null)
+                    .SetProperty(s => s.UltActividad, DateTime.Now),
+                    ct);
+            return Result<RevocarSesionesResult>.Success(new RevocarSesionesResult { SesionesRevocadas = count });
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogError(ex, "Error al revocar las sesiones del usuario {IdUsuario} en el tenant {IdTenant}", idUsuario, idTenant);
+            return Result<RevocarSesionesResult>.Failure("DB_ERROR", "Error al revocar las sesiones");
+        }
     }
 
     public async Task<Result> RevocarSesionAsync(Guid idSesion, CancellationToken ct = default)
@@ -66,7 +76,7 @@ public class SesionRepository : RepositoryAsync<Sesion>, ISesionRepository
             sesion.HashRefresh = null;
             return Result.Success();
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogError(ex, "Error al revocar sesión {IdSesion}", idSesion);
             return Result.Failure("DB_ERROR", ex.Message);
@@ -87,7 +97,7 @@ public class SesionRepository : RepositoryAsync<Sesion>, ISesionRepository
                 .ToListAsync(ct);
             return Result<IReadOnlyList<Sesion>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<Sesion>>.Failure("DB_ERROR", ex.Message);
         }
@@ -101,7 +111,7 @@ public class SesionRepository : RepositoryAsync<Sesion>, ISesionRepository
                 .CountAsync(s => s.IdUsuario == idUsuario && s.IdTenant == idTenant && s.EsActiva && s.FecExpira > DateTime.Now, ct);
             return Result<int>.Success(count);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<int>.Failure("DB_ERROR", ex.Message);
         }
@@ -115,22 +125,9 @@ public class SesionRepository : RepositoryAsync<Sesion>, ISesionRepository
                 .CountAsync(s => s.IdTenant == idTenant && s.EsActiva && s.FecExpira > DateTime.Now, ct);
             return Result<int>.Success(count);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<int>.Failure("DB_ERROR", ex.Message);
-        }
-    }
-
-    public async Task<Result<Sesion?>> ObtenerPorIdTokenExtAsync(string idTokenExt, CancellationToken ct = default)
-    {
-        try
-        {
-            var entity = await DbSet.FirstOrDefaultAsync(s => s.IdTokenExt == idTokenExt, ct);
-            return Result<Sesion?>.Success(entity, allowNull: true);
-        }
-        catch (Exception ex)
-        {
-            return Result<Sesion?>.Failure("DB_ERROR", ex.Message);
         }
     }
 
@@ -142,7 +139,7 @@ public class SesionRepository : RepositoryAsync<Sesion>, ISesionRepository
                 s => s.IdUsuario == idUsuario && s.IdTokenExt == jti && s.EsActiva && s.FecExpira > DateTime.Now, ct);
             return Result<Sesion?>.Success(entity, allowNull: true);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<Sesion?>.Failure("DB_ERROR", ex.Message);
         }
@@ -155,7 +152,7 @@ public class SesionRepository : RepositoryAsync<Sesion>, ISesionRepository
             var entity = await DbSet.FirstOrDefaultAsync(s => s.HashRefresh == hashRefresh && s.EsActiva, ct);
             return Result<Sesion?>.Success(entity, allowNull: true);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<Sesion?>.Failure("DB_ERROR", ex.Message);
         }
@@ -173,7 +170,7 @@ public class SesionRepository : RepositoryAsync<Sesion>, ISesionRepository
                     ct);
             return Result<int>.Success(count);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<int>.Failure("DB_ERROR", ex.Message);
         }
@@ -191,7 +188,7 @@ public class SesionRepository : RepositoryAsync<Sesion>, ISesionRepository
                     ct);
             return Result<bool>.Success(count > 0);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<bool>.Failure("DB_ERROR", ex.Message);
         }
@@ -212,7 +209,7 @@ public class SesionRepository : RepositoryAsync<Sesion>, ISesionRepository
                 .ToListAsync(ct);
             return Result<IReadOnlyList<Sesion>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<Sesion>>.Failure("DB_ERROR", ex.Message);
         }
@@ -232,7 +229,27 @@ public class SesionRepository : RepositoryAsync<Sesion>, ISesionRepository
                     ct);
             return Result<int>.Success(count);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return Result<int>.Failure("DB_ERROR", ex.Message);
+        }
+    }
+
+    // S57.19 H-5: revocar todas las sesiones activas de una app (desactivación de App).
+    public async Task<Result<int>> RevocarTodasPorAppAsync(int idApp, CancellationToken ct = default)
+    {
+        try
+        {
+            var count = await DbSet
+                .Where(s => s.IdApp == idApp && s.EsActiva)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(s => s.EsActiva, false)
+                    .SetProperty(s => s.HashRefresh, (string?)null)
+                    .SetProperty(s => s.UltActividad, DateTime.Now),
+                    ct);
+            return Result<int>.Success(count);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<int>.Failure("DB_ERROR", ex.Message);
         }

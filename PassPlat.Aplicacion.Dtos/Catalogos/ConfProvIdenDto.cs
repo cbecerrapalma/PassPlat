@@ -43,11 +43,15 @@ public class ConfProvIdenDto
     public string? Descripcion { get; set; }
     public string? AuthorizationEndpoint { get; set; }
     public string? TokenEndpoint { get; set; }
-    public string? JwksUri { get; set; }
-    public string? Issuer { get; set; }
     public string ResponseType { get; set; } = "code";
     public string GrantType { get; set; } = "authorization_code";
     public string? ExtraParams { get; set; }
+
+    /// <summary>S122 · D3 — null = el login la muestra; si no, el motivo por el que no aparece.</summary>
+    public string? MotivoNoDisponible { get; set; }
+
+    /// <summary>S126 · D4 — apps a las que sirve; vacía = todas.</summary>
+    public List<int> IdsApps { get; set; } = [];
 }
 
 public class CrearConfProvIdenDto
@@ -86,11 +90,11 @@ public class CrearConfProvIdenDto
     public string? Descripcion { get; set; }
     public string? AuthorizationEndpoint { get; set; }
     public string? TokenEndpoint { get; set; }
-    public string? JwksUri { get; set; }
-    public string? Issuer { get; set; }
     public string ResponseType { get; set; } = "code";
     public string GrantType { get; set; } = "authorization_code";
     public string? ExtraParams { get; set; }
+    // S126 · D4 — vacía = todas las apps
+    public List<int> IdsApps { get; set; } = [];
 }
 
 public class ActualizarConfProvIdenDto
@@ -127,9 +131,9 @@ public class ActualizarConfProvIdenDto
     public string? Descripcion { get; set; }
     public string? AuthorizationEndpoint { get; set; }
     public string? TokenEndpoint { get; set; }
-    public string? JwksUri { get; set; }
-    public string? Issuer { get; set; }
     public string? ResponseType { get; set; }
     public string? GrantType { get; set; }
     public string? ExtraParams { get; set; }
+    // S126 · D4 — null = no cambia; [] = todas las apps
+    public List<int>? IdsApps { get; set; }
 }

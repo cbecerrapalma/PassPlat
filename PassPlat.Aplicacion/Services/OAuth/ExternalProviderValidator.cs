@@ -35,6 +35,9 @@ public class ExternalProviderValidator : IExternalProviderValidator
             return LogNoDisponible(config, providerCode, "Proveedor inactivo");
         if (config.Estado != 1)
             return LogNoDisponible(config, providerCode, "Estado del proveedor no es válido");
+        // S123 · D4 — PermitirLogin = 0 lo saca del login (el SP también lo rechaza)
+        if (!config.PermitirLogin)
+            return LogNoDisponible(config, providerCode, "Login deshabilitado en la configuración");
         if (config.ProvIden is null || !config.ProvIden.Activo)
             return LogNoDisponible(config, providerCode, "Proveedor de identidad inactivo o no configurado");
         if (string.IsNullOrWhiteSpace(config.ProvIden.Codigo))
@@ -50,7 +53,7 @@ public class ExternalProviderValidator : IExternalProviderValidator
         if (config.RolDefectoNav is null || !config.RolDefectoNav.Activo)
             return LogNoDisponible(config, providerCode, "Rol por defecto inactivo o no configurado");
 
-        _logger.LogInformation(
+        _logger.LogDebug( // S124 · D4 (P73.7)
             "OAuthProviderValidation {Provider} ACCEPTED | IdConfProvIden={IdConf} | TenantId={TenantId}",
             providerCode, config.Id, config.IdTenant);
 
@@ -59,7 +62,7 @@ public class ExternalProviderValidator : IExternalProviderValidator
 
     private ProviderAvailabilityResult LogNoDisponible(ConfProvIden config, string providerCode, string motivo)
     {
-        _logger.LogInformation(
+        _logger.LogDebug( // S124 · D4 (P73.7)
             "OAuthProviderValidation {Provider} REJECTED | IdConfProvIden={IdConf} | TenantId={TenantId} | Motivo={Motivo} | " +
             "Activo={Activo} | Estado={Estado} | ProvIdenActivo={ProvAct} | ClientId={Cid} | ClientSecret={Cs} | " +
             "TryDecrypt={Decrypt} | Callback={Cb} | RolDefecto={Rol}",

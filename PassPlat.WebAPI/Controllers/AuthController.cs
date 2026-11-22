@@ -14,10 +14,13 @@ using PassPlat.Aplicacion.Services;
 using PassPlat.Datos;
 using PassPlat.Datos.Repositories;
 using PassPlat.Dominio.Enums;
+using PassPlat.WebAPI.Auth;
 
 namespace PassPlat.WebAPI.Controllers;
 
-[EnableRateLimiting("LoginPolicy")]
+// S63: las acciones sin limitador propio (me, logout, tenants, switch-*...) usan AuthReadPolicy;
+// login, login/platform y validar-mfa mantienen LoginPolicy en su propio atributo.
+[EnableRateLimiting("AuthReadPolicy")]
 public class AuthController : BaseApiController
 {
     private readonly IAuthService _service;
@@ -27,7 +30,7 @@ public class AuthController : BaseApiController
     private readonly IPasswordService _passwordService;
     private readonly ITenantService _tenantService;
     private readonly IUnitOfWorkAsync _uow;
-    private readonly IUsuarioTenantRepository _usuarioTenantRepo;
+    private readonly ILogger<AuthController> _logger;
 
     public AuthController(
         IAuthService service,
@@ -37,7 +40,7 @@ public class AuthController : BaseApiController
         IPasswordService passwordService,
         ITenantService tenantService,
         IUnitOfWorkAsync uow,
-        IUsuarioTenantRepository usuarioTenantRepo)
+        ILogger<AuthController> logger)
     {
         _service = service;
         _usuarioService = usuarioService;
@@ -46,10 +49,19 @@ public class AuthController : BaseApiController
         _passwordService = passwordService;
         _tenantService = tenantService;
         _uow = uow;
-        _usuarioTenantRepo = usuarioTenantRepo;
+        _logger = logger;
     }
 
+    // S65: una excepción inesperada no se devuelve al cliente; queda en el log con el traceId.
+    private const string MensajeErrorInterno = "Error interno. Intente nuevamente más tarde.";
+
+    private IActionResult ErrorInterno(string codigo, Exception ex)
+    {
+        _logger.LogError(ex, "Error interno {Codigo} trace {TraceId}", codigo, HttpContext.TraceIdentifier);
+        return StatusCode(500, new { codigo, mensaje = MensajeErrorInterno, traceId = HttpContext.TraceIdentifier });
+    }
     [AllowAnonymous]
+    [EnableRateLimiting("LoginPolicy")]
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken ct)
     {
@@ -63,7 +75,7 @@ public class AuthController : BaseApiController
             await _uow.SaveChangesAsync(ct);
 
             if (result.IsFailure)
-                return Unauthorized(new { codigo = result.Error!.Code, mensaje = result.Error.Message });
+                return FromLoginFailure(result.Error!.Code, result.Error.Message);
 
             var response = result.Value;
 
@@ -80,9 +92,9 @@ public class AuthController : BaseApiController
 
             return Ok(response);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return StatusCode(500, new { codigo = "LOGIN_ERROR", mensaje = ex.Message });
+            return ErrorInterno("LOGIN_ERROR", ex);
         }
     }
 
@@ -100,8 +112,7 @@ public class AuthController : BaseApiController
     public async Task<IActionResult> Logout(CancellationToken ct)
     {
         var jti = User.FindFirstValue(JwtRegisteredClaimNames.Jti);
-        var idUsuarioClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(jti) || string.IsNullOrEmpty(idUsuarioClaim) || !int.TryParse(idUsuarioClaim, out var idUsuario))
+        if (string.IsNullOrEmpty(jti) || User.IdUsuario() is not int idUsuario)
             return BadRequest(new { codigo = "INVALID_TOKEN" });
 
         var result = await _service.RevocarSesionPorJtiAsync(idUsuario, jti, ct);
@@ -112,12 +123,26 @@ public class AuthController : BaseApiController
     [HttpGet("me")]
     public async Task<IActionResult> Me(CancellationToken ct)
     {
-        var idUsuarioClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(idUsuarioClaim) || !int.TryParse(idUsuarioClaim, out var idUsuario))
+        if (User.IdUsuario() is not int idUsuario)
             return Unauthorized(new { codigo = "INVALID_TOKEN" });
 
         var result = await _usuarioService.GetByIdAsync(idUsuario, ct);
         return FromResult(result);
+    }
+
+    // S57.19 H-1+H-3+H-5: mapeo estable de errores de login.
+    // LOGIN_VALIDATION (IdApp/IdTenant/app/tenant) → 400; onboarding/estado → 403;
+    // errores de validación contra DB → 500; credenciales → 401.
+    // S60 · D5: PWD_EXPIRADA (contraseña vencida) → 403.
+    private static IActionResult FromLoginFailure(string? code, string? message)
+    {
+        return code switch
+        {
+            "LOGIN_VALIDATION" => new BadRequestObjectResult(new { codigo = code, mensaje = message }),
+            "PWD_EXPIRADA" or "SIN_ACCESO_APP" or "SIN_ACCESO_PLATFORM" or "SIN_ACCESO_TENANT" or "CUENTA_INACTIVA" => new ObjectResult(new { codigo = code, mensaje = message }) { StatusCode = 403 },
+            "APP_VALIDATION_ERROR" or "TENANT_VALIDATION_ERROR" => new ObjectResult(new { codigo = code, mensaje = message }) { StatusCode = 500 },
+            _ => new UnauthorizedObjectResult(new { codigo = code, mensaje = message }),
+        };
     }
 
     [AllowAnonymous]
@@ -132,13 +157,13 @@ public class AuthController : BaseApiController
                 request.IdDisp, request.IdIP, request.IdAgente, ct);
 
             if (result.IsFailure)
-                return Unauthorized(new { codigo = result.Error!.Code, mensaje = result.Error.Message });
+                return FromLoginFailure(result.Error!.Code, result.Error.Message);
 
             return Ok(result.Value);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return StatusCode(500, new { codigo = "PLATFORM_LOGIN_ERROR", mensaje = ex.Message });
+            return ErrorInterno("PLATFORM_LOGIN_ERROR", ex);
         }
     }
 
@@ -147,8 +172,7 @@ public class AuthController : BaseApiController
     {
         try
         {
-            var idUsuarioClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(idUsuarioClaim) || !int.TryParse(idUsuarioClaim, out var idUsuario))
+            if (User.IdUsuario() is not int idUsuario)
                 return Unauthorized(new { codigo = "INVALID_TOKEN" });
 
             var result = await _service.SwitchTenantAsync(
@@ -156,47 +180,13 @@ public class AuthController : BaseApiController
                 request.IdDisp, request.IdIP, request.IdAgente, ct);
 
             if (result.IsFailure)
-                return Unauthorized(new { codigo = result.Error!.Code, mensaje = result.Error.Message });
+                return FromLoginFailure(result.Error!.Code, result.Error.Message);
 
             return Ok(result.Value);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return StatusCode(500, new { codigo = "SWITCH_TENANT_ERROR", mensaje = ex.Message });
-        }
-    }
-
-    [HttpPost("switch-to-platform")]
-    public async Task<IActionResult> SwitchToPlatform([FromBody] SwitchToPlatformRequest request, CancellationToken ct)
-    {
-        try
-        {
-            var idUsuarioClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(idUsuarioClaim) || !int.TryParse(idUsuarioClaim, out var idUsuario))
-                return Unauthorized(new { codigo = "INVALID_TOKEN" });
-
-            var jtiClaim = User.FindFirst(JwtRegisteredClaimNames.Jti)?.Value;
-            if (string.IsNullOrEmpty(jtiClaim))
-                return Unauthorized(new { codigo = "INVALID_TOKEN", mensaje = "JTI claim no encontrado" });
-
-            var result = await _service.SwitchToPlatformAsync(
-                idUsuario, jtiClaim, request.IdApp,
-                request.IdDisp, request.IdIP, request.IdAgente, ct);
-
-            if (result.IsFailure)
-            {
-                if (result.Error!.Code == "SIN_ACCESO_PLATFORM")
-                    return Forbid();
-                return Unauthorized(new { codigo = result.Error.Code, mensaje = result.Error.Message });
-            }
-
-            await _uow.SaveChangesAsync(ct);
-
-            return Ok(result.Value);
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { codigo = "SWITCH_PLATFORM_ERROR", mensaje = ex.Message });
+            return ErrorInterno("SWITCH_TENANT_ERROR", ex);
         }
     }
 
@@ -283,7 +273,7 @@ public class AuthController : BaseApiController
         await _uow.SaveChangesAsync(ct);
 
         if (result.IsFailure)
-            return Unauthorized(new { codigo = result.Error!.Code, mensaje = result.Error.Message });
+            return FromLoginFailure(result.Error!.Code, result.Error.Message);
 
         return Ok(result.Value);
     }
@@ -305,14 +295,9 @@ public class AuthController : BaseApiController
         var idUsuario = validarResult.Value.IdUsuario.Value;
         var idTenant = validarResult.Value.IdTenant.Value;
 
-        var hashResult = await _passwordService.HashPasswordAsync(request.NuevaPassword, ct);
-        if (hashResult.IsFailure)
-            return BadRequest(new { codigo = "PWD_HASH_ERROR", mensaje = "Error al procesar la nueva contraseña." });
-
-        var cambioResult = await _passwordService.CambiarPasswordAsync(
-            idUsuario, idTenant, hashResult.Value, pepperVersion: 1,
-            idTipoCambio: (int)PassPlat.Dominio.Enums.ETipoCambioPwd.Reset,
-            idDisp: null, idIP: null, idAgente: null, ct);
+        var cambioResult = await _passwordService.CambiarPasswordValidadaAsync(
+            idUsuario, idTenant, request.IdApp, request.NuevaPassword,
+            PassPlat.Dominio.Enums.ETipoCambioPwd.Reset, ct);
 
         if (cambioResult.IsSuccess) await _uow.SaveChangesAsync(ct);
 
@@ -360,21 +345,20 @@ public class AuthController : BaseApiController
     [HttpGet("mis-tenants")]
     public async Task<IActionResult> GetMisTenants(CancellationToken ct)
     {
-        var idUsuarioClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(idUsuarioClaim) || !int.TryParse(idUsuarioClaim, out var idUsuario))
+        if (User.IdUsuario() is not int idUsuario)
             return Unauthorized(new { codigo = "INVALID_TOKEN" });
 
-        var result = await _usuarioTenantRepo.ObtenerActivosPorUsuarioAsync(idUsuario, ct);
+        // S97 · D1 — la regla vive en IAuthService.ObtenerMisTenantsAsync; la forma de la respuesta no cambia
+        var result = await _service.ObtenerMisTenantsAsync(idUsuario, ct);
         if (result.IsFailure)
             return FromResult(result);
 
         var tenants = result.Value
-            .Where(ut => ut.Tenant != null)
-            .Select(ut => new
+            .Select(t => new
             {
-                id = ut.IdTenant,
-                codigo = ut.Tenant!.Codigo,
-                nombre = ut.Tenant!.Nombre
+                id = t.Id,
+                codigo = t.Codigo,
+                nombre = t.Nombre
             })
             .ToList();
 
@@ -423,15 +407,6 @@ public class PlatformLoginRequest
 }
 
 public class SwitchTenantRequest
-{
-    [Required]
-    public int IdApp { get; init; }
-    public int? IdDisp { get; init; }
-    public int? IdIP { get; init; }
-    public int? IdAgente { get; init; }
-}
-
-public class SwitchToPlatformRequest
 {
     [Required]
     public int IdApp { get; init; }

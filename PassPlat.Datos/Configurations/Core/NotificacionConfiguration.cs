@@ -18,7 +18,7 @@ public class NotificacionConfiguration : IEntityTypeConfiguration<Notificacion>
         builder.Property(n => n.Asunto).HasMaxLength(200).IsRequired();
         builder.Property(n => n.Mensaje).HasMaxLength(-1);
         builder.Property(n => n.Leida).HasDefaultValue(false).IsRequired();
-        builder.Property(n => n.FecCrea).HasDefaultValueSql("sysutcdatetime()").IsRequired();
+        builder.Property(n => n.FecCrea).HasDefaultValueSql("sysdatetime()").IsRequired();
         builder.Property(n => n.FecLeida);
 
         builder.HasOne(n => n.Usuario)

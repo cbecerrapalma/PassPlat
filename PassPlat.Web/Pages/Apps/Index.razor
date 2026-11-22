@@ -14,11 +14,7 @@
 else
 {
 <div class="iam-page">
-    <MudBreadcrumbs Class="mb-3">
-        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
-        <MudBreadcrumbItem>Catalogos</MudBreadcrumbItem>
-        <MudBreadcrumbItem>Apps</MudBreadcrumbItem>
-    </MudBreadcrumbs>
+<MigasDePan />
 
     <div class="page-header">
         <div class="page-title-row">
@@ -33,25 +29,32 @@ else
     </div>
 
     <div class="kpi-row mb-4">
-        <IamKpiCard Valor="@_totalCount.ToString()" Label="Total Apps" Subtexto="@($"{_totalCount} apps")" Icon="@Icons.Material.Filled.Apps" ColorClass="primary" Xs="12" Sm="6" Md="3" />
-        <IamKpiCard Valor="@_activasCount.ToString()" Label="Activas" Subtexto="@($"{_activasCount} activas")" Icon="@Icons.Material.Filled.CheckCircle" ColorClass="success" Xs="12" Sm="6" Md="3" />
-        <IamKpiCard Valor="@_inactivasCount.ToString()" Label="Inactivas" Subtexto="Deshabilitadas" Icon="@Icons.Material.Filled.Cancel" ColorClass="warning" Xs="12" Sm="6" Md="3" />
-        <IamKpiCard Valor="@_totalDesdeApi.ToString()" Label="Total Conteo" Subtexto="Desde API" Icon="@Icons.Material.Filled.BarChart" ColorClass="info" Xs="12" Sm="6" Md="3" />
+        <IamKpiCard Valor="@_totalCount.ToString()" Label="Total Apps" Icon="@Icons.Material.Filled.Apps" ColorClass="primary" />
+        <IamKpiCard Valor="@_activasCount.ToString()" Label="Activas" Icon="@Icons.Material.Filled.CheckCircle" ColorClass="success" />
+        <IamKpiCard Valor="@_inactivasCount.ToString()" Label="Inactivas" Subtexto="Deshabilitadas" Icon="@Icons.Material.Filled.Cancel" ColorClass="warning" />
+        <IamKpiCard Valor="@_totalDesdeApi.ToString()" Label="Total Conteo" Subtexto="Desde API" Icon="@Icons.Material.Filled.BarChart" ColorClass="info" />
     </div>
 
     <div class="content-body">
         <div class="table-panel">
-            <CrudToolbar ShowSearch="true" ShowFilter="true" FilterButtonText="Estado"
+            <CrudToolbar ShowSearch="true"
                 SearchString="@_searchString" SearchStringChanged="@OnSearchChanged"
-                OnRefresh="@Refrescar" ShowCreate="false" />
+                OnRefresh="@Refrescar" ShowCreate="false">
+                <Filtros>
+                    <MudSelect T="bool?" Value="_estadoFiltro" ValueChanged="@OnEstadoChanged" Label="Estado"
+                               Variant="Variant.Outlined" Dense="true" Clearable="true" Class="lista-filtro">
+                        <MudSelectItem T="bool?" Value="@((bool?)true)">Activas</MudSelectItem>
+                        <MudSelectItem T="bool?" Value="@((bool?)false)">Inactivas</MudSelectItem>
+                    </MudSelect>
+                </Filtros>
+            </CrudToolbar>
             <div class="table-wrap">
-                <MudTable @ref="_table" T="AppDto" ServerData="@_serverReload" Items="@_items" Hover="true" Breakpoint="Breakpoint.Sm"
-                    SelectedItem="_selectedItem" SelectedItemChanged="@OnSelectedItemChanged" RowStyle="cursor: pointer;">
+                <MudTable T="AppDto" Items="@_itemsFiltrados" Hover="true" Breakpoint="Breakpoint.Sm">
                     <ColGroup>
-                        <col /><col style="width:100px;" /><col /><col style="width:100px;" /><col style="width:140px;" />
+                        <col /><col style="width:100px;" /><col /><col style="width:100px;" /><col style="width:110px;" /><col style="width:140px;" />
                     </ColGroup>
                     <HeaderContent>
-                        <MudTh>Nombre</MudTh><MudTh>Codigo</MudTh><MudTh>URL Base</MudTh><MudTh>Estado</MudTh><MudTh>Acciones</MudTh>
+                        <MudTh>Nombre</MudTh><MudTh>Codigo</MudTh><MudTh>URL Base</MudTh><MudTh>Estado</MudTh><MudTh>Creado</MudTh><MudTh>Acciones</MudTh>
                     </HeaderContent>
                     <RowTemplate>
                         <MudTd DataLabel="Nombre">
@@ -65,12 +68,13 @@ else
                                 <span class="badge-dot"></span>@(context.Activa ? "Activo" : "Inactivo")
                             </span>
                         </MudTd>
+                        <MudTd DataLabel="Creado" Style="color:var(--text-muted);">@context.FecCrea.ToString("dd MMM yyyy")</MudTd>
                         <MudTd DataLabel="Acciones">
                             <MudTooltip Text="Editar">
-                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => OpenEditDialog(context))" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => OpenEditDialog(context))" aria-label="Editar" />
                             </MudTooltip>
                             <MudTooltip Text="Desactivar">
-                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => ConfirmDeactivate(context))" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => ConfirmDeactivate(context))" aria-label="Desactivar" />
                             </MudTooltip>
                         </MudTd>
                     </RowTemplate>
@@ -86,130 +90,91 @@ else
                 </MudTable>
             </div>
         </div>
-
-        @if (_selectedItem is not null)
-        {
-            <div class="iam-inspector" style="width:380px;min-width:380px;position:sticky;top:16px;align-self:flex-start;">
-                <div class="inspector-header">
-                    <div class="inspector-title-row">
-                        <div class="inspector-title">@_selectedItem.Nombre</div>
-                        <span class="badge @(_selectedItem.Activa ? "badge-active" : "badge-inactive")">
-                            <span class="badge-dot"></span>@(_selectedItem.Activa ? "Activo" : "Inactivo")
-                        </span>
-                    </div>
-                    <div class="inspector-tabs" role="tablist">
-                        <MudButton Variant="Variant.Text" Color="@(_inspectorTab == 0 ? Color.Primary : Color.Default)" @onclick="() => _inspectorTab = 0" Size="Size.Small">Información</MudButton>
-                    </div>
-                </div>
-                <div class="inspector-body">
-                    @if (_inspectorTab == 0)
-                    {
-                        <div class="insp-section">
-                            <div class="insp-section-title">Detalles de la Aplicación</div>
-                            <div class="field-row"><div class="field-label">Código</div><div class="field-value mono">@_selectedItem.Codigo</div></div>
-                            <div class="field-row"><div class="field-label">Nombre</div><div class="field-value">@_selectedItem.Nombre</div></div>
-                            <div class="field-row"><div class="field-label">URL Base</div><div class="field-value mono">@_selectedItem.UrlBase</div></div>
-                            <div class="field-row"><div class="field-label">Estado</div><div class="field-value"><span class="badge @(_selectedItem.Activa ? "badge-active" : "badge-inactive")"><span class="badge-dot"></span>@(_selectedItem.Activa ? "Activo" : "Inactivo")</span></div></div>
-                            <div class="field-row"><div class="field-label">Creado</div><div class="field-value" style="color:var(--text-muted);">@_selectedItem.FecCrea.ToLocalTime().ToString("dd MMM yyyy")</div></div>
-                        </div>
-                    }
-                </div>
-            </div>
-        }
     </div>
 </div>
 }
 
 @code {
-    private MudTable<AppDto>? _table;
-    private IEnumerable<AppDto> _items = [];
-    private bool _loading;
+    private List<AppDto> _items = [];
     private string _searchString = "";
+    private bool? _estadoFiltro;
     private string _totalCount = "0";
     private int _totalDesdeApi;
     private int _activasCount;
     private int _inactivasCount;
-    private AppDto? _selectedItem;
-    private int _inspectorTab;
-    private readonly DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
 
     protected override async Task OnInitializedAsync()
     {
         if (!Auth.TienePermiso("APPS_VER")) return;
+        await CargarApps();
+    }
+
+    // S85 · D4 — buscador y estado se aplican en memoria sobre la lista completa
+    private List<AppDto> _itemsFiltrados
+    {
+        get
+        {
+            var filtrados = _items;
+            if (!string.IsNullOrWhiteSpace(_searchString))
+            {
+                var s = _searchString.Trim();
+                filtrados = filtrados.Where(a =>
+                    a.Codigo.Contains(s, StringComparison.OrdinalIgnoreCase) ||
+                    a.Nombre.Contains(s, StringComparison.OrdinalIgnoreCase)).ToList();
+            }
+            if (_estadoFiltro is bool estado)
+                filtrados = filtrados.Where(a => a.Activa == estado).ToList();
+            return filtrados;
+        }
+    }
+
+    private async Task CargarApps()
+    {
         try
         {
-            var todas = await Api.GetAsync<List<AppDto>>("api/apps");
-            _totalDesdeApi = todas?.Count ?? 0;
+            _items = await Api.GetAsync<List<AppDto>>("api/apps") ?? [];
+            _totalDesdeApi = _items.Count;
             _totalCount = _totalDesdeApi.ToString();
+            _activasCount = _items.Count(i => i.Activa);
+            _inactivasCount = _items.Count(i => !i.Activa);
         }
         catch (Exception ex)
         {
-            Snackbar.Add(Api.LastError ?? $"Error al cargar total: {ex.Message}", Severity.Error);
+            Snackbar.Add(Api.LastError ?? $"Error al cargar: {ex.Message}", Severity.Error);
         }
     }
 
-    private async Task<TableData<AppDto>> _serverReload(TableState state, CancellationToken ct)
-    {
-        _loading = true;
-        try
-        {
-            var searchParam = string.IsNullOrEmpty(_searchString) ? "" : _searchString;
-            var response = await Api.GetAsync<PagedResponse<AppDto>>(
-                $"api/apps/page?pageNumber={state.Page + 1}&pageSize={state.PageSize}&search={Uri.EscapeDataString(searchParam)}");
-            if (response != null)
-            {
-                _items = response.Items;
-                _activasCount = response.Items.Count(i => i.Activa);
-                _inactivasCount = response.Items.Count(i => !i.Activa);
-                return new TableData<AppDto> { Items = response.Items, TotalItems = response.TotalCount };
-            }
-        }
-        catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error al cargar: {ex.Message}", Severity.Error); }
-        finally { _loading = false; }
-        return new TableData<AppDto> { Items = [], TotalItems = 0 };
-    }
-
-    private async Task OnSearchChanged(string value)
+    private void OnSearchChanged(string value)
     {
         _searchString = value;
-        if (_table is not null) await _table.ReloadServerData();
+        StateHasChanged();
+    }
+
+    private void OnEstadoChanged(bool? estado)
+    {
+        _estadoFiltro = estado;
+        StateHasChanged();
     }
 
     private async Task Refrescar()
     {
-        if (_table is not null) await _table.ReloadServerData();
-        try
-        {
-            var todas = await Api.GetAsync<List<AppDto>>("api/apps");
-            _totalDesdeApi = todas?.Count ?? 0;
-            _totalCount = _totalDesdeApi.ToString();
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add(Api.LastError ?? $"Error al cargar total: {ex.Message}", Severity.Error);
-        }
-    }
-
-    private void OnSelectedItemChanged(AppDto? item)
-    {
-        _selectedItem = item;
-        _inspectorTab = 0;
+        await CargarApps();
     }
 
     private async Task OpenCreateDialog()
     {
         var parameters = new DialogParameters { ["IsEdit"] = false };
-        var dialog = await Dialog.ShowAsync<AppDialog>("Nueva App", parameters, _dialogOptions);
+        var dialog = await Dialog.ShowAsync<AppDialog>("Nueva App", parameters, OpcionesDialogo.Dialogo(TamanoDialogo.Compacto));
         var result = await dialog.Result;
-        if (!result.Canceled) { await Refrescar(); Snackbar.Add("App creada", Severity.Success); }
+        if (result is { Canceled: false }) { await Refrescar(); Snackbar.Add("App creada", Severity.Success); }
     }
 
     private async Task OpenEditDialog(AppDto item)
     {
         var parameters = new DialogParameters { ["IsEdit"] = true, ["App"] = item };
-        var dialog = await Dialog.ShowAsync<AppDialog>("Editar App", parameters, _dialogOptions);
+        var dialog = await Dialog.ShowAsync<AppDialog>("Editar App", parameters, OpcionesDialogo.Dialogo(TamanoDialogo.Compacto));
         var result = await dialog.Result;
-        if (!result.Canceled) { await Refrescar(); Snackbar.Add("App actualizada", Severity.Success); }
+        if (result is { Canceled: false }) { await Refrescar(); Snackbar.Add("App actualizada", Severity.Success); }
     }
 
     private async Task ConfirmDeactivate(AppDto item)
@@ -217,7 +182,7 @@ else
         var parameters = new DialogParameters { ["Title"] = "Confirmar", ["Message"] = $"Desactivar app {item.Nombre}?", ["ConfirmText"] = "Si", ["CancelText"] = "Cancelar" };
         var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parameters);
         var result = await dialog.Result;
-        if (!result.Canceled)
+        if (result is { Canceled: false })
         {
             var ok = await Api.PostVoidAsync($"api/apps/{item.Id}/desactivar");
             if (ok) { Snackbar.Add("App desactivada", Severity.Success); await Refrescar(); }

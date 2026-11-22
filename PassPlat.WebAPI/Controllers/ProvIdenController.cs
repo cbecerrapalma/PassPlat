@@ -11,7 +11,7 @@ using PassPlat.Dominio.Entities.Catalogos;
 
 namespace PassPlat.WebAPI.Controllers;
 
-[Authorize]
+[Authorize(Policy = "FED_PROVIDEN_VER")] // S114 · D1
 [Route("api/providen")]
 public class ProvIdenController : BaseApiController
 {
@@ -30,14 +30,6 @@ public class ProvIdenController : BaseApiController
     public async Task<IActionResult> GetById(int id, CancellationToken ct)
         => FromResultQuery(await _service.GetByIdAsync(id, ct));
 
-    [HttpGet("{id}/info")]
-    public async Task<IActionResult> GetProviderInfo(int id, CancellationToken ct)
-        => FromResultQuery(await _service.ObtenerInfoConfiguracionAsync(id, ct));
-
-    [HttpGet("codigo/{codigo}")]
-    public async Task<IActionResult> GetByCodigo(string codigo, CancellationToken ct)
-        => FromResultQuery(await _service.ObtenerPorCodigoAsync(codigo, ct));
-
     [HttpGet("activos")]
     public async Task<IActionResult> GetActivos(CancellationToken ct)
         => FromResultQuery(await _service.ObtenerActivosAsync(ct));
@@ -55,7 +47,7 @@ public class ProvIdenController : BaseApiController
     }
 
     [ApiExplorerSettings(IgnoreApi = true)]
-    [Authorize(Roles = "SuperAdmin")]
+    [Authorize(Policy = "FED_PROVIDEN_EDITAR")] // S114 · D2: el rol SuperAdmin no existe en ningún token
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CrearProvIdenDto dto, CancellationToken ct)
     {
@@ -66,22 +58,11 @@ public class ProvIdenController : BaseApiController
     }
 
     [ApiExplorerSettings(IgnoreApi = true)]
-    [Authorize(Roles = "SuperAdmin")]
+    [Authorize(Policy = "FED_PROVIDEN_EDITAR")]
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, [FromBody] ActualizarProvIdenDto dto, CancellationToken ct)
     {
         var result = await _service.ActualizarAsync(id, dto, ct);
-        if (result.IsFailure) return FromResult(result);
-        await _uow.SaveChangesAsync(ct);
-        return FromResult(result);
-    }
-
-    [ApiExplorerSettings(IgnoreApi = true)]
-    [Authorize(Roles = "SuperAdmin")]
-    [HttpPost("{id}/desactivar")]
-    public async Task<IActionResult> Desactivar(int id, CancellationToken ct)
-    {
-        var result = await _service.DesactivarAsync(id, ct);
         if (result.IsFailure) return FromResult(result);
         await _uow.SaveChangesAsync(ct);
         return FromResult(result);

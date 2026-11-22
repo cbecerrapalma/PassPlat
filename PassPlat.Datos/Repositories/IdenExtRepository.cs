@@ -14,7 +14,6 @@ public interface IIdenExtRepository : IRepositoryAsync<IdenExt>
     Task<Result<IReadOnlyList<IdenExt>>> ObtenerPorTenantAsync(int idTenant, CancellationToken ct = default);
     Task<Result<IReadOnlyList<IdenExt>>> ObtenerPorEstadoAsync(byte idEstado, CancellationToken ct = default);
     Task<Result<IPagedResult<IdenExt>>> BuscarAsync(BuscarIdenExtRequest request, CancellationToken ct = default);
-    Task<Result<IReadOnlyList<DesgloseProveedorReadModel>>> ObtenerDesglosePorProveedorAsync(int idTenant, CancellationToken ct = default);
 }
 
 public class IdenExtRepository : RepositoryAsync<IdenExt>, IIdenExtRepository
@@ -30,7 +29,7 @@ public class IdenExtRepository : RepositoryAsync<IdenExt>, IIdenExtRepository
                 .FirstOrDefaultAsync(i => i.IdProvIden == idProvIden && i.SubExterno == subExterno && !i.Eliminado, ct);
             return Result<IdenExt?>.Success(entity, allowNull: true);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IdenExt?>.Failure("DB_ERROR", ex.Message);
         }
@@ -50,7 +49,7 @@ public class IdenExtRepository : RepositoryAsync<IdenExt>, IIdenExtRepository
                 .ToListAsync(ct);
             return Result<IReadOnlyList<IdenExt>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<IdenExt>>.Failure("DB_ERROR", ex.Message);
         }
@@ -72,7 +71,7 @@ public class IdenExtRepository : RepositoryAsync<IdenExt>, IIdenExtRepository
                 .ToListAsync(ct);
             return Result<IReadOnlyList<IdenExt>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<IdenExt>>.Failure("DB_ERROR", ex.Message);
         }
@@ -91,7 +90,7 @@ public class IdenExtRepository : RepositoryAsync<IdenExt>, IIdenExtRepository
                 .ToListAsync(ct);
             return Result<IReadOnlyList<IdenExt>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<IdenExt>>.Failure("DB_ERROR", ex.Message);
         }
@@ -153,34 +152,9 @@ public class IdenExtRepository : RepositoryAsync<IdenExt>, IIdenExtRepository
                 PageSize = request.PageSize
             });
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IPagedResult<IdenExt>>.Failure("DB_ERROR", ex.Message);
-        }
-    }
-
-    public async Task<Result<IReadOnlyList<DesgloseProveedorReadModel>>> ObtenerDesglosePorProveedorAsync(int idTenant, CancellationToken ct = default)
-    {
-        try
-        {
-            var list = await DbSet
-                .Where(i => i.IdTenant == idTenant && !i.Eliminado)
-                .GroupBy(i => new { i.IdProvIden, i.ProvIden!.Codigo, i.ProvIden.Nombre, i.ProvIden.Icono })
-                .Select(g => new DesgloseProveedorReadModel
-                {
-                    IdProvIden = g.Key.IdProvIden,
-                    Codigo = g.Key.Codigo,
-                    Nombre = g.Key.Nombre,
-                    Icono = g.Key.Icono,
-                    TotalVinculadas = g.Count()
-                })
-                .AsNoTracking()
-                .ToListAsync(ct);
-            return Result<IReadOnlyList<DesgloseProveedorReadModel>>.Success(list);
-        }
-        catch (Exception ex)
-        {
-            return Result<IReadOnlyList<DesgloseProveedorReadModel>>.Failure("DB_ERROR", ex.Message);
         }
     }
 }

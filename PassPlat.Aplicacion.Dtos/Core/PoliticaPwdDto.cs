@@ -23,6 +23,8 @@ public class PoliticaPwdDto
     public bool VerificarBrechas { get; set; }
     public bool PermitirEspacios { get; set; }
     public short DiasVigencia { get; set; }
+    /// <summary>S60 · D1 — la politica solo se aplica por rol (exencion), nunca por alcance.</summary>
+    public bool SoloPorRol { get; set; }
     public byte PwdRecordadas { get; set; }
     public byte MaxIntentos { get; set; }
     public int DurBloqueoMin { get; set; }

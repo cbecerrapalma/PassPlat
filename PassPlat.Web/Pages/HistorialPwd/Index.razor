@@ -6,33 +6,51 @@
 @using PassPlat.Web.Models
 @using PassPlat.Web.Shared
 
-@if (!Auth.TienePermiso("HISTORIAL_PWD_VER"))
+@if (!Auth.TienePermiso("HISTORIALPWD_VER"))
 {
-    <SinPermiso PermisoRequerido="HISTORIAL_PWD_VER" />
+    <SinPermiso PermisoRequerido="HISTORIALPWD_VER" />
 }
 else
 {
-<MudContainer>
-    <MudBreadcrumbs Class="mb-3">
-        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
-        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/auditoria"))">Auditoría</MudBreadcrumbItem>
-        <MudBreadcrumbItem>Historial de Contraseñas</MudBreadcrumbItem>
-    </MudBreadcrumbs>
+<div class="iam-page">
+<MigasDePan />
 
-    <div class="mud-grid mud-grid-spacing-3 mb-4">
-        <IamKpiCard Valor="@_totalCountStr" Label="Total" Subtexto="Registros en sistema" Icon="@Icons.Material.Filled.History" ColorClass="primary" Xs="12" Sm="6" Md="3" />
-        <IamKpiCard Valor="@_actualesStr" Label="Actuales" Subtexto="Passwords vigentes" Icon="@Icons.Material.Filled.CheckCircle" ColorClass="success" Xs="12" Sm="6" Md="3" />
-        <IamKpiCard Valor="@_forzadosStr" Label="Forzados" Subtexto="Cambio obligatorio" Icon="@Icons.Material.Filled.Warning" ColorClass="warning" Xs="12" Sm="6" Md="3" />
-        <IamKpiCard Valor="@_usuariosStr" Label="Usuarios" Subtexto="Con historial registrado" Icon="@Icons.Material.Filled.People" ColorClass="info" Xs="12" Sm="6" Md="3" />
+    <div class="page-header">
+        <div class="page-title-row">
+            <div>
+                <h1 class="page-title">Historial de Contraseñas</h1>
+                <p class="page-subtitle">Contraseñas anteriores de cada usuario y cambios forzados.</p>
+            </div>
+        </div>
     </div>
 
-    <MudPaper Class="pa-4 mb-4 d-flex flex-wrap align-center gap-4" Elevation="0" Outlined="true">
-        <MudText Typo="Typo.h5" Class="flex-grow-1 mb-0">Historial de Contraseñas</MudText>
-        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium"
-            OnClick="@Refrescar" />
-    </MudPaper>
+    <div class="kpi-row mb-4">
+        <IamKpiCard Valor="@_totalCountStr" Label="Total" Subtexto="Registros en sistema" Icon="@Icons.Material.Filled.History" ColorClass="primary" />
+        <IamKpiCard Valor="@_actualesStr" Label="Actuales" Subtexto="Passwords vigentes" Icon="@Icons.Material.Filled.CheckCircle" ColorClass="success" />
+        <IamKpiCard Valor="@_forzadosStr" Label="Forzados" Subtexto="Cambio obligatorio" Icon="@Icons.Material.Filled.Warning" ColorClass="warning" />
+        <IamKpiCard Valor="@_usuariosStr" Label="Usuarios" Subtexto="Con historial registrado" Icon="@Icons.Material.Filled.People" ColorClass="info" />
+    </div>
 
-    <MudTable @ref="_table" T="HistorialPwdDto" ServerData="@_serverReload" Items="@_items" Hover="true" Breakpoint="Breakpoint.Sm">
+    <div class="content-body">
+        <div class="table-panel">
+            <CrudToolbar ShowSearch="true" SearchLabel="Buscar usuario..."
+                SearchString="@_searchString" SearchStringChanged="@OnSearchChanged"
+                OnRefresh="@Refrescar" ShowCreate="false">
+                <Filtros>
+                    <MudSelect T="bool?" Value="_actualFiltro" ValueChanged="@OnActualChanged" Label="Actual"
+                               Variant="Variant.Outlined" Dense="true" Clearable="true" Class="lista-filtro">
+                        <MudSelectItem T="bool?" Value="@((bool?)true)">Actuales</MudSelectItem>
+                        <MudSelectItem T="bool?" Value="@((bool?)false)">Anteriores</MudSelectItem>
+                    </MudSelect>
+                    <MudSelect T="bool?" Value="_forzadoFiltro" ValueChanged="@OnForzadoChanged" Label="Forzado"
+                               Variant="Variant.Outlined" Dense="true" Clearable="true" Class="lista-filtro">
+                        <MudSelectItem T="bool?" Value="@((bool?)true)">Forzados</MudSelectItem>
+                        <MudSelectItem T="bool?" Value="@((bool?)false)">No forzados</MudSelectItem>
+                    </MudSelect>
+                </Filtros>
+            </CrudToolbar>
+            <div class="table-wrap">
+    <MudTable T="HistorialPwdDto" Items="@_itemsFiltrados" Hover="true" Breakpoint="Breakpoint.Sm">
         <ColGroup>
             <col style="width: 80px;" /><col /><col /><col style="width: 100px;" /><col style="width: 100px;" /><col style="width: 160px;" /><col style="width: 160px;" />
         </ColGroup>
@@ -53,8 +71,8 @@ else
                     @(context.EsForzado ? "Sí" : "No")
                 </MudChip>
             </MudTd>
-            <MudTd DataLabel="Fec. Registro">@context.FecRegistro?.ToLocalTime().ToString("g")</MudTd>
-            <MudTd DataLabel="Fec. Expira">@context.FecExpira?.ToLocalTime().ToString("g")</MudTd>
+            <MudTd DataLabel="Fec. Registro">@context.FecRegistro?.ToString("g")</MudTd>
+            <MudTd DataLabel="Fec. Expira">@context.FecExpira?.ToString("g")</MudTd>
         </RowTemplate>
         <PagerContent>
             <MudTablePager PageSizeOptions="new int[]{10, 25, 50}" />
@@ -66,38 +84,83 @@ else
             </MudText>
         </NoRecordsContent>
     </MudTable>
+            </div>
+        </div>
+    </div>
 
     <MudOverlay Visible="@_loading" />
     @if (_loading)
     {
         <MudProgressCircular Indeterminate="true" Class="mt-4" />
     }
-</MudContainer>
+</div>
 }
 
 @code {
-    private MudTable<HistorialPwdDto> _table = default!;
-    private IEnumerable<HistorialPwdDto> _items = [];
+    private List<HistorialPwdDto> _items = [];
     private bool _loading;
     private int _totalCount;
     private string _totalCountStr = "0";
     private string _actualesStr = "0";
     private string _forzadosStr = "0";
     private string _usuariosStr = "0";
+    private string _searchString = "";
+    private bool? _actualFiltro;
+    private bool? _forzadoFiltro;
 
     protected override async Task OnInitializedAsync()
     {
-        if (!Auth.TienePermiso("HISTORIAL_PWD_VER")) return;
+        if (!Auth.TienePermiso("HISTORIALPWD_VER")) return;
         await LoadKpis();
+    }
+
+    // S85 · D4 — buscador, actual y forzado se aplican en memoria sobre la lista cargada
+    private List<HistorialPwdDto> _itemsFiltrados
+    {
+        get
+        {
+            var filtrados = _items;
+            if (!string.IsNullOrWhiteSpace(_searchString))
+            {
+                var s = _searchString.Trim();
+                filtrados = filtrados.Where(h =>
+                    (h.UsuarioNombre ?? string.Empty).Contains(s, StringComparison.OrdinalIgnoreCase)).ToList();
+            }
+            if (_actualFiltro is bool actual)
+                filtrados = filtrados.Where(h => h.EsActual == actual).ToList();
+            if (_forzadoFiltro is bool forzado)
+                filtrados = filtrados.Where(h => h.EsForzado == forzado).ToList();
+            return filtrados;
+        }
+    }
+
+    private void OnSearchChanged(string value)
+    {
+        _searchString = value;
+        StateHasChanged();
+    }
+
+    private void OnActualChanged(bool? actual)
+    {
+        _actualFiltro = actual;
+        StateHasChanged();
+    }
+
+    private void OnForzadoChanged(bool? forzado)
+    {
+        _forzadoFiltro = forzado;
+        StateHasChanged();
     }
 
     private async Task LoadKpis()
     {
+        _loading = true;
         try
         {
             var data = await Api.GetAsync<List<HistorialPwdDto>>("api/historialpwd");
             if (data is not null)
             {
+                _items = data;
                 _totalCount = data.Count;
                 _totalCountStr = _totalCount.ToString();
                 _actualesStr = data.Count(h => h.EsActual).ToString();
@@ -109,29 +172,11 @@ else
         {
             Snackbar.Add(Api.LastError ?? $"Error al cargar KPIs: {ex.Message}", Severity.Error);
         }
-    }
-
-    private async Task<TableData<HistorialPwdDto>> _serverReload(TableState state, CancellationToken ct)
-    {
-        _loading = true;
-        try
-        {
-            var response = await Api.GetAsync<PagedResponse<HistorialPwdDto>>(
-                $"api/historialpwd/page?pageNumber={state.Page + 1}&pageSize={state.PageSize}");
-            if (response != null)
-            {
-                _items = response.Items;
-                return new TableData<HistorialPwdDto> { Items = response.Items, TotalItems = response.TotalCount };
-            }
-        }
-        catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error al cargar: {ex.Message}", Severity.Error); }
         finally { _loading = false; }
-        return new TableData<HistorialPwdDto> { Items = [], TotalItems = 0 };
     }
 
     private async Task Refrescar()
     {
         await LoadKpis();
-        if (_table is not null) await _table.ReloadServerData();
     }
 }

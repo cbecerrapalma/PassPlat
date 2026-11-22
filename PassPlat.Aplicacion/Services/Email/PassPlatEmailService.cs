@@ -25,7 +25,6 @@ public class PassPlatEmailService : IPassPlatEmailService
     private readonly IEmailTemplateStoreService _templateStore;
     private readonly ILogger<PassPlatEmailService> _logger;
     private readonly CBP.Logging.Interfaces.ILoggerService _olog;
-    private readonly IOptions<MfaOptions> _mfaOptions;
 
     public PassPlatEmailService(
         IEmailAccountResolverService accountResolver,
@@ -35,8 +34,7 @@ public class PassPlatEmailService : IPassPlatEmailService
         IUnitOfWorkAsync uow,
         IEmailTemplateStoreService templateStore,
         ILogger<PassPlatEmailService> logger,
-        CBP.Logging.Interfaces.ILoggerService olog,
-        IOptions<MfaOptions> mfaOptions)
+        CBP.Logging.Interfaces.ILoggerService olog)
         {
             _accountResolver = accountResolver;
             _emailLogRepo = emailLogRepo;
@@ -46,114 +44,11 @@ public class PassPlatEmailService : IPassPlatEmailService
             _templateStore = templateStore;
             _logger = logger;
             _olog = olog;
-            _mfaOptions = mfaOptions;
         }
 
     public async Task InvalidateCacheAsync(CancellationToken ct = default)
     {
         await _templateStore.InvalidateAllCacheAsync(ct);
-    }
-
-    public async Task<Result<EmailResult>> SendPasswordResetAsync(string toEmail, string userName, string resetLink, CancellationToken ct = default)
-    {
-        var vars = new Dictionary<string, object?>
-        {
-            ["UserName"] = userName,
-            ["ResetLink"] = resetLink,
-            ["ExpiraMinutos"] = 60
-        };
-        return await SendFromTemplateAsync("password-reset", toEmail, vars, ct: ct);
-    }
-
-    public async Task<Result<EmailResult>> SendMfaCodeAsync(string toEmail, string userName, string code, CancellationToken ct = default)
-    {
-        var vars = new Dictionary<string, object?>
-        {
-            ["UserName"] = userName,
-            ["MfaCode"] = code,
-            ["ExpiraMinutos"] = _mfaOptions.Value.TiempoValidezCodigoMFA
-        };
-        return await SendFromTemplateAsync("mfa-code", toEmail, vars, ct: ct);
-    }
-
-    public async Task<Result<EmailResult>> SendWelcomeAsync(string toEmail, string userName, string appName, string loginUrl, CancellationToken ct = default)
-    {
-        var vars = new Dictionary<string, object?>
-        {
-            ["UserName"] = userName,
-            ["AppName"] = appName,
-            ["LoginUrl"] = loginUrl
-        };
-        return await SendFromTemplateAsync("welcome", toEmail, vars, ct: ct);
-    }
-
-    public async Task<Result<EmailResult>> SendSecurityAlertAsync(string toEmail, string userName, string alertMessage, string ip, CancellationToken ct = default)
-    {
-        var vars = new Dictionary<string, object?>
-        {
-            ["UserName"] = userName,
-            ["AlertMessage"] = alertMessage,
-            ["IP"] = ip,
-            ["FechaHora"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
-        };
-        return await SendFromTemplateAsync("security-alert", toEmail, vars, ct: ct);
-    }
-
-    public async Task<Result<EmailResult>> SendAccountLockedAsync(string toEmail, string userName, int minutes, CancellationToken ct = default)
-    {
-        var vars = new Dictionary<string, object?>
-        {
-            ["UserName"] = userName,
-            ["Minutes"] = minutes
-        };
-        return await SendFromTemplateAsync("account-locked", toEmail, vars, ct: ct);
-    }
-
-    public async Task<Result<EmailResult>> SendPasswordChangedAsync(string toEmail, string userName, string tipoCambio, CancellationToken ct = default)
-    {
-        var vars = new Dictionary<string, object?>
-        {
-            ["UserName"] = userName,
-            ["TipoCambio"] = tipoCambio,
-            ["FechaHora"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
-        };
-        return await SendFromTemplateAsync("password-changed", toEmail, vars, ct: ct);
-    }
-
-    public async Task<Result<EmailResult>> SendNotificationAsync(string templateCode, string toEmail, string userName, IReadOnlyDictionary<string, object?>? extraVariables = null, CancellationToken ct = default)
-    {
-        var vars = new Dictionary<string, object?>
-        {
-            ["UserName"] = userName,
-            ["FechaHora"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
-        };
-        if (extraVariables != null)
-        {
-            foreach (var kv in extraVariables)
-                vars[kv.Key] = kv.Value;
-        }
-        return await SendFromTemplateAsync(templateCode, toEmail, vars, ct: ct);
-    }
-
-    public async Task<Result<EmailResult>> SendFromTemplateAsync(string templateCode, string toEmail, IReadOnlyDictionary<string, object?> variables, string? accountGroup = null, CancellationToken ct = default)
-    {
-        var subjectResult = await _templateStore.RenderSubjectAsync(templateCode, variables, ct: ct);
-        if (subjectResult.IsFailure)
-            return Result<EmailResult>.Failure(subjectResult.Error!);
-
-        var bodyResult = await _templateStore.RenderBodyAsync(templateCode, variables, ct: ct);
-        if (bodyResult.IsFailure)
-            return Result<EmailResult>.Failure(bodyResult.Error!);
-
-        var templateResult = await _templateRepo.ObtenerPorNombreCulturaAsync(templateCode, "es", null, ct);
-        var idTemplate = templateResult.IsSuccess ? templateResult.Value?.Id : null;
-
-        return await SendEmailAsync(toEmail, subjectResult.Value, bodyResult.Value, true, null, null, null, ct, null, null, null, idTemplate);
-    }
-
-    public async Task<Result<EmailResult>> SendRawAsync(string toEmail, string subject, string body, bool isHtml = true, string? accountGroup = null, CancellationToken ct = default)
-    {
-        return await SendEmailAsync(toEmail, subject, body, isHtml, null, null, null, ct, null, null, null, null);
     }
 
     public async Task<Result<EmailResult>> SendFromJobAsync(EmailJob job, CancellationToken ct = default)
@@ -209,10 +104,11 @@ public class PassPlatEmailService : IPassPlatEmailService
             EmailJobKind.OAuthConsentExpired => "oauth-consent-expired",
             EmailJobKind.SessionRevoked => "session-revoked",
             EmailJobKind.SecurityNotification => "security-notification",
+            EmailJobKind.ApiPlantilla => null, // S78: templateCode viene en Extra["TemplateCode"], no se mapea aquí
             _ => null
         };
 
-        if (templateCode == null)
+        if (string.IsNullOrWhiteSpace(templateCode))
             return Result<EmailResult>.Failure("UNKNOWN_KIND", $"Tipo de email desconocido: {job.Kind}");
 
         var templateResult = await _templateRepo.ObtenerPorNombreCulturaAsync(templateCode, "es", job.IdTenant, ct);
@@ -266,19 +162,29 @@ public class PassPlatEmailService : IPassPlatEmailService
         if (bodyResult.IsFailure)
             return Result<EmailResult>.Failure(bodyResult.Error!);
 
+        var plainText = await RenderPlainTextAsync(templateCode, vars, ct);
+
         var extraWithKind = new Dictionary<string, object?>(job.Extra)
         {
             ["__EmailJobKind"] = job.Kind.ToString()
         };
         var extraJson = JsonSerializer.Serialize(extraWithKind);
 
-        return await SendEmailAsync(resolvedEmail, subjectResult.Value, bodyResult.Value, true, job.IdTenant, job.IdUsuario, job.IdApp, ct, job.EmailLogId, job.CorrelationId, extraJson, idTemplate);
+        return await SendEmailAsync(resolvedEmail, subjectResult.Value, bodyResult.Value, true, job.IdTenant, job.IdUsuario, job.IdApp, ct, job.EmailLogId, job.CorrelationId, extraJson, idTemplate, plainText);
+    }
+
+    // S62.1: el texto plano es opcional; si falla o la plantilla no lo tiene, el correo va solo en HTML.
+    private async Task<string?> RenderPlainTextAsync(string templateCode, IReadOnlyDictionary<string, object?> variables, CancellationToken ct)
+    {
+        var textResult = await _templateStore.RenderTextAsync(templateCode, variables, ct: ct);
+        return textResult is { IsSuccess: true } ? textResult.Value : null;
     }
 
     private async Task<Result<EmailResult>> SendEmailAsync(
         string toEmail, string subject, string body, bool isHtml,
         int? idTenant, int? idUsuario, int? idApp, CancellationToken ct,
-        long? existingLogId = null, string? correlationId = null, string? extraJson = null, int? idTemplate = null)
+        long? existingLogId = null, string? correlationId = null, string? extraJson = null, int? idTemplate = null,
+        string? plainText = null)
     {
         try
         {
@@ -305,6 +211,9 @@ public class PassPlatEmailService : IPassPlatEmailService
 
             var emailService = new EmailService(emailSettings);
             var message = new EmailMessage(toEmail, subject, body, isHtml);
+            // S62.1: versión en texto plano (multipart/alternative) cuando la plantilla la tiene.
+            if (!string.IsNullOrWhiteSpace(plainText))
+                message.PlainTextBody = plainText;
 
             try
             {

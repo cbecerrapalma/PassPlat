@@ -37,10 +37,6 @@ public class EmailTemplatesController : BaseApiController
     public async Task<IActionResult> GetByNombreCultura(string nombre, string cultura, [FromQuery] int? idTenant, CancellationToken ct)
         => FromResultQuery(await _service.ObtenerPorNombreCulturaAsync(nombre, cultura, idTenant, ct));
 
-    [HttpGet("categoria/{categoria}")]
-    public async Task<IActionResult> GetByCategoria(string categoria, CancellationToken ct)
-        => FromResultQuery(await _service.ObtenerPorCategoriaAsync(categoria, ct));
-
     [HttpGet("tenant/{idTenant}")]
     public async Task<IActionResult> GetByTenant(int idTenant, CancellationToken ct)
         => FromResultQuery(await _service.ObtenerPorTenantAsync(idTenant, ct));

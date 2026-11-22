@@ -56,7 +56,7 @@ public class ConfigTenantRepository : RepositoryAsync<ConfigTenant>, IConfigTena
             }
             return Result<ConfigTenant?>.Success(entity, allowNull: true);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<ConfigTenant?>.Failure("DB_ERROR", ex.Message);
         }
@@ -72,7 +72,7 @@ public class ConfigTenantRepository : RepositoryAsync<ConfigTenant>, IConfigTena
             DbSet.Add(config);
             return Result<ConfigTenant>.Success(config);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<ConfigTenant>.Failure("DB_ERROR", ex.Message);
         }
@@ -93,7 +93,7 @@ public class ConfigTenantRepository : RepositoryAsync<ConfigTenant>, IConfigTena
             EmitCacheEvent(LoggingEvents.CacheInvalidation, LoggingCacheResults.Invalidated, LoggingSources.Memory, BuildKey(idTenant), idTenant, nameof(ActualizarPepperVersion), sw);
             return Result.Success();
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result.Failure("DB_ERROR", ex.Message);
         }

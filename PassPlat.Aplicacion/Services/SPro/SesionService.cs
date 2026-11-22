@@ -1,4 +1,5 @@
 using CBP.Results;
+using CBP.Results.Errors;
 using CBP.Services.Abstractions;
 using CBP.Services.Async;
 using PassPlat.Aplicacion.Dtos.Core;
@@ -15,21 +16,24 @@ public interface ISesionService : IServiceAsync<Sesion, SesionDto>
     Task<Result<RevocarSesionesResult>> RevocarTodasAsync(int idUsuario, int idTenant, Guid? idSesionExcluir, CancellationToken ct = default);
     Task<Result> RevocarSesionAsync(Guid idSesion, CancellationToken ct = default);
     Task<Result<IReadOnlyList<SesionDto>>> ObtenerSesionesActivasAsync(int idUsuario, int idTenant, CancellationToken ct = default);
+    Task<Result<IReadOnlyList<SesionDto>>> ObtenerSesionesVisiblesAsync(int idSolicitante, int idUsuario, int idTenant, CancellationToken ct = default);
     Task<Result<IReadOnlyList<SesionDto>>> ObtenerSesionesActivasTenantAsync(int idTenant, CancellationToken ct = default);
     Task<Result<int>> RevocarTodasPorTenantAsync(int idTenant, CancellationToken ct = default);
-    Task<Result<int>> ContarSesionesActivasAsync(int idUsuario, int idTenant, CancellationToken ct = default);
-    Task<Result<int>> ContarSesionesActivasPorTenantAsync(int idTenant, CancellationToken ct = default);
-    Task<Result<SesionDto?>> ObtenerPorIdTokenExtAsync(string idTokenExt, CancellationToken ct = default);
-    Task<Result<SesionDto?>> ObtenerPorHashRefreshAsync(string hashRefresh, CancellationToken ct = default);
-    Task<Result<bool>> IntentarRotarHashRefreshAsync(Guid idSesion, string? hashRefreshEsperado, string? nuevoHashRefresh, DateTime nuevaFecExpira, CancellationToken ct = default);
 }
 
 public class SesionService : ServiceAsync<Sesion, SesionDto>, ISesionService
 {
     private readonly SesionRepository _repo;
+    private readonly IUsuarioTenantRepository _usuarioTenantRepo;
+    private readonly CBP.Data.Abstractions.IUnitOfWorkAsync _uow;
 
-    public SesionService(SesionRepository repo, AutoMapper.IMapper mapper)
-        : base(repo, mapper) => _repo = repo;
+    public SesionService(SesionRepository repo, AutoMapper.IMapper mapper, IUsuarioTenantRepository usuarioTenantRepo, CBP.Data.Abstractions.IUnitOfWorkAsync uow)
+        : base(repo, mapper)
+    {
+        _repo = repo;
+        _usuarioTenantRepo = usuarioTenantRepo;
+        _uow = uow;
+    }
 
     public async Task<Result<CrearSesionResult>> CrearSesionAsync(int idUsuario, int idTenant, int idApp, string idTokenExt, DateTime fecExpira, string? hashRefresh, int? idDisp, int? idIP, Guid? idSesionPadre, CancellationToken ct = default)
     {
@@ -47,6 +51,8 @@ public class SesionService : ServiceAsync<Sesion, SesionDto>, ISesionService
     {
         var repoResult = await _repo.RevocarSesionAsync(idSesion, ct);
         if (repoResult.IsFailure) return Result.Failure(repoResult.Error!);
+        // S116 · D4 — el repositorio solo marca la entidad; este servicio es el dueño del commit (el controlador no guarda)
+        await _uow.SaveChangesAsync(ct);
         return Result.Success();
     }
 
@@ -56,6 +62,19 @@ public class SesionService : ServiceAsync<Sesion, SesionDto>, ISesionService
         if (sesionesResult.IsFailure) return Result<IReadOnlyList<SesionDto>>.Failure(sesionesResult.Error!);
         var dtos = Mapper.Map<IReadOnlyList<SesionDto>>(sesionesResult.Value);
         return Result<IReadOnlyList<SesionDto>>.Success(dtos);
+    }
+
+    // S69 · D1 — Visibilidad de sesiones para otro usuario del tenant
+    public async Task<Result<IReadOnlyList<SesionDto>>> ObtenerSesionesVisiblesAsync(int idSolicitante, int idUsuario, int idTenant, CancellationToken ct = default)
+    {
+        if (idSolicitante != idUsuario)
+        {
+            var resMem = await _usuarioTenantRepo.ObtenerActivoPorTenantAsync(idUsuario, idTenant, ct);
+            if (resMem.IsFailure) return Result<IReadOnlyList<SesionDto>>.Failure(resMem.Error!);
+            if (resMem.Value is null) return Result<IReadOnlyList<SesionDto>>.Failure(CommonErrors.Authorization.Forbidden("sesiones del usuario"));
+        }
+
+        return await ObtenerSesionesActivasAsync(idUsuario, idTenant, ct);
     }
 
     // ETAPA 5: sesiones activas de todo el tenant para administración
@@ -79,40 +98,5 @@ public class SesionService : ServiceAsync<Sesion, SesionDto>, ISesionService
     {
         var result = await _repo.RevocarTodasPorTenantAsync(idTenant, ct);
         return result.IsFailure ? Result<int>.Failure(result.Error!) : Result<int>.Success(result.Value);
-    }
-
-    public async Task<Result<int>> ContarSesionesActivasAsync(int idUsuario, int idTenant, CancellationToken ct = default)
-    {
-        var countResult = await _repo.ContarSesionesActivasAsync(idUsuario, idTenant, ct);
-        if (countResult.IsFailure) return Result<int>.Failure(countResult.Error!);
-        return Result<int>.Success(countResult.Value);
-    }
-
-    public async Task<Result<int>> ContarSesionesActivasPorTenantAsync(int idTenant, CancellationToken ct = default)
-    {
-        var countResult = await _repo.ContarSesionesActivasPorTenantAsync(idTenant, ct);
-        if (countResult.IsFailure) return Result<int>.Failure(countResult.Error!);
-        return Result<int>.Success(countResult.Value);
-    }
-
-    public async Task<Result<SesionDto?>> ObtenerPorIdTokenExtAsync(string idTokenExt, CancellationToken ct = default)
-    {
-        var sesionResult = await _repo.ObtenerPorIdTokenExtAsync(idTokenExt, ct);
-        if (sesionResult.IsFailure) return Result<SesionDto?>.Failure(sesionResult.Error!);
-        var dto = sesionResult.Value != null ? Mapper.Map<SesionDto>(sesionResult.Value) : null;
-        return Result<SesionDto?>.Success(dto, allowNull: true);
-    }
-
-    public async Task<Result<SesionDto?>> ObtenerPorHashRefreshAsync(string hashRefresh, CancellationToken ct = default)
-    {
-        var sesionResult = await _repo.ObtenerPorHashRefreshAsync(hashRefresh, ct);
-        if (sesionResult.IsFailure) return Result<SesionDto?>.Failure(sesionResult.Error!);
-        var dto = sesionResult.Value != null ? Mapper.Map<SesionDto>(sesionResult.Value) : null;
-        return Result<SesionDto?>.Success(dto, allowNull: true);
-    }
-
-    public async Task<Result<bool>> IntentarRotarHashRefreshAsync(Guid idSesion, string? hashRefreshEsperado, string? nuevoHashRefresh, DateTime nuevaFecExpira, CancellationToken ct = default)
-    {
-        return await _repo.IntentarRotarHashRefreshAsync(idSesion, hashRefreshEsperado, nuevoHashRefresh, nuevaFecExpira, ct);
     }
 }

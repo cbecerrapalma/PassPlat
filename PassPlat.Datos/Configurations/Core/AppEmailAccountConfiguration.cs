@@ -16,7 +16,7 @@ public class AppEmailAccountConfiguration : IEntityTypeConfiguration<AppEmailAcc
         builder.Property(e => e.IdEmailAccount).IsRequired();
         builder.Property(e => e.EsPredeterminada).HasDefaultValue(false).IsRequired();
         builder.Property(e => e.Activo).HasDefaultValue(true).IsRequired();
-        builder.Property(e => e.FecCrea).HasDefaultValueSql("sysutcdatetime()").IsRequired();
+        builder.Property(e => e.FecCrea).HasDefaultValueSql("sysdatetime()").IsRequired();
 
         builder.HasOne(e => e.App)
             .WithMany(a => a.AppEmailAccounts)

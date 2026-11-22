@@ -1,2 +1,0 @@
-No se ha podido aplicar el perfil de inicio "none".
-No existe ningún perfil de inicio con el nombre "none".

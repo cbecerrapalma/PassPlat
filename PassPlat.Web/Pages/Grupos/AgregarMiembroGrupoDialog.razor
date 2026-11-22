@@ -1,56 +1,53 @@
 @inject ApiClient Api
 @inject ISnackbar Snackbar
 
-<MudDialog Options="_dialogOptions">
+<MudDialog Options="@OpcionesDialogo.Dialogo(TamanoDialogo.Compacto)" Class="dialogo-formulario">
     <TitleContent>
-        <div class="d-flex align-center gap-2">
-            <MudAvatar Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled">
-                <MudIcon Icon="@Icons.Material.Filled.PersonAdd" Size="Size.Small" />
-            </MudAvatar>
-            <MudText Typo="Typo.h6">Agregar Miembro a Grupo</MudText>
-        </div>
+        <TituloDialogo Icono="@Icons.Material.Filled.PersonAdd" Texto="Agregar Miembro a Grupo" />
     </TitleContent>
     <DialogContent>
-        <MudText Typo="Typo.caption" Class="text-secondary mb-2 d-block">
-            Agregue un usuario al grupo <MudChip T="string" Size="Size.Small" Color="Color.Primary" Class="ml-1">@Grupo?.Nombre</MudChip>
-        </MudText>
+        <AlertaErrorDialogo Mensaje="@_errorServidor" />
+        <MudForm @ref="_form">
+        <div class="dialogo-campos">
+            <MudText Typo="Typo.caption" Class="text-secondary d-block">
+                Agrega un usuario al grupo <MudChip T="string" Size="Size.Small" Color="Color.Primary" Class="ml-1">@Grupo?.Nombre</MudChip>
+            </MudText>
 
-        <MudTextField @bind-Value="_busqueda" Label="Buscar usuario..." Variant="Variant.Outlined" Class="mb-3"
-            Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
-            Immediate="true" Clearable="true" />
+            <MudTextField @bind-Value="_busqueda" Label="Buscar usuario..." Variant="Variant.Outlined"
+                Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                Immediate="true" Clearable="true" />
 
-        <MudSelect T="UsuarioDto" Label="Usuario" @bind-Value="_usuarioSeleccionado" Required="true"
-            Variant="Variant.Outlined" Class="mb-3" ToStringFunc="@(u => u?.NomUsuario ?? string.Empty)"
-            Error="@(_submitted && _usuarioSeleccionado is null)" ErrorText="Seleccione un usuario"
-            Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Person">
-            @foreach (var u in _usuariosFiltrados)
-            {
-                <MudSelectItem Value="u">
-                    <div class="d-flex align-center" style="gap:8px;">
-                        <MudAvatar Size="Size.Small" Color="Color.Info">
-                            <MudText Typo="Typo.caption">@(u.Nombre[..Math.Min(2, u.Nombre.Length)])</MudText>
-                        </MudAvatar>
-                        <div>
-                            <MudText Typo="Typo.body2" Class="font-weight-bold">@u.Nombre @u.Apellido</MudText>
-                            <MudText Typo="Typo.caption" Class="text-secondary">@u.NomUsuario · @u.Email</MudText>
+            <MudSelect T="UsuarioDto" Label="Usuario" @bind-Value="_usuarioSeleccionado" Required="true"
+                Variant="Variant.Outlined" ToStringFunc="@(u => u?.NomUsuario ?? string.Empty)"
+                RequiredError="Selecciona un usuario"
+                Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Person">
+                @foreach (var u in _usuariosFiltrados)
+                {
+                    <MudSelectItem Value="u">
+                        <div class="d-flex align-center" style="gap:8px;">
+                            <MudAvatar Size="Size.Small" Color="Color.Info">
+                                <MudText Typo="Typo.caption">@(u.Nombre[..Math.Min(2, u.Nombre.Length)])</MudText>
+                            </MudAvatar>
+                            <div>
+                                <MudText Typo="Typo.body2" Class="font-weight-bold">@u.Nombre @u.Apellido</MudText>
+                                <MudText Typo="Typo.caption" Class="text-secondary">@u.NomUsuario · @u.Email</MudText>
+                            </div>
                         </div>
-                    </div>
-                </MudSelectItem>
-            }
-        </MudSelect>
+                    </MudSelectItem>
+                }
+            </MudSelect>
+        </div>
+        </MudForm>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="@(() => MudDialog.Cancel())">Cancelar</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@Save" Disabled="@(_usuarioSeleccionado is null || _saving)">
-            @(_saving ? "Agregando..." : "Agregar Miembro")
-        </MudButton>
+        <BotonGuardarDialogo Texto="Agregar" TextoGuardando="Agregando…" Guardando="@_saving" OnClick="@Save" />
     </DialogActions>
 </MudDialog>
 
 @code {
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
-
-    private DialogOptions _dialogOptions = new() { FullWidth = true, CloseButton = true };
+    private string? _errorServidor;
 
     [Parameter] public GrupoDto? Grupo { get; set; }
 
@@ -58,7 +55,7 @@
     private UsuarioDto? _usuarioSeleccionado;
     private string _busqueda = "";
     private bool _saving;
-    private bool _submitted;
+    private MudForm _form = null!;
 
     private List<UsuarioDto> _usuariosFiltrados =>
         string.IsNullOrWhiteSpace(_busqueda)
@@ -67,25 +64,27 @@
                 u.Nombre.Contains(_busqueda, StringComparison.OrdinalIgnoreCase) ||
                 u.Apellido.Contains(_busqueda, StringComparison.OrdinalIgnoreCase) ||
                 u.NomUsuario.Contains(_busqueda, StringComparison.OrdinalIgnoreCase) ||
-                u.Email.Contains(_busqueda, StringComparison.OrdinalIgnoreCase))
+                (u.Email?.Contains(_busqueda, StringComparison.OrdinalIgnoreCase) ?? false))
                 .ToList();
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            _usuarios = await Api.GetAsync<List<UsuarioDto>>("api/usuarios") ?? [];
+            // S93 · D3 — los miembros activos del tenant del grupo (UsuarioTenant), el mismo criterio que valida AgregarMiembroAsync; un no-sistema queda en su tenant.
+            var pagina = await Api.GetAsync<PagedResponse<UsuarioDto>>($"api/usuarios/page?pageNumber=1&pageSize=100&miembroDe={Grupo!.IdTenant}");
+            _usuarios = pagina?.Items.ToList() ?? [];
         }
         catch (Exception ex)
         {
-            Snackbar.Add(Api.LastError ?? $"Error al cargar usuarios: {ex.Message}", Severity.Error);
+            _errorServidor = Api.LastError ?? $"Error al cargar usuarios: {ex.Message}";
         }
     }
 
     private async Task Save()
     {
-        _submitted = true;
-        if (_usuarioSeleccionado is null) return;
+        await _form.ValidateAsync();
+        if (!_form.IsValid || _usuarioSeleccionado is null) return;
 
         _saving = true;
         try
@@ -102,11 +101,11 @@
                 MudDialog.Close(DialogResult.Ok(true));
             }
             else
-                Snackbar.Add(Api.LastError ?? "Error al agregar miembro", Severity.Error);
+                _errorServidor = Api.LastError ?? "Error al agregar miembro";
         }
         catch (Exception ex)
         {
-            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+            _errorServidor = Api.LastError ?? $"Error: {ex.Message}";
         }
         finally
         {

@@ -23,4 +23,13 @@ public class EmailProvider
             FecCrea = DateTime.Now
         };
     }
+
+    /// <summary>Edita los datos visibles; el <see cref="Codigo"/> es inmutable.</summary>
+    public void Actualizar(string nombre, string? descripcion, bool activo)
+    {
+        Nombre = nombre;
+        Descripcion = descripcion;
+        Activo = activo;
+        FecMod = DateTime.Now;
+    }
 }

@@ -1,133 +1,137 @@
 @inject ApiClient Api
 @inject ISnackbar Snackbar
 
-<MudDialog Options="_dialogOptions">
+<MudDialog Options="@OpcionesDialogo.Dialogo(TamanoDialogo.Amplio)" Class="dialogo-formulario">
     <TitleContent>
-        <MudText Typo="Typo.h6">@(IsEdit ? "Editar" : "Nueva") Configuración</MudText>
+        <TituloDialogo Icono="@(IsEdit ? Icons.Material.Filled.Edit : Icons.Material.Filled.Add)" Texto="@(IsEdit ? "Editar Configuración" : "Nueva Configuración")" />
     </TitleContent>
     <DialogContent>
-        <MudSelect @bind-Value="_idTenant" @bind-Value:after="() => CargarRolesAsync(_idTenant)" Label="Tenant" Variant="Variant.Outlined" Class="mb-3" Required="true" Disabled="@IsEdit"
-                    Error="@(_submitted && _idTenant == 0)" ErrorText="El tenant es requerido">
-            @foreach (var t in _tenants)
+        <AlertaErrorDialogo Mensaje="@_errorServidor" />
+        <MudForm @ref="_form">
+        <div class="dialogo-campos">
+            <div class="dialogo-fila">
+                <MudSelect @bind-Value="_idTenant" @bind-Value:after="() => CargarRolesAsync(_idTenant)" Label="Tenant" Variant="Variant.Outlined" Required="true" Disabled="@IsEdit"
+                            RequiredError="El tenant es requerido"
+                            Validation="@(new Func<int, string?>(v => v == 0 ? "El tenant es requerido" : null))">
+                    @foreach (var t in _tenants)
+                    {
+                        <MudSelectItem Value="t.Id">@t.Nombre (@t.Codigo)</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudSelect @bind-Value="_idProvIden" @bind-Value:after="CargarInfoProveedor" Label="Proveedor" Variant="Variant.Outlined" Required="true" Disabled="@IsEdit"
+                            RequiredError="El proveedor es requerido"
+                            Validation="@(new Func<int, string?>(v => v == 0 ? "El proveedor es requerido" : null))">
+                    @foreach (var p in _providers)
+                    {
+                        <MudSelectItem Value="p.Id">@p.Nombre (@p.Codigo)</MudSelectItem>
+                    }
+                </MudSelect>
+            </div>
+            <MudTextField @bind-Value="_clientId" Label="Client ID" Variant="Variant.Outlined" Required="true"
+                          RequiredError="El Client ID es requerido" />
+            @if (IsEdit)
             {
-                <MudSelectItem Value="t.Id">@t.Nombre (@t.Codigo)</MudSelectItem>
-            }
-        </MudSelect>
-        <MudSelect @bind-Value="_idProvIden" @bind-Value:after="CargarInfoProveedor" Label="Proveedor" Variant="Variant.Outlined" Class="mb-3" Required="true" Disabled="@IsEdit"
-                    Error="@(_submitted && _idProvIden == 0)" ErrorText="El proveedor es requerido">
-            @foreach (var p in _providers)
-            {
-                <MudSelectItem Value="p.Id">@p.Nombre (@p.Codigo)</MudSelectItem>
-            }
-        </MudSelect>
-        <MudTextField @bind-Value="_clientId" Label="Client ID" Variant="Variant.Outlined" Class="mb-3" Required="true"
-                      Error="@(_submitted && string.IsNullOrWhiteSpace(_clientId))" ErrorText="El Client ID es requerido" />
-        @if (IsEdit)
-        {
-            <MudText Typo="Typo.body2" Class="mb-3">
-                <MudIcon Icon="@(_tieneClientSecret ? Icons.Material.Filled.Lock : Icons.Material.Filled.LockOpen)"
-                         Size="Size.Small" Color="@(_tieneClientSecret ? Color.Success : Color.Warning)" />
-                <span class="ml-1">Client Secret: @(_tieneClientSecret ? "Configurado" : "No configurado")</span>
-                @if (_tieneClientSecret && _fechaCambioSecret.HasValue)
+                <MudText Typo="Typo.body2">
+                    <MudIcon Icon="@(_tieneClientSecret ? Icons.Material.Filled.Lock : Icons.Material.Filled.LockOpen)"
+                             Size="Size.Small" Color="@(_tieneClientSecret ? Color.Success : Color.Warning)" />
+                    <span class="ml-1">Client Secret: @(_tieneClientSecret ? "Configurado" : "No configurado")</span>
+                    @if (_tieneClientSecret && _fechaCambioSecret.HasValue)
+                    {
+                        <span class="ml-2" style="color:var(--mud-palette-grey-default);font-size:0.85em;">
+                            (Actualizado: @_fechaCambioSecret.Value.ToString("dd/MM/yyyy"))
+                        </span>
+                    }
+                    <MudButton OnClick="@(() => _mostrarSecretEditor = !_mostrarSecretEditor)"
+                               Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" Class="ml-2">
+                        @(_mostrarSecretEditor ? "Cancelar" : "Reemplazar")
+                    </MudButton>
+                </MudText>
+                @if (_mostrarSecretEditor)
                 {
-                    <span class="ml-2" style="color:var(--mud-palette-grey-default);font-size:0.85em;">
-                        (Actualizado: @_fechaCambioSecret.Value.ToString("dd/MM/yyyy"))
-                    </span>
+                    <MudTextField @bind-Value="_nuevoClientSecret" Label="Nuevo Client Secret"
+                                  Variant="Variant.Outlined" InputType="InputType.Password" />
                 }
-                <MudButton OnClick="@(() => _mostrarSecretEditor = !_mostrarSecretEditor)"
-                           Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" Class="ml-2">
-                    @(_mostrarSecretEditor ? "Cancelar" : "Reemplazar")
-                </MudButton>
-            </MudText>
-            @if (_mostrarSecretEditor)
-            {
-                <MudTextField @bind-Value="_nuevoClientSecret" Label="Nuevo Client Secret"
-                              Variant="Variant.Outlined" Class="mb-3" InputType="InputType.Password" />
             }
-        }
-        else
-        {
-            <MudTextField @bind-Value="_clientSecret" Label="Client Secret" Variant="Variant.Outlined" Class="mb-3" Required="true" InputType="InputType.Text" />
-        }
-        <MudTextField @bind-Value="_callback" Label="Callback URL" Variant="Variant.Outlined" Class="mb-3" Required="true" HelperText="Ej: /api/auth/externo/{provider}/callback" />
-        <MudTextField @bind-Value="_redirectUri" Label="Redirect URI" Variant="Variant.Outlined" Class="mb-3" HelperText="Debe coincidir con el Callback. Se usará el Callback si se deja vacío" />
-        <MudTextField @bind-Value="_scopes" Label="Scopes" Variant="Variant.Outlined" Class="mb-3" HelperText="Separados por espacio: openid profile email" />
-        <MudSelect @bind-Value="_estado" Label="Estado" Variant="Variant.Outlined" Class="mb-3">
-            <MudSelectItem Value="@((byte)0)">Inactivo</MudSelectItem>
-            <MudSelectItem Value="@((byte)1)">Activo</MudSelectItem>
-            <MudSelectItem Value="@((byte)2)">Revocado</MudSelectItem>
-        </MudSelect>
-        <MudSelect @bind-Value="_rolDefecto" Label="Rol Defecto" Variant="Variant.Outlined" Class="mb-3" HelperText="Rol asignado al usuario al vincularse por primera vez">
-            <MudSelectItem Value="-1">Sin rol</MudSelectItem>
-            @foreach (var r in _roles)
+            else
             {
-                <MudSelectItem Value="r.Id">@r.Nombre</MudSelectItem>
+                <MudTextField @bind-Value="_clientSecret" Label="Client Secret" Variant="Variant.Outlined" Required="@(!IsEdit)" RequiredError="El Client Secret es requerido" InputType="InputType.Text" />
             }
-        </MudSelect>
-        <MudSwitch @bind-Value="_guardarTokens" Color="Color.Primary" Class="mb-2">Guardar Tokens</MudSwitch>
-        <MudSwitch @bind-Value="_permitirAutoLink" Color="Color.Primary" Class="mb-2">Permitir Auto Link</MudSwitch>
-        <MudSwitch @bind-Value="_autoProvisionar" Color="Color.Primary" Class="mb-4">Auto Provisionar</MudSwitch>
+            <MudTextField @bind-Value="_callback" Label="Callback URL" Variant="Variant.Outlined" Required="true" RequiredError="El callback es requerido" HelperText="Ej: /api/auth/externo/{provider}/callback" />
+            <MudTextField @bind-Value="_redirectUri" Label="Redirect URI" Variant="Variant.Outlined" HelperText="Debe coincidir con el Callback. Se usará el Callback si se deja vacío" />
+            <MudTextField @bind-Value="_scopes" Label="Scopes" Variant="Variant.Outlined" HelperText="Separados por espacio: profile email" />
+            @* S126 · D6 — apps a las que sirve; vacío = todas *@
+            <MudSelect T="int" @bind-SelectedValues="_idsApps" MultiSelection="true" Label="Aplicaciones" Variant="Variant.Outlined" HelperText="Vacío = todas las aplicaciones">
+                @foreach (var a in _apps)
+                {
+                    <MudSelectItem Value="a.Id">@a.Nombre (@a.Codigo)</MudSelectItem>
+                }
+            </MudSelect>
+            <div class="dialogo-fila">
+                <MudSelect @bind-Value="_estado" Label="Estado" Variant="Variant.Outlined">
+                    <MudSelectItem Value="@((byte)0)">Inactivo</MudSelectItem>
+                    <MudSelectItem Value="@((byte)1)">Activo</MudSelectItem>
+                    <MudSelectItem Value="@((byte)2)">Revocado</MudSelectItem>
+                </MudSelect>
+                <MudSelect @bind-Value="_rolDefecto" Label="Rol Defecto" Variant="Variant.Outlined" HelperText="Rol asignado al usuario al vincularse por primera vez">
+                    <MudSelectItem Value="-1">Sin rol</MudSelectItem>
+                    @foreach (var r in _roles)
+                    {
+                        <MudSelectItem Value="r.Id">@r.Nombre</MudSelectItem>
+                    }
+                </MudSelect>
+            </div>
+            <div class="dialogo-fila">
+                <MudSwitch @bind-Value="_guardarTokens" Color="Color.Primary">Guardar Tokens</MudSwitch>
+                <MudSwitch @bind-Value="_permitirAutoLink" Color="Color.Primary">Permitir Auto Link</MudSwitch>
+                <MudSwitch @bind-Value="_autoProvisionar" Color="Color.Primary">Auto Provisionar</MudSwitch>
+            </div>
 
-        <MudDivider Class="mb-4" />
-        <MudText Typo="Typo.subtitle2" Class="mb-2" Style="color:var(--mud-palette-primary);">Políticas de Acceso</MudText>
-        <MudSwitch @bind-Value="_permitirLogin" Color="Color.Primary" Class="mb-2">Permitir Login</MudSwitch>
-        <MudSwitch @bind-Value="_permitirCrearUsuario" Color="Color.Primary" Class="mb-2">Permitir Crear Usuario</MudSwitch>
-        <MudSwitch @bind-Value="_permitirVincular" Color="Color.Primary" Class="mb-2">Permitir Vincular</MudSwitch>
-        <MudSwitch @bind-Value="_permitirDesvincular" Color="Color.Primary" Class="mb-2">Permitir Desvincular</MudSwitch>
-        <MudSwitch @bind-Value="_permitirPasswordLocal" Color="Color.Primary" Class="mb-2">Permitir Password Local</MudSwitch>
-        <MudSwitch @bind-Value="_requiereMFALocal" Color="Color.Warning" Class="mb-2">Requerir MFA Local</MudSwitch>
-        <MudSwitch @bind-Value="_obligaMFA" Color="Color.Warning" Class="mb-2">Obligar MFA (proveedor)</MudSwitch>
-        <MudSwitch @bind-Value="_permitirCambioEmail" Color="Color.Primary" Class="mb-2">Permitir Cambio Email</MudSwitch>
-        <MudSwitch @bind-Value="_permitirCambioNombre" Color="Color.Primary" Class="mb-2">Permitir Cambio Nombre</MudSwitch>
-        <MudSwitch @bind-Value="_permitirSincronizarAvatar" Color="Color.Primary" Class="mb-2">Sincronizar Avatar</MudSwitch>
-        <MudSwitch @bind-Value="_permitirSincronizarPerfil" Color="Color.Primary" Class="mb-2">Sincronizar Perfil</MudSwitch>
-        <MudSelect @bind-Value="_frecuenciaSincronizacion" Label="Frecuencia Sincronización" Variant="Variant.Outlined" Class="mb-4"
-                    Disabled="@(!_permitirSincronizarPerfil)" HelperText="Cada cuánto sincronizar datos del perfil desde el proveedor">
-            <MudSelectItem Value="@("Siempre")">Siempre (cada login)</MudSelectItem>
-            <MudSelectItem Value="@("PrimerLogin")">Solo primer inicio de sesión</MudSelectItem>
-            <MudSelectItem Value="@("Diaria")">Una vez al día</MudSelectItem>
-            <MudSelectItem Value="@("Nunca")">Nunca</MudSelectItem>
-        </MudSelect>
+            <div class="dialogo-seccion">Políticas de acceso</div>
+            <div class="dialogo-fila">
+                @* S123 · D8 — solo lo que el login aplica; las demás banderas se envían con su valor guardado *@
+                <MudSwitch @bind-Value="_permitirLogin" Color="Color.Primary">Permitir Login</MudSwitch>
+            </div>
 
-        <MudDivider Class="mb-4" />
-        <MudText Typo="Typo.subtitle2" Class="mb-2" Style="color:var(--mud-palette-primary);">Visualización</MudText>
-        <MudNumericField @bind-Value="_prioridad" Label="Prioridad" Variant="Variant.Outlined" Class="mb-3" Min="0" Max="100" />
-        <MudNumericField @bind-Value="_ordenVisual" Label="Orden Visual" Variant="Variant.Outlined" Class="mb-3" Min="0" />
-        <MudTextField @bind-Value="_logo" Label="Logo URL" Variant="Variant.Outlined" Class="mb-3" HelperText="URL del ícono del proveedor" />
-        <MudTextField @bind-Value="_color" Label="Color" Variant="Variant.Outlined" Class="mb-3" HelperText="Ej: #4285F4" />
-        <MudTextField @bind-Value="_tooltip" Label="Tooltip" Variant="Variant.Outlined" Class="mb-3" HelperText="Texto al pasar el mouse" />
-        <MudTextField @bind-Value="_descripcion" Label="Descripción" Variant="Variant.Outlined" Lines="3" HelperText="Descripción visible para el usuario" />
+            <div class="dialogo-seccion">Visualización</div>
+            <div class="dialogo-fila">
+                <MudNumericField @bind-Value="_prioridad" Label="Prioridad" Variant="Variant.Outlined" Min="0" Max="100" />
+                <MudNumericField @bind-Value="_ordenVisual" Label="Orden Visual" Variant="Variant.Outlined" Min="0" />
+                <MudTextField @bind-Value="_logo" Label="Logo URL" Variant="Variant.Outlined" HelperText="URL del ícono del proveedor" />
+                <MudTextField @bind-Value="_color" Label="Color" Variant="Variant.Outlined" HelperText="Ej: var(--dat-google)" />
+            </div>
+            <MudTextField @bind-Value="_tooltip" Label="Tooltip" Variant="Variant.Outlined" HelperText="Texto al pasar el mouse" />
+            <MudTextField @bind-Value="_descripcion" Label="Descripción" Variant="Variant.Outlined" Lines="3" HelperText="Descripción visible para el usuario" />
 
-        @if (_providerInfo is not null)
-        {
-            <MudDivider Class="mb-4" />
-            <MudText Typo="Typo.subtitle2" Class="mb-2" Style="color:var(--mud-palette-primary);">Configuración OAuth (solo lectura)</MudText>
-            <MudText Typo="Typo.body2" Class="mb-1"><strong>Authorization Endpoint:</strong> @_providerInfo.AuthorizationEndpoint</MudText>
-            <MudText Typo="Typo.body2" Class="mb-1"><strong>Token Endpoint:</strong> @_providerInfo.TokenEndpoint</MudText>
-            <MudText Typo="Typo.body2" Class="mb-1"><strong>JWKS URI:</strong> @_providerInfo.JwksUri</MudText>
-            <MudText Typo="Typo.body2" Class="mb-1"><strong>Issuer:</strong> @_providerInfo.Issuer</MudText>
-            <MudText Typo="Typo.body2" Class="mb-1"><strong>Response Type:</strong> @_providerInfo.ResponseType</MudText>
-            <MudText Typo="Typo.body2" Class="mb-1"><strong>Grant Type:</strong> @_providerInfo.GrantType</MudText>
-            <MudText Typo="Typo.body2" Class="mb-3">
-                <strong>Capacidades:</strong>
-                @( _providerInfo.SoportaPKCE ? "✅ PKCE" : "❌ PKCE" )
-                @( _providerInfo.SoportaRefreshToken ? "✅ Refresh Token" : "❌ Refresh Token" )
-                @( _providerInfo.SoportaMFA ? "✅ MFA" : "❌ MFA" )
-            </MudText>
-        }
+            @if (_providerInfo is not null)
+            {
+                <div class="dialogo-seccion">Configuración OAuth (solo lectura)</div>
+                <div class="readonly-grid">
+                    <div class="readonly-item"><div class="field-label">Authorization Endpoint</div><div class="field-value">@_providerInfo.AuthorizationEndpoint</div></div>
+                    <div class="readonly-item"><div class="field-label">Token Endpoint</div><div class="field-value">@_providerInfo.TokenEndpoint</div></div>
+                    <div class="readonly-item"><div class="field-label">Response Type</div><div class="field-value">@_providerInfo.ResponseType</div></div>
+                    <div class="readonly-item"><div class="field-label">Grant Type</div><div class="field-value">@_providerInfo.GrantType</div></div>
+                    <div class="readonly-item">
+                        <div class="field-label">Capacidades</div>
+                        <div class="field-value">
+                            @( _providerInfo.SoportaPKCE ? "✅ PKCE" : "❌ PKCE" )
+                            @( _providerInfo.SoportaRefreshToken ? "✅ Refresh Token" : "❌ Refresh Token" )
+                            @( _providerInfo.SoportaMFA ? "✅ MFA" : "❌ MFA" )
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+        </MudForm>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="@(() => MudDialog.Cancel())">Cancelar</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@Save" Disabled="@(!CanSave() || _saving)">
-            @(IsEdit ? "Guardar" : "Crear")
-        </MudButton>
+        <BotonGuardarDialogo Texto="@(IsEdit ? "Guardar" : "Crear")" Guardando="@_saving" OnClick="@Save" />
     </DialogActions>
 </MudDialog>
 
 @code {
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
-
-    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+    private string? _errorServidor;
 
     [Parameter] public bool IsEdit { get; set; }
     [Parameter] public ConfProvIdenDto? ConfProvIden { get; set; }
@@ -135,6 +139,8 @@
     private List<TenantDto> _tenants = [];
     private List<ProvIdenDto> _providers = [];
     private List<RolLookupDto> _roles = [];
+    private List<AppDto> _apps = [];
+    private IReadOnlyCollection<int> _idsApps = [];
     private int _idTenant;
     private int _idProvIden;
     private string _clientId = "";
@@ -167,7 +173,7 @@
     private string? _descripcion;
     private ProviderConfigurationInfoDto? _providerInfo;
     private bool _saving;
-    private bool _submitted;
+    private MudForm _form = null!;
     private bool _tieneClientSecret;
     private bool _mostrarSecretEditor;
     private string? _nuevoClientSecret;
@@ -179,6 +185,7 @@
         {
             _tenants = (await Api.GetAsync<List<TenantDto>>("api/tenants")) ?? [];
             _providers = (await Api.GetAsync<List<ProvIdenDto>>("api/providen")) ?? [];
+            _apps = (await Api.GetAsync<List<AppDto>>("api/apps")) ?? [];
         }
         catch { }
 
@@ -214,6 +221,7 @@
             _ordenVisual = ConfProvIden.OrdenVisual;
             _tieneClientSecret = ConfProvIden.TieneClientSecret;
             _fechaCambioSecret = ConfProvIden.FechaCambioSecret;
+            _idsApps = ConfProvIden.IdsApps;
             _logo = ConfProvIden.Logo;
             _color = ConfProvIden.Color;
             _tooltip = ConfProvIden.Tooltip;
@@ -228,8 +236,6 @@
         {
             AuthorizationEndpoint = prov.EndpointAutorizacion,
             TokenEndpoint = prov.EndpointToken,
-            JwksUri = prov.JwksUri,
-            Issuer = prov.UrlIssuer,
             ResponseType = "code",
             GrantType = "authorization_code",
             SoportaPKCE = prov.SoportaPKCE,
@@ -262,13 +268,10 @@
         }
     }
 
-    private bool CanSave() => _idTenant > 0 && _idProvIden > 0 && !string.IsNullOrWhiteSpace(_clientId)
-        && (IsEdit || !string.IsNullOrWhiteSpace(_clientSecret)) && !string.IsNullOrWhiteSpace(_callback);
-
     private async Task Save()
     {
-        _submitted = true;
-        if (!CanSave()) return;
+        await _form.ValidateAsync();
+        if (!_form.IsValid) return;
         _saving = true;
         try
         {
@@ -302,7 +305,8 @@
                     ["logo"] = _logo,
                     ["color"] = _color,
                     ["tooltip"] = _tooltip,
-                    ["descripcion"] = _descripcion
+                    ["descripcion"] = _descripcion,
+                    ["idsApps"] = _idsApps.ToList()
                 };
                 if (_mostrarSecretEditor && !string.IsNullOrWhiteSpace(_nuevoClientSecret))
                     body["clientSecret"] = _nuevoClientSecret;
@@ -314,7 +318,7 @@
                     MudDialog.Close(DialogResult.Ok(true));
                 }
                 else
-                    Snackbar.Add(Api.LastError ?? "Error al actualizar", Severity.Error);
+                    _errorServidor = Api.LastError ?? "Error al actualizar";
             }
             else
             {
@@ -331,19 +335,20 @@
                         permitirSincronizarAvatar = _permitirSincronizarAvatar, permitirSincronizarPerfil = _permitirSincronizarPerfil,
                         frecuenciaSincronizacion = _frecuenciaSincronizacion,
                         prioridad = _prioridad, ordenVisual = _ordenVisual,
-                        logo = _logo, color = _color, tooltip = _tooltip, descripcion = _descripcion });
+                        logo = _logo, color = _color, tooltip = _tooltip, descripcion = _descripcion,
+                        idsApps = _idsApps.ToList() });
                 if (result is not null)
                 {
                     Snackbar.Add("Configuración creada", Severity.Success);
                     MudDialog.Close(DialogResult.Ok(true));
                 }
                 else
-                    Snackbar.Add(Api.LastError ?? "Error al crear", Severity.Error);
+                    _errorServidor = Api.LastError ?? "Error al crear";
             }
         }
         catch (Exception ex)
         {
-            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+            _errorServidor = Api.LastError ?? $"Error: {ex.Message}";
         }
         finally
         {

@@ -1,15 +1,89 @@
 :root {
+    /* Paleta base (la app la sobreescribe con su tema claro/oscuro) */
     --mud-palette-primary: #1e88e5;
     --mud-palette-secondary: #26a69a;
     --mud-palette-error: #ef5350;
     --mud-palette-success: #66bb6a;
     --mud-palette-warning: #ffa726;
     --mud-palette-info: #42a5f5;
+
+    /* ─── S55 · D1 — tokens semanticos ────────────────────────
+       Se derivan de la paleta de MudBlazor, asi que cambian solos al
+       alternar modo claro/oscuro. Ningun color de interfaz va suelto
+       en los .razor: todo pasa por estas variables o por una clase. */
+    --app-surface: var(--mud-palette-surface);
+    --app-surface-raised: var(--mud-palette-background);
+    --app-surface-sunken: var(--mud-palette-background-gray);
+    --app-border: var(--mud-palette-lines-default);
+    --app-border-strong: var(--mud-palette-lines-input);
+    --app-text: var(--mud-palette-text-primary);
+    --app-text-muted: var(--mud-palette-text-secondary);
+    --app-accent: var(--mud-palette-primary);
+    --app-accent-soft: var(--mud-palette-action-default-hover);
+    --app-radius-sm: 6px;
+    --app-radius-md: 10px;
+    --app-radius-lg: 14px;
+    --app-space-1: 4px;
+    --app-space-2: 8px;
+    --app-space-3: 12px;
+    --app-space-4: 16px;
+    --app-space-5: 24px;
+    --app-shadow-1: 0 1px 2px rgba(0, 0, 0, .10);
+    --app-shadow-2: 0 4px 16px rgba(0, 0, 0, .12);
+    --app-font-mono: 'JetBrains Mono', Consolas, monospace;
+    --app-font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    /* S55 · D2 — paleta de datos (graficos, estados y series): los .razor ya no llevan
+       colores hex, solo estas variables. */
+    --dat-verde: #4CAF50;
+    --dat-azul: #1976d2;
+    --dat-blanco: #fff;
+    --dat-ambar: #fbc02d;
+    --dat-rojo: #d32f2f;
+    --dat-verde-osc: #388e3c;
+    --dat-indigo: #818cf8;
+    --dat-purpura: #7b1fa2;
+    --dat-naranja: #ff7043;
+    --dat-teal: #00796b;
+    --dat-marron: #5d4037;
+    --dat-rosa: #c2185b;
+    --dat-gris-azul: #455a64;
+    --dat-google: #4285F4;
+    --dat-esmeralda: #34d399;
+    --dat-verde-claro: #22c55e;
+    --dat-gris: #9e9e9e;
+    --dat-lila: #a78bfa;
+    --dat-rosa-claro: #f472b6;
+    --dat-naranja-claro: #f59e0b;
+    --dat-naranja-vivo: #fb923c;
+    --dat-azul-claro: #60a5fa;
+
 }
 
 /* ─── Global ─────────────────────────────── */
 html, body {
     scroll-behavior: smooth;
+}
+
+/* S55 · U14 + S72 — la rueda no se escapa del menú ni de las listas desplegables.
+   Las tablas no llevan contain: MudTable tiene overflow-y:auto y bloquearía el desplazamiento de la página. */
+.mud-drawer,
+.mud-drawer .mud-drawer-content > .mud-navmenu,
+.mud-popover .mud-list,
+.login-card .mud-list {
+    overscroll-behavior: contain;
+}
+
+/* ─── S55 · D7 — foco visible para teclado ─────────────────── */
+a:focus-visible,
+button:focus-visible,
+.mud-button:focus-visible,
+.mud-icon-button:focus-visible,
+.mud-text-field input:focus-visible,
+.mud-input:focus-visible,
+[tabindex]:focus-visible {
+    outline: 2px solid var(--app-accent);
+    outline-offset: 2px;
+    border-radius: 4px;
 }
 
 *, *::before, *::after {
@@ -52,11 +126,6 @@ html, body {
 
 ::-webkit-scrollbar-thumb:hover {
     background: rgba(0,0,0,0.22);
-}
-
-.mud-drawer-open-responsive-md-right > .mud-drawer::-webkit-scrollbar-thumb,
-.mud-drawer-open-responsive-md-left > .mud-drawer::-webkit-scrollbar-thumb {
-    background: rgba(0,0,0,0.08);
 }
 
 /* Page content animation */
@@ -106,21 +175,23 @@ html, body {
 
 /* ─── Cards & Paper ────────────────────────── */
 .mud-card, .mud-paper[raised] {
-    border-radius: 10px !important;
+    border-radius: 10px;
     transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
                 box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-                border-color 0.2s ease !important;
+                border-color 0.2s ease;
 }
 
 .mud-card:hover {
-    box-shadow: 0 4px 20px rgba(0,0,0,0.07) !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.07);
     transform: translateY(-1px);
 }
 
+/* S59 · D6 — gana a las utilidades de espaciado y flex de MudBlazor (.pa-3, .d-flex, .ma-2...), que priorizan la misma propiedad. */
 .mud-card-header {
     padding: 16px 20px 0 !important;
 }
 
+/* S59 · D6 — gana a las utilidades de espaciado y flex de MudBlazor (.pa-3, .d-flex, .ma-2...), que priorizan la misma propiedad. */
 .mud-card-content {
     padding: 12px 20px 20px !important;
 }
@@ -149,15 +220,16 @@ html, body {
     background: rgba(30,136,229,0.04);
 }
 
+/* S59 · D6 — gana a las utilidades de espaciado y flex de MudBlazor (.pa-3, .d-flex, .ma-2...), que priorizan la misma propiedad. */
 .mud-table-head .mud-table-cell {
-    font-weight: 700 !important;
-    font-size: 0.72rem !important;
+    font-weight: 700;
+    font-size: 0.72rem;
     letter-spacing: 0.5px;
     text-transform: uppercase;
-    color: var(--mud-palette-text-secondary) !important;
+    color: var(--mud-palette-text-secondary);
     padding-top: 14px !important;
     padding-bottom: 14px !important;
-    border-bottom: 2px solid rgba(30,136,229,0.12) !important;
+    border-bottom: 2px solid rgba(30,136,229,0.12);
 }
 
 .mud-table-body .mud-table-row {
@@ -174,7 +246,7 @@ html, body {
 }
 
 .mud-table-body .mud-table-row.selected {
-    background: rgba(30,136,229,0.08) !important;
+    background: rgba(30,136,229,0.08);
     box-shadow: inset 3px 0 0 var(--mud-palette-primary);
 }
 
@@ -190,15 +262,14 @@ html, body {
     background: rgba(30,136,229,0.09);
 }
 
+/* S59 · D6 — gana a las utilidades de espaciado y flex de MudBlazor (.pa-3, .d-flex, .ma-2...), que priorizan la misma propiedad. */
 .mud-table-cell {
     padding: 10px 16px !important;
-    font-size: 0.85rem !important;
-}
-
-/* Table row avatar */
+    font-size: 0.85rem;
+}/* Table row avatar */
 .row-avatar {
     font-weight: 600;
-    font-size: 0.75rem !important;
+    font-size: 0.75rem;
     text-transform: uppercase;
 }
 
@@ -218,7 +289,7 @@ html, body {
 
 /* ─── Micro-interactions ─────────────────── */
 .mud-button {
-    transition: transform 0.12s ease, box-shadow 0.12s ease !important;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
 
 .mud-button:hover {
@@ -232,17 +303,17 @@ html, body {
 /* FAB button pulse */
 .mud-fab {
     transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-                box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+                box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .mud-fab:hover {
-    transform: scale(1.05) translateY(-2px) !important;
-    box-shadow: 0 6px 20px rgba(30,136,229,0.3) !important;
+    transform: scale(1.05) translateY(-2px);
+    box-shadow: 0 6px 20px rgba(30,136,229,0.3);
 }
 
 /* Chip hover */
 .mud-chip {
-    transition: transform 0.12s ease, opacity 0.12s ease !important;
+    transition: transform 0.12s ease, opacity 0.12s ease;
 }
 
 .mud-chip:hover {
@@ -251,7 +322,7 @@ html, body {
 
 /* Switch toggle */
 .mud-switch .mud-icon-button {
-    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Badge bounce */
@@ -267,53 +338,53 @@ html, body {
 
 /* ─── Status Chips ─────────────────────────── */
 .mud-chip-filled.mud-chip-success {
-    background: rgba(102,187,106,0.12) !important;
-    color: var(--mud-palette-success) !important;
+    background: rgba(102,187,106,0.12);
+    color: var(--mud-palette-success);
     font-weight: 600;
-    font-size: 0.72rem !important;
+    font-size: 0.72rem;
     letter-spacing: 0.2px;
 }
 
 .mud-chip-filled.mud-chip-error {
-    background: rgba(239,83,80,0.12) !important;
-    color: var(--mud-palette-error) !important;
+    background: rgba(239,83,80,0.12);
+    color: var(--mud-palette-error);
     font-weight: 600;
-    font-size: 0.72rem !important;
+    font-size: 0.72rem;
     letter-spacing: 0.2px;
 }
 
 .mud-chip-filled.mud-chip-warning {
-    background: rgba(255,167,38,0.12) !important;
-    color: var(--mud-palette-warning) !important;
+    background: rgba(255,167,38,0.12);
+    color: var(--mud-palette-warning);
     font-weight: 600;
-    font-size: 0.72rem !important;
+    font-size: 0.72rem;
     letter-spacing: 0.2px;
 }
 
 .mud-chip-filled.mud-chip-info {
-    background: rgba(66,165,245,0.12) !important;
-    color: var(--mud-palette-info) !important;
+    background: rgba(66,165,245,0.12);
+    color: var(--mud-palette-info);
     font-weight: 600;
-    font-size: 0.72rem !important;
+    font-size: 0.72rem;
     letter-spacing: 0.2px;
 }
 
 .mud-chip-filled.mud-chip-default {
-    background: rgba(0,0,0,0.06) !important;
-    color: var(--mud-palette-text-primary) !important;
+    background: rgba(0,0,0,0.06);
+    color: var(--mud-palette-text-primary);
     font-weight: 500;
-    font-size: 0.72rem !important;
+    font-size: 0.72rem;
     letter-spacing: 0.2px;
     opacity: 0.7;
 }
 
 /* ─── Buttons ──────────────────────────────── */
 .mud-button {
-    text-transform: none !important;
-    border-radius: 8px !important;
-    font-weight: 600 !important;
+    text-transform: none;
+    border-radius: 8px;
+    font-weight: 600;
     letter-spacing: 0.2px;
-    transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .mud-button:active:not(.mud-disabled) {
@@ -321,27 +392,34 @@ html, body {
 }
 
 .mud-button.mud-button-variant-filled:not(.mud-disabled):hover {
-    box-shadow: 0 4px 12px rgba(30,136,229,0.3) !important;
+    box-shadow: 0 4px 12px rgba(30,136,229,0.3);
 }
 
 /* ─── Drawer (dark sidebar) ────────────────── */
+/* S59 · D6 — gana a las utilidades de espaciado y flex de MudBlazor (.pa-3, .d-flex, .ma-2...), que priorizan la misma propiedad. */
 .mud-drawer {
-    background: #1e293b !important;
-    border-right: none !important;
+    background: #1e293b;
+    border-right: none;
     display: flex !important;
     flex-direction: column !important;
     overflow: hidden !important;
 }
 
-.mud-drawer > .mud-navmenu {
+/* S59 · D6 — gana a las utilidades de espaciado y flex de MudBlazor (.pa-3, .d-flex, .ma-2...), que priorizan la misma propiedad. */
+.mud-drawer .mud-drawer-content > .mud-navmenu {
+    /* S87 · D2 — viene de la regla suelta «.mud-navmenu», que se borra. */
+    padding: 4px 8px;
     flex: 1 1 auto !important;
     min-height: 0 !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
 }
 
+/* S59 · D6 — gana a las utilidades de espaciado y flex de MudBlazor (.pa-3, .d-flex, .ma-2...), que priorizan la misma propiedad. */
 .mud-drawer .mud-navmenu .mud-nav-link {
-    color: rgba(255,255,255,0.75) !important;
+    /* S87 · D2 — el ::before del enlace activo se ubica respecto del enlace (antes lo daba «.mud-navmenu .mud-nav-link»). */
+    position: relative;
+    color: rgba(255,255,255,0.75);
     border-radius: 6px;
     margin: 1px 6px;
     padding: 9px 10px !important;
@@ -350,13 +428,13 @@ html, body {
 }
 
 .mud-drawer .mud-navmenu .mud-nav-link:hover {
-    background: rgba(255,255,255,0.06) !important;
-    color: rgba(255,255,255,0.95) !important;
+    background: rgba(255,255,255,0.06);
+    color: rgba(255,255,255,0.95);
 }
 
 .mud-drawer .mud-navmenu .mud-nav-link.active {
-    background: rgba(100,181,246,0.12) !important;
-    color: #90caf9 !important;
+    background: rgba(100,181,246,0.12);
+    color: #90caf9;
     font-weight: 600;
 }
 
@@ -374,61 +452,54 @@ html, body {
 }
 
 .mud-drawer .mud-navmenu .mud-nav-link .mud-nav-link-icon {
-    color: rgba(255,255,255,0.5) !important;
+    color: rgba(255,255,255,0.5);
     transition: color 0.15s ease;
 }
 
 .mud-drawer .mud-navmenu .mud-nav-link:hover .mud-nav-link-icon {
-    color: rgba(255,255,255,0.8) !important;
+    color: rgba(255,255,255,0.8);
 }
 
 .mud-drawer .mud-navmenu .mud-nav-link.active .mud-nav-link-icon {
-    color: #90caf9 !important;
+    color: #90caf9;
 }
 
 /* Nav group headers */
+/* S59 · D6 — gana a las utilidades de espaciado y flex de MudBlazor (.pa-3, .d-flex, .ma-2...), que priorizan la misma propiedad. */
 .mud-drawer .mud-navmenu .mud-nav-group > .mud-nav-link {
-    color: rgba(255,255,255,0.3) !important;
-    font-size: 0.7rem !important;
+    /* S87 · D1 — contraste AA sobre #1e293b: 0.6 da 6,2:1 (0.3 por la opacidad 0.5 de la regla suelta daba 1,6:1). */
+    color: rgba(255,255,255,0.6);
+    font-size: 0.7rem;
     letter-spacing: 0.5px;
     text-transform: uppercase;
     font-weight: 700;
-    pointer-events: none;
+    /* S88 · D1 — el encabezado entero abre y cierra el grupo (antes «pointer-events: none» dejaba solo el chevron). */
+    cursor: pointer;
     padding-top: 16px !important;
     padding-bottom: 4px !important;
 }
 
+/* S87 · D1 — iconos del grupo a 6,2:1 (WCAG 1.4.11 pide 3:1). */
 .mud-drawer .mud-navmenu .mud-nav-group > .mud-nav-link .mud-nav-link-icon {
-    color: rgba(255,255,255,0.3) !important;
+    color: rgba(255,255,255,0.6);
 }
 
 .mud-drawer .mud-navmenu .mud-nav-group > .mud-nav-link .mud-nav-link-expand-icon {
-    pointer-events: auto;
-    color: rgba(255,255,255,0.3) !important;
+    color: rgba(255,255,255,0.6);
+}
+
+/* S88 · D1 — el encabezado clicable responde al pasar el ratón como los enlaces. */
+.mud-drawer .mud-navmenu .mud-nav-group > .mud-nav-link:hover {
+    color: rgba(255,255,255,0.95);
 }
 
 /* Drawer scrollbar */
-.mud-drawer::-webkit-scrollbar-thumb {
+.mud-drawer .mud-navmenu::-webkit-scrollbar-thumb {
     background: rgba(255,255,255,0.08);
 }
 
-.mud-drawer::-webkit-scrollbar-thumb:hover {
+.mud-drawer .mud-navmenu::-webkit-scrollbar-thumb:hover {
     background: rgba(255,255,255,0.15);
-}
-
-/* Nav section labels */
-.nav-section-label {
-    font-size: 0.6rem;
-    font-weight: 700;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.25);
-    padding: 14px 16px 4px;
-    user-select: none;
-}
-
-.nav-section-label + .mud-nav-group .mud-nav-link {
-    padding-top: 4px !important;
 }
 
 /* Drawer header */
@@ -445,50 +516,43 @@ html, body {
 
 .drawer-user-info {
     overflow: hidden;
-}
-
-.drawer-user-name {
-    color: rgba(255,255,255,0.9) !important;
-    font-weight: 600 !important;
+}.drawer-user-name {
+    color: rgba(255,255,255,0.9);
+    font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-}
-
-.drawer-user-role {
-    color: rgba(255,255,255,0.4) !important;
-    font-size: 0.7rem !important;
-}
-
-.drawer-divider {
-    border-color: rgba(255,255,255,0.06) !important;
-    margin: 4px 16px !important;
+}.drawer-user-role {
+    /* S87 · D1 — AA: 6,2:1 (0.4 daba 3,6:1). */
+    color: rgba(255,255,255,0.6);
+    font-size: 0.7rem;
+}.drawer-divider {
+    border-color: rgba(255,255,255,0.06);
+    margin: 4px 16px;
 }
 
   .drawer-footer {
       flex-shrink: 0;
       background: inherit;
-  }
-  
-.drawer-footer-text {
+  }.drawer-footer-text {
     display: block;
     text-align: center;
-    color: rgba(255,255,255,0.2) !important;
-    font-size: 0.65rem !important;
+    /* S87 · D1 — AA: 6,2:1 (0.2 daba 1,9:1). */
+    color: rgba(255,255,255,0.6);
+    font-size: 0.65rem;
     padding: 12px;
 }
 
+/* S59 · D6 — gana a las utilidades de espaciado y flex de MudBlazor (.pa-3, .d-flex, .ma-2...), que priorizan la misma propiedad. */
 .mud-drawer .mud-divider {
-    border-color: rgba(255,255,255,0.06) !important;
+    border-color: rgba(255,255,255,0.06);
     margin-left: 16px !important;
     margin-right: 16px !important;
-}
-
-/* ─── AppBar ─────────────────────────────── */
+}/* ─── AppBar ─────────────────────────────── */
 .appbar {
-    background-color: #1e293b !important;
-    color: white !important;
-    z-index: 1201 !important;
+    background-color: #1e293b;
+    color: white;
+    z-index: 1201;
     padding-left: 8px;
     padding-right: 16px;
     gap: 2px;
@@ -543,30 +607,24 @@ html, body {
     flex-direction: column;
     line-height: 1.2;
     margin-left: 4px;
-}
-
-.appbar-title {
+    min-width: 0;
+    flex: 0 1 auto;
+    padding-right: 12px;
+}.appbar-title {
     font-weight: 600;
     letter-spacing: 0.3px;
-    font-size: 1rem !important;
+    font-size: 1rem;
     opacity: 0.9;
-}
-
-.appbar-subtitle {
-    font-size: 0.65rem !important;
+     /* S58 · K7 (D6) — el titulo de la barra no se parte en dos lineas. */
+     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+     max-width: 46vw;
+}.appbar-subtitle {
+    font-size: 0.65rem;
     opacity: 0.45;
     letter-spacing: 0.2px;
     line-height: 1.3;
-}
-
-/* ── Page loader ────────────────────────── */
-.page-loader {
-    position: fixed;
-    top: 64px;
-    left: 0;
-    right: 0;
-    z-index: 1200;
-    height: 2px !important;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: 46vw;
 }
 
 /* ── Action icons ────────────────────────── */
@@ -598,13 +656,14 @@ html, body {
     position: relative;
 }
 
+/* S59 · D6 — gana a las utilidades de espaciado y flex de MudBlazor (.pa-3, .d-flex, .ma-2...), que priorizan la misma propiedad. */
 .appbar-badge .mud-badge {
     top: 6px !important;
-    inset-inline-end: 2px !important;
-    font-size: 0.6rem !important;
+    inset-inline-end: 2px;
+    font-size: 0.6rem;
     height: 16px !important;
     min-width: 16px !important;
-    line-height: 16px !important;
+    line-height: 16px;
     animation: badgePulse 0.3s ease;
 }
 
@@ -647,38 +706,51 @@ html, body {
     background: rgba(30,136,229,0.08);
 }
 
-/* Notification dropdown */
+/* Notification dropdown — S96 · D3: panel propio (antes reglas de MudMenu sin uso) */
 .appbar-notif-menu {
     position: relative;
 }
 
-.appbar-notif-menu .mud-menu-list {
+.appbar-notif-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 340px;
+    max-width: calc(100vw - 24px);
+    background: var(--mud-palette-surface, #fff);
+    color: var(--mud-palette-text-primary, #212121);
+    border: 1px solid var(--mud-palette-lines-inputs, #e0e0e0);
     border-radius: 10px;
-    min-width: 320px;
-    padding: 6px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06);
+    z-index: 1300;
+    animation: dropdownFadeIn 0.15s ease;
+    overflow: hidden;
 }
 
-.appbar-notif-menu .mud-menu-item {
-    white-space: normal;
-    padding: 10px 12px;
-    border-radius: 8px;
-    line-height: 1.4;
-    display: flex;
-    align-items: flex-start;
+/* S96.1 · caso 1 — bajo 600px la campana no está en el borde: el panel anclado a ella salía por la izquierda */
+@media (max-width: 599.98px) {
+    .appbar-notif-dropdown {
+        position: fixed;
+        top: 52px;
+        left: 12px;
+        right: 12px;
+        width: auto;
+    }
 }
 
-.appbar-notif-menu .mud-menu-item:hover {
-    background: rgba(30,136,229,0.06);
+.mud-dark .appbar-notif-dropdown {
+    background: var(--mud-palette-surface, #1e293b);
+    color: var(--mud-palette-text-primary, #f1f5f9);
+    border-color: var(--mud-palette-lines-inputs, #334155);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.4);
 }
 
 .notif-header {
     padding: 12px 16px 8px;
-}
-
-.notif-badge {
-    font-size: 0.65rem !important;
-    height: 20px !important;
-    min-width: 20px !important;
+}.notif-badge {
+    font-size: 0.65rem;
+    height: 20px;
+    min-width: 20px;
 }
 
 .notif-scroll {
@@ -693,11 +765,9 @@ html, body {
 .notif-scroll::-webkit-scrollbar-thumb {
     background: rgba(0,0,0,0.15);
     border-radius: 4px;
-}
-
-.notif-item {
-    padding: 10px 16px !important;
-    align-items: flex-start !important;
+}.notif-item {
+    padding: 10px 16px;
+    align-items: flex-start;
 }
 
 .notif-item .mud-avatar {
@@ -715,42 +785,32 @@ html, body {
     background: var(--mud-palette-primary);
     flex-shrink: 0;
     margin-top: 6px;
-}
-
-.notif-time-inline {
+}.notif-time-inline {
     display: block;
     margin-top: 2px;
-    font-size: 0.65rem !important;
-}
-
-.notif-view-all {
+    font-size: 0.65rem;
+}.notif-view-all {
     display: flex;
     align-items: center;
     width: 100%;
-    justify-content: center !important;
-    padding: 10px 16px !important;
+    justify-content: center;
+    padding: 10px 16px;
     border: none;
     background: none;
     font: inherit;
     cursor: pointer;
-}
-
-.notif-view-all:hover {
-    background: rgba(30,136,229,0.08) !important;
+}.notif-view-all:hover {
+    background: rgba(30,136,229,0.08);
 }
 
 /* User menu */
 .logout-item {
     margin-top: 2px;
-}
-
-.logout-item:hover {
-    background: rgba(239,83,80,0.08) !important;
-}
-
-/* Divider */
+}.logout-item:hover {
+    background: rgba(239,83,80,0.08);
+}/* Divider */
 .appbar-divider {
-    height: 22px !important;
+    height: 22px;
     opacity: 0.12;
 }
 
@@ -759,10 +819,8 @@ html, body {
     display: flex;
     align-items: center;
     gap: 10px;
-}
-
-.appbar-greeting {
-    font-size: 0.72rem !important;
+}.appbar-greeting {
+    font-size: 0.72rem;
     opacity: 0.45;
     letter-spacing: 0.2px;
     white-space: nowrap;
@@ -773,10 +831,8 @@ html, body {
     height: 3px;
     border-radius: 50%;
     background: rgba(255,255,255,0.25);
-}
-
-.appbar-time {
-    font-size: 0.82rem !important;
+}.appbar-time {
+    font-size: 0.82rem;
     font-weight: 500;
     opacity: 0.6;
     letter-spacing: 1px;
@@ -912,15 +968,15 @@ html, body {
 }
 
 .search-result-item.selected .mud-icon-root {
-    color: rgba(255,255,255,0.9) !important;
+    color: rgba(255,255,255,0.9);
 }
 
 .search-result-item .mud-icon-root {
-    color: rgba(255,255,255,0.6) !important;
+    color: rgba(255,255,255,0.6);
 }
 
 .search-result-item:hover .mud-icon-root {
-    color: rgba(255,255,255,0.9) !important;
+    color: rgba(255,255,255,0.9);
 }
 
 .search-result-empty {
@@ -953,15 +1009,11 @@ html, body {
 .appbar-avatar-wrap {
     position: relative;
     display: inline-flex;
-}
-
-.appbar-avatar {
-    box-shadow: 0 0 0 2px rgba(255,255,255,0.15) !important;
+}.appbar-avatar {
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.15);
     transition: box-shadow 0.2s ease;
-}
-
-.appbar-user:hover .appbar-avatar {
-    box-shadow: 0 0 0 2px rgba(255,255,255,0.3) !important;
+}.appbar-user:hover .appbar-avatar {
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.3);
 }
 
 .appbar-online-dot {
@@ -979,19 +1031,15 @@ html, body {
 @keyframes appbarPulse {
     0%, 100% { opacity: 1; transform: scale(1); }
     50% { opacity: 0.65; transform: scale(0.9); }
-}
-
-.appbar-username {
+}.appbar-username {
     font-weight: 500;
     letter-spacing: 0.2px;
-    font-size: 0.875rem !important;
-}
-
-.appbar-chevron {
+    font-size: 0.875rem;
+}.appbar-chevron {
     opacity: 0.4;
     transition: opacity 0.2s ease, transform 0.2s ease;
     margin-left: 1px;
-    font-size: 18px !important;
+    font-size: 18px;
 }
 
 .appbar-user:hover .appbar-chevron {
@@ -1052,7 +1100,7 @@ html, body {
 }
 
 .appbar-menu-item .mud-icon-root {
-    font-size: 20px !important;
+    font-size: 20px;
 }
 
 .appbar-menu-logout {
@@ -1111,93 +1159,22 @@ html, body {
 }
 
 /* ─── NavMenu ────────────────────────────── */
-.mud-navmenu {
-    padding: 4px 8px;
-}
-
-.mud-navmenu .mud-nav-link {
-    border-radius: 6px;
-    margin: 1px 0;
-    padding: 10px 12px !important;
-    position: relative;
-    font-size: 0.85rem;
-    transition: background 0.15s ease, color 0.15s ease;
-}
-
-.mud-navmenu .mud-nav-link:hover {
-    background: rgba(30, 136, 229, 0.06) !important;
-}
-
-.mud-navmenu .mud-nav-link.active {
-    background-color: rgba(30, 136, 229, 0.10) !important;
-    color: #1e88e5 !important;
-    font-weight: 600;
-}
-
-.mud-navmenu .mud-nav-link.active::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 3px;
-    height: 16px;
-    background: #1e88e5;
-    border-radius: 0 4px 4px 0;
-}
-
-.mud-navmenu .mud-nav-group > .mud-nav-link {
-    font-weight: 600;
-    font-size: 0.78rem;
-    letter-spacing: 0.3px;
-    text-transform: uppercase;
-    opacity: 0.5;
-    pointer-events: none;
-}
-
-.mud-navmenu .mud-nav-group > .mud-nav-link .mud-nav-link-icon {
-    opacity: 0.6;
-}
-
-.mud-navmenu .mud-nav-group > .mud-nav-link .mud-nav-link-expand-icon {
-    pointer-events: auto;
-    opacity: 0.8;
-}
+/* S87 · D2 — el menú vive solo en el cajón: sus reglas están en «.mud-drawer .mud-navmenu …» (sección del cajón). */
 
 /* ─── Footer ───────────────────────────────── */
 .footer-area {
     border-top: 1px solid rgba(0,0,0,0.06);
     padding: 12px 0 4px;
-}
-
-.footer-copy {
+}.footer-copy {
     opacity: 0.35;
-    font-size: 0.72rem !important;
-}
-
-.footer-version {
+    font-size: 0.72rem;
+}.footer-version {
     opacity: 0.25;
-    font-size: 0.65rem !important;
+    font-size: 0.65rem;
     font-family: 'SF Mono', 'Consolas', monospace;
-}
-
-.footer-env {
-    font-size: 0.65rem !important;
-    height: 22px !important;
-}
-
-.footer-action {
-    opacity: 0.4;
-    transition: opacity 0.15s ease;
-}
-
-.footer-action:hover {
-    opacity: 0.9;
-}
-
-.footer-divider {
-    opacity: 0.2;
-    height: 16px !important;
+}.footer-env {
+    font-size: 0.65rem;
+    height: 22px;
 }
 
 /* ─── Responsive Footer ──────────────────── */
@@ -1306,12 +1283,9 @@ html, body {
 
 .loading-progress-text:after {
     content: var(--blazor-load-percentage-text, "Iniciando…");
-}
-
-/* ─── Text utilities ─────────────────────── */
-.text-white { color: #ffffff !important; }
-.text-gray { color: rgba(255,255,255,0.6) !important; }
-.text-switch .mud-switch-label { color: rgba(255,255,255,0.7) !important; font-size: 0.8rem; }
+}/* ─── Text utilities ─────────────────────── */
+.text-white { color: #ffffff; }.text-gray { color: rgba(255,255,255,0.6); }
+.text-switch .mud-switch-label { color: rgba(255,255,255,0.7); font-size: 0.8rem; }
 
 /* ─── Dashboard ───────────────────────────── */
 
@@ -1326,20 +1300,16 @@ html, body {
     inset: 0;
     background: linear-gradient(135deg, rgba(30,136,229,0.04) 0%, rgba(38,166,154,0.02) 100%);
     pointer-events: none;
-}
-
-.dash-live-badge {
+}.dash-live-badge {
     display: inline-flex;
     align-items: center;
     gap: 6px;
     border-radius: 20px;
-    background: rgba(102,187,106,0.12) !important;
-}
-
-.dash-live-text {
-    color: #2e7d32 !important;
-    font-weight: 600 !important;
-    font-size: 0.7rem !important;
+    background: rgba(102,187,106,0.12);
+}.dash-live-text {
+    color: #2e7d32;
+    font-weight: 600;
+    font-size: 0.7rem;
     letter-spacing: 0.5px;
 }
 
@@ -1383,20 +1353,16 @@ html, body {
 .section-accent-warning { background: var(--mud-palette-warning); }
 .section-accent-error   { background: var(--mud-palette-error); }
 .section-accent-info    { background: var(--mud-palette-info); }
-.section-accent-secondary { background: var(--mud-palette-secondary); }
-
-/* Stat cards */
+.section-accent-secondary { background: var(--mud-palette-secondary); }/* Stat cards */
 .dash-stat-card {
     position: relative;
     overflow: hidden;
     transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-                box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    border-radius: 12px !important;
-}
-
-.dash-stat-card:hover {
+                box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 12px;
+}.dash-stat-card:hover {
     transform: translateY(-3px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08) !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 
 .dash-stat-bar {
@@ -1412,15 +1378,13 @@ html, body {
 .dash-stat-bar-warning { background: var(--mud-palette-warning); }
 .dash-stat-bar-error   { background: var(--mud-palette-error); }
 .dash-stat-bar-info    { background: var(--mud-palette-info); }
-.dash-stat-bar-secondary { background: var(--mud-palette-secondary); }
-
-/* Stat card decoration (background icon) */
+.dash-stat-bar-secondary { background: var(--mud-palette-secondary); }/* Stat card decoration (background icon) */
 .dash-stat-decoration {
     position: absolute;
     top: 8px;
     right: 12px;
     opacity: 0.06;
-    font-size: 48px !important;
+    font-size: 48px;
     color: var(--mud-palette-text-primary);
     pointer-events: none;
     transition: opacity 0.3s ease;
@@ -1429,11 +1393,9 @@ html, body {
 
 .dash-stat-card:hover .dash-stat-decoration {
     opacity: 0.1;
-}
-
-/* Section cards */
+}/* Section cards */
 .dash-section-card {
-    border-radius: 12px !important;
+    border-radius: 12px;
     overflow: hidden;
 }
 
@@ -1484,21 +1446,17 @@ html, body {
 .dash-timeline-content {
     flex: 1;
     min-width: 0;
-}
-
-.dash-timeline-avatar {
-    width: 22px !important;
-    height: 22px !important;
-    min-width: 22px !important;
-    font-size: 0.6rem !important;
+}.dash-timeline-avatar {
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    font-size: 0.6rem;
     font-weight: 700;
-}
-
-/* Risk chip */
+}/* Risk chip */
 .dash-risk-chip {
     min-width: 22px;
     justify-content: center;
-    font-size: 0.65rem !important;
+    font-size: 0.65rem;
 }
 
 /* View all link */
@@ -1536,27 +1494,21 @@ html, body {
 .dash-alert-icon-success { background: rgba(102,187,106,0.12); color: var(--mud-palette-success); }
 .dash-alert-icon-warning { background: rgba(255,167,38,0.12); color: var(--mud-palette-warning); }
 .dash-alert-icon-error   { background: rgba(239,83,80,0.12); color: var(--mud-palette-error); }
-.dash-alert-icon-info    { background: rgba(66,165,245,0.12); color: var(--mud-palette-info); }
-
-/* Overall status */
+.dash-alert-icon-info    { background: rgba(66,165,245,0.12); color: var(--mud-palette-info); }/* Overall status */
 .dash-overall-status {
     border-radius: 10px;
-    background: rgba(102,187,106,0.06) !important;
+    background: rgba(102,187,106,0.06);
     border: 1px solid rgba(102,187,106,0.15);
-}
-
-/* Widget buttons */
+}/* Widget buttons */
 .dash-widget-btn {
-    justify-content: flex-start !important;
-    padding: 10px 8px !important;
-    border-radius: 10px !important;
-    text-transform: none !important;
-    transition: background 0.15s ease !important;
+    justify-content: flex-start;
+    padding: 10px 8px;
+    border-radius: 10px;
+    text-transform: none;
+    transition: background 0.15s ease;
     margin-bottom: 4px;
-}
-
-.dash-widget-btn:hover {
-    background: rgba(30,136,229,0.06) !important;
+}.dash-widget-btn:hover {
+    background: rgba(30,136,229,0.06);
 }
 
 .dash-widget-btn-inner {
@@ -1564,20 +1516,16 @@ html, body {
     align-items: center;
     gap: 10px;
     width: 100%;
-}
-
-/* Legacy link button (deprecated, keep for backward compat) */
+}/* Legacy link button (deprecated, keep for backward compat) */
 .dash-link-btn {
-    justify-content: flex-start !important;
-    padding: 8px 12px !important;
-    border-radius: 8px !important;
-    text-transform: none !important;
-    font-weight: 500 !important;
-    transition: background 0.15s ease !important;
-}
-
-.dash-link-btn:hover {
-    background: rgba(30, 136, 229, 0.08) !important;
+    justify-content: flex-start;
+    padding: 8px 12px;
+    border-radius: 8px;
+    text-transform: none;
+    font-weight: 500;
+    transition: background 0.15s ease;
+}.dash-link-btn:hover {
+    background: rgba(30, 136, 229, 0.08);
 }
 
 /* ─── Dark mode overrides ────────────────── */
@@ -1604,7 +1552,7 @@ html, body {
 }
 
 .mud-dark .logout-item:hover {
-    background: rgba(239,154,154,0.1) !important;
+    background: rgba(239,154,154,0.1);
 }
 
 .mud-dark .mud-table-container {
@@ -1616,7 +1564,7 @@ html, body {
 }
 
 .mud-dark .mud-table-head .mud-table-cell {
-    border-bottom-color: rgba(100,181,246,0.15) !important;
+    border-bottom-color: rgba(100,181,246,0.15);
 }
 
 .mud-dark .mud-table-body .mud-table-row:hover {
@@ -1644,15 +1592,16 @@ html, body {
 }
 
 .mud-dark .drawer-user-name {
-    color: rgba(255,255,255,0.95) !important;
+    color: rgba(255,255,255,0.95);
 }
 
 .mud-dark .drawer-user-role {
-    color: rgba(255,255,255,0.35) !important;
+    /* S87 · D1 — el cajón es #1e293b también en oscuro: mismo 6,2:1. */
+    color: rgba(255,255,255,0.6);
 }
 
 .mud-dark .mud-card:hover {
-    box-shadow: 0 4px 20px rgba(0,0,0,0.2) !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
 }
 
 .mud-dark .mud-paper {
@@ -1664,15 +1613,7 @@ html, body {
 }
 
 .mud-dark .mud-table-body .mud-table-row.selected {
-    background: rgba(100,181,246,0.12) !important;
-}
-
-.mud-dark .footer-action {
-    opacity: 0.3;
-}
-
-.mud-dark .footer-action:hover {
-    opacity: 0.8;
+    background: rgba(100,181,246,0.12);
 }
 
 .mud-dark .footer-area {
@@ -1680,7 +1621,7 @@ html, body {
 }
 
 .mud-dark .mud-fab:hover {
-    box-shadow: 0 6px 20px rgba(100,181,246,0.3) !important;
+    box-shadow: 0 6px 20px rgba(100,181,246,0.3);
 }
 
 /* Dark mode scrollbar global */
@@ -1703,7 +1644,7 @@ html, body {
 }
 
 .mud-dark .mud-dialog {
-    box-shadow: 0 16px 48px rgba(0,0,0,0.3) !important;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.3);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -1761,63 +1702,57 @@ html, body {
 }
 
 .notfound-zero .mud-icon-size-large {
-    font-size: 48px !important;
+    font-size: 48px;
     color: var(--mud-palette-warning);
 }
 
 @keyframes notfoundPulse {
     0%, 100% { transform: scale(1); opacity: 0.8; }
     50% { transform: scale(1.08); opacity: 1; }
-}
-
-.notfound-title {
-    font-weight: 600 !important;
-    margin-bottom: 8px !important;
-}
-
-.notfound-desc {
-    color: rgba(0, 0, 0, 0.55) !important;
-    margin-bottom: 24px !important;
-}
-
-.notfound-btn {
-    text-transform: none !important;
-    border-radius: 8px !important;
+}.notfound-title {
+    font-weight: 600;
+    margin-bottom: 8px;
+}.notfound-desc {
+    color: rgba(0, 0, 0, 0.55);
+    margin-bottom: 24px;
+}.notfound-btn {
+    text-transform: none;
+    border-radius: 8px;
 }
 
 /* ─── Snackbar / Toast ─────────────────────── */
 .mud-snackbar {
-    border-radius: 10px !important;
-    font-weight: 500 !important;
-    box-shadow: 0 6px 24px rgba(0,0,0,0.12) !important;
+    border-radius: 10px;
+    font-weight: 500;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.12);
 }
 
 .mud-snackbar.mud-snackbar-normal {
-    background: var(--mud-palette-surface) !important;
-    color: var(--mud-palette-text-primary) !important;
+    background: var(--mud-palette-surface);
+    color: var(--mud-palette-text-primary);
     border: 1px solid rgba(0,0,0,0.06);
 }
 
 .mud-snackbar.mud-snackbar-success {
-    border-left: 3px solid var(--mud-palette-success) !important;
+    border-left: 3px solid var(--mud-palette-success);
 }
 
 .mud-snackbar.mud-snackbar-error {
-    border-left: 3px solid var(--mud-palette-error) !important;
+    border-left: 3px solid var(--mud-palette-error);
 }
 
 .mud-snackbar.mud-snackbar-warning {
-    border-left: 3px solid var(--mud-palette-warning) !important;
+    border-left: 3px solid var(--mud-palette-warning);
 }
 
 .mud-snackbar.mud-snackbar-info {
-    border-left: 3px solid var(--mud-palette-info) !important;
+    border-left: 3px solid var(--mud-palette-info);
 }
 
 /* ─── Dialog / Modal ───────────────────────── */
 .mud-dialog {
-    border-radius: 14px !important;
-    box-shadow: 0 16px 48px rgba(0,0,0,0.15) !important;
+    border-radius: 14px;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.15);
     animation: dialogFadeIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -1832,17 +1767,20 @@ html, body {
     }
 }
 
+/* S59 · D6 — gana a las utilidades de espaciado y flex de MudBlazor (.pa-3, .d-flex, .ma-2...), que priorizan la misma propiedad. */
 .mud-dialog-title {
-    font-weight: 700 !important;
-    font-size: 1.05rem !important;
+    font-weight: 700;
+    font-size: 1.05rem;
     padding: 20px 24px 4px !important;
 }
 
+/* S59 · D6 — gana a las utilidades de espaciado y flex de MudBlazor (.pa-3, .d-flex, .ma-2...), que priorizan la misma propiedad. */
 .mud-dialog-content {
     padding: 8px 24px 16px !important;
-    font-size: 0.9rem !important;
+    font-size: 0.9rem;
 }
 
+/* S59 · D6 — gana a las utilidades de espaciado y flex de MudBlazor (.pa-3, .d-flex, .ma-2...), que priorizan la misma propiedad. */
 .mud-dialog-actions {
     padding: 8px 24px 20px !important;
     gap: 8px;
@@ -1850,7 +1788,7 @@ html, body {
 
 /* Dialog helper text */
 .mud-dialog .mud-input-helper-text {
-    font-size: 0.72rem !important;
+    font-size: 0.72rem;
     opacity: 0.6;
 }
 
@@ -1860,19 +1798,22 @@ html, body {
 }
 
 /* ─── Tooltip ──────────────────────────────── */
+/* S59 · D6 — gana a las utilidades de espaciado y flex de MudBlazor (.pa-3, .d-flex, .ma-2...), que priorizan la misma propiedad. */
 .mud-tooltip {
-    border-radius: 6px !important;
-    font-size: 0.75rem !important;
+    border-radius: 6px;
+    font-size: 0.75rem;
     padding: 4px 10px !important;
-    font-weight: 500 !important;
+    font-weight: 500;
     letter-spacing: 0.2px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
 /* ─── MudAutocomplete dark mode ──────────── */
 
 /* ─── Responsive ─────────────────────────── */
+/* S59 · D6 — gana a las utilidades de espaciado y flex de MudBlazor (.pa-3, .d-flex, .ma-2...), que priorizan la misma propiedad. */
 @media (max-width: 600px) {
+/* S59 · D6 — gana a las utilidades de espaciado y flex de MudBlazor (.pa-3, .d-flex, .ma-2...), que priorizan la misma propiedad. */
     .appbar .mud-typography-body2 {
         display: none !important;
     }
@@ -1908,11 +1849,9 @@ html, body {
 @keyframes bgDrift {
     0% { transform: translate(0, 0) rotate(0deg); }
     100% { transform: translate(2%, 1%) rotate(3deg); }
-}
-
-/* ─── Glassmorphism Card ─────────────────── */
+}/* ─── Glassmorphism Card ─────────────────── */
 .login-card {
-    background: rgba(15, 23, 42, 0.88) !important;
+    background: rgba(15, 23, 42, 0.88);
     backdrop-filter: blur(24px) saturate(1.2);
     -webkit-backdrop-filter: blur(24px) saturate(1.2);
     border: 1px solid rgba(255, 255, 255, 0.10);
@@ -1921,59 +1860,60 @@ html, body {
 }
 
 .login-card .mud-input-outlined-border {
-    border-color: rgba(255, 255, 255, 0.18) !important;
+    border-color: rgba(255, 255, 255, 0.18);
 }
 
 .login-card .mud-input.mud-input-outlined {
-    background: transparent !important;
+    background: transparent;
 }
 
 .login-card .mud-input.mud-input-outlined .mud-input-input-container {
-    background: transparent !important;
+    background: transparent;
 }
 
 .login-card .mud-input.mud-input-outlined .mud-input-slot,
 .login-card .mud-input.mud-input-outlined .mud-input-root {
-    color: #ffffff !important;
-    -webkit-text-fill-color: #ffffff !important;
-    caret-color: #ffffff !important;
-    background: transparent !important;
+    color: #ffffff;
+    -webkit-text-fill-color: #ffffff;
+    caret-color: #ffffff;
+    background: transparent;
 }
 
 .login-card .mud-input.mud-input-outlined .mud-input-slot:-webkit-autofill,
 .login-card .mud-input.mud-input-outlined .mud-input-root:-webkit-autofill {
-    -webkit-box-shadow: 0 0 0 1000px rgba(15, 23, 42, 0.95) inset !important;
-    -webkit-text-fill-color: #ffffff !important;
+    -webkit-box-shadow: 0 0 0 1000px rgba(15, 23, 42, 0.95) inset;
+    -webkit-text-fill-color: #ffffff;
 }
 
 .login-card .mud-input:hover .mud-input-outlined-border {
-    border-color: rgba(255, 255, 255, 0.3) !important;
+    border-color: rgba(255, 255, 255, 0.3);
 }
 
 .login-card .mud-input.mud-input-outlined.mud-input-focused .mud-input-outlined-border {
-    border-color: var(--mud-palette-primary) !important;
-    border-width: 2px !important;
+    border-color: var(--mud-palette-primary);
+    border-width: 2px;
 }
 
 .login-card .mud-input.mud-input-outlined.mud-disabled .mud-input-slot,
 .login-card .mud-input.mud-input-outlined.mud-disabled .mud-input-root {
-    color: rgba(255, 255, 255, 0.4) !important;
-    -webkit-text-fill-color: rgba(255, 255, 255, 0.4) !important;
+    color: rgba(255, 255, 255, 0.4);
+    -webkit-text-fill-color: rgba(255, 255, 255, 0.4);
 }
 
+/* S59 · D6 — gana a las utilidades de espaciado y flex de MudBlazor (.pa-3, .d-flex, .ma-2...), que priorizan la misma propiedad. */
 .login-card .mud-input-label.mud-input-label-outlined {
-    color: #94a3b8 !important;
-    background: rgba(15, 23, 42, 0.88) !important;
+    color: #94a3b8;
+    background: rgba(15, 23, 42, 0.88);
     padding: 0 4px !important;
     z-index: 1 !important;
 }
 
 .login-card .mud-input.mud-input-outlined.mud-input-focused .mud-input-label.mud-input-label-outlined {
-    color: var(--mud-palette-primary) !important;
+    color: var(--mud-palette-primary);
 }
 
 .login-card .mud-input.mud-input-outlined.mud-disabled .mud-input-label.mud-input-label-outlined {
-    color: rgba(255, 255, 255, 0.3) !important;
+    color: rgba(255, 255, 255, 0.3);
 }
 
 @keyframes floatIn {
@@ -2005,43 +1945,35 @@ html, body {
     40% { transform: translateX(8px); }
     60% { transform: translateX(-6px); }
     80% { transform: translateX(6px); }
-}
-
-/* ─── Login Button ───────────────────────── */
+}/* ─── Login Button ───────────────────────── */
 .login-btn {
-    text-transform: none !important;
-    font-weight: 600 !important;
+    text-transform: none;
+    font-weight: 600;
     letter-spacing: 0.3px;
     height: 44px;
-    border-radius: 8px !important;
-    transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+    border-radius: 8px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .login-btn:active:not(.mud-disabled) {
     transform: scale(0.98);
-}
-
-/* ─── Divider ────────────────────────────── */
+}/* ─── Divider ────────────────────────────── */
 .text-gray {
-    color: rgba(255,255,255,0.5) !important;
-}
-
-/* ─── SSO Buttons ────────────────────────── */
+    color: rgba(255,255,255,0.5);
+}/* ─── SSO Buttons ────────────────────────── */
 .login-sso-btn {
-    text-transform: none !important;
-    justify-content: flex-start !important;
-    padding: 8px 16px !important;
-    border: 1px solid rgba(255, 255, 255, 0.15) !important;
-    border-radius: 8px !important;
-    color: rgba(255, 255, 255, 0.8) !important;
-    font-weight: 500 !important;
-    background: rgba(255, 255, 255, 0.04) !important;
-    transition: background 0.15s ease, border-color 0.15s ease !important;
-}
-
-.login-sso-btn:hover {
-    background: rgba(255, 255, 255, 0.10) !important;
-    border-color: rgba(255, 255, 255, 0.25) !important;
+    text-transform: none;
+    justify-content: flex-start;
+    padding: 8px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 500;
+    background: rgba(255, 255, 255, 0.04);
+    transition: background 0.15s ease, border-color 0.15s ease;
+}.login-sso-btn:hover {
+    background: rgba(255, 255, 255, 0.10);
+    border-color: rgba(255, 255, 255, 0.25);
 }
 
 /* ─── Animated Logo (CSS only) ────────────── */
@@ -2125,54 +2057,42 @@ html, body {
 
 /* ─── MudBlazor overrides inside glass card ── */
 .login-card .mud-switch .mud-switch-label {
-    color: rgba(255, 255, 255, 0.7) !important;
+    color: rgba(255, 255, 255, 0.7);
     font-size: 0.8rem;
 }
 
 .login-card .mud-switch .mud-switch-track {
-    background-color: rgba(255, 255, 255, 0.15) !important;
+    background-color: rgba(255, 255, 255, 0.15);
 }
 
 .login-card .mud-switch .mud-switch-thumb {
-    background-color: rgba(255, 255, 255, 0.6) !important;
+    background-color: rgba(255, 255, 255, 0.6);
 }
 
 .login-card .mud-switch.mud-switch-checked .mud-switch-track {
-    background-color: var(--mud-palette-primary) !important;
+    background-color: var(--mud-palette-primary);
 }
 
 .login-card .mud-switch.mud-switch-checked .mud-switch-thumb {
-    background-color: #ffffff !important;
+    background-color: #ffffff;
 }
 
 .login-card .mud-alert-outlined-info {
-    border-color: rgba(30, 136, 229, 0.4) !important;
-    background: rgba(30, 136, 229, 0.08) !important;
+    border-color: rgba(30, 136, 229, 0.4);
+    background: rgba(30, 136, 229, 0.08);
 }
 
 .login-card .mud-input-adornment .mud-icon-button {
-    color: rgba(255, 255, 255, 0.5) !important;
+    color: rgba(255, 255, 255, 0.5);
 }
 
 .login-card .mud-input-adornment .mud-icon-button:hover {
-    color: rgba(255, 255, 255, 0.8) !important;
+    color: rgba(255, 255, 255, 0.8);
 }
 
 /* ─── UsuarioDetail ────────────────────────── */
-.detail-avatar {
-    width: 56px !important;
-    height: 56px !important;
-    font-size: 1.2rem !important;
-    border-radius: 14px !important;
-}
-
-.detail-tenant-chip {
-    opacity: 0.55;
-    font-size: 0.7rem !important;
-}
-
 .detail-tabs-card {
-    border-radius: 12px !important;
+    border-radius: 12px;
     overflow: hidden;
 }
 
@@ -2180,13 +2100,14 @@ html, body {
     border-radius: 12px;
 }
 
+/* S59 · D6 — gana a las utilidades de espaciado y flex de MudBlazor (.pa-3, .d-flex, .ma-2...), que priorizan la misma propiedad. */
 .detail-tabs-card .mud-tab {
-    text-transform: none !important;
+    text-transform: none;
     font-weight: 500;
     font-size: 0.82rem;
     letter-spacing: 0.2px;
     min-height: 44px;
-    border-radius: 6px !important;
+    border-radius: 6px;
     margin: 4px 2px;
     padding: 6px 14px !important;
     transition: background 0.15s ease, color 0.15s ease;
@@ -2211,7 +2132,9 @@ html, body {
 }
 
 /* ─── Responsive ─────────────────────────── */
+/* S59 · D6 — gana a las utilidades de espaciado y flex de MudBlazor (.pa-3, .d-flex, .ma-2...), que priorizan la misma propiedad. */
 @media (max-width: 960px) {
+/* S59 · D6 — gana a las utilidades de espaciado y flex de MudBlazor (.pa-3, .d-flex, .ma-2...), que priorizan la misma propiedad. */
     .mud-main-content {
         padding-left: 12px !important;
         padding-right: 12px !important;
@@ -2227,15 +2150,18 @@ html, body {
         font-size: 0.8rem;
     }
 
+/* S59 · D6 — gana a las utilidades de espaciado y flex de MudBlazor (.pa-3, .d-flex, .ma-2...), que priorizan la misma propiedad. */
     .mud-table-cell {
         padding: 8px 10px !important;
-        font-size: 0.78rem !important;
+        font-size: 0.78rem;
     }
 
+/* S59 · D6 — gana a las utilidades de espaciado y flex de MudBlazor (.pa-3, .d-flex, .ma-2...), que priorizan la misma propiedad. */
     .mud-card-content {
         padding: 10px 14px 14px !important;
     }
 
+/* S59 · D6 — gana a las utilidades de espaciado y flex de MudBlazor (.pa-3, .d-flex, .ma-2...), que priorizan la misma propiedad. */
     .mud-dialog {
         max-width: 95vw !important;
         margin: 8px !important;
@@ -2283,11 +2209,9 @@ html {
     justify-content: center;
     min-height: 60vh;
     padding: 24px;
-}
-
-.error-boundary-card {
+}.error-boundary-card {
     max-width: 480px;
-    border-radius: 14px !important;
+    border-radius: 14px;
 }
 
 .error-boundary-details {
@@ -2298,35 +2222,33 @@ html {
     border-radius: 8px;
     max-height: 200px;
     overflow-y: auto;
-}
-
-.error-message {
+}.error-message {
     font-family: 'SF Mono', 'Consolas', monospace;
-    font-size: 0.72rem !important;
+    font-size: 0.72rem;
     color: var(--mud-palette-error);
     word-break: break-word;
 }
 
 /* ─── Snackbar overrides ─────────────────── */
 .mud-snackbar .mud-snackbar-content {
-    border-radius: 10px !important;
+    border-radius: 10px;
     font-weight: 500;
 }
 
 .mud-snackbar .mud-alert-filled-success {
-    background: #43a047 !important;
+    background: #43a047;
 }
 
 .mud-snackbar .mud-alert-filled-error {
-    background: #e53935 !important;
+    background: #e53935;
 }
 
 .mud-snackbar .mud-alert-filled-warning {
-    background: #fb8c00 !important;
+    background: #fb8c00;
 }
 
 .mud-snackbar .mud-alert-filled-info {
-    background: #1e88e5 !important;
+    background: #1e88e5;
 }
 
 /* ─── Dark mode transition ──────────────── */
@@ -2340,10 +2262,35 @@ html {
 }
 
 .mud-dark .error-boundary-card {
-    border-color: rgba(255,255,255,0.1) !important;
+    border-color: rgba(255,255,255,0.1);
 }
 
 .mud-dark .error-boundary-details {
     background: rgba(239, 154, 154, 0.06);
     border-color: rgba(239, 154, 154, 0.15);
 }
+
+/* S58.1 · D3 — diálogos de formulario: ancho mínimo comodo, contenido con scroll
+   propio y acciones siempre visibles. Los confirmadores quedan compactos. */
+.mud-dialog.dialogo-formulario {
+    min-width: min(560px, calc(100vw - 32px));
+}
+.mud-dialog.dialogo-formulario .mud-dialog-content {
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+.mud-dialog.dialogo-formulario .mud-dialog-actions {
+    padding-top: 12px;
+    border-top: 1px solid var(--app-border, var(--mud-palette-lines-default));
+}
+/* S73 — editores: un solo espaciado de campos, filas de dos columnas y datos de solo lectura dentro del diálogo (fuera de .iam-page). */
+.mud-dialog.dialogo-formulario .dialogo-campos { display: flex; flex-direction: column; gap: 12px; }
+.mud-dialog.dialogo-formulario .dialogo-fila { display: grid; grid-template-columns: 1fr; gap: 12px 16px; }
+.mud-dialog.dialogo-formulario .dialogo-ancho { grid-column: 1 / -1; }
+.mud-dialog.dialogo-formulario .dialogo-seccion { font-size: 10px; font-weight: 600; color: var(--app-text-muted); text-transform: uppercase; letter-spacing: .8px; margin-top: 8px; }
+.mud-dialog.dialogo-formulario .readonly-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px 20px; }
+.mud-dialog.dialogo-formulario .readonly-item { display: flex; flex-direction: column; gap: 2px; min-width: 0; border-left: 2px solid var(--app-border); padding-left: 10px; }
+.mud-dialog.dialogo-formulario .field-label { font-size: 11px; color: var(--app-text-muted); font-weight: 500; }
+.mud-dialog.dialogo-formulario .field-value { font-size: 12px; overflow-wrap: anywhere; }
+@media (min-width: 600px) { .mud-dialog.dialogo-formulario .dialogo-fila { grid-template-columns: 1fr 1fr; } }

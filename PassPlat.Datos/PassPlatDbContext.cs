@@ -1,4 +1,5 @@
 using System.Reflection;
+using CBP.Outbox;
 using Microsoft.EntityFrameworkCore;
 using PassPlat.Dominio.Entities.Catalogos;
 using PassPlat.Dominio.Entities.Contexto;
@@ -66,10 +67,11 @@ public class PassPlatDbContext : DbContext
     public DbSet<EmailTemplateHistorial> EmailTemplateHistorial { get; set; } = null!;
     public DbSet<Permiso> Permisos { get; set; } = null!;
     public DbSet<RolPermiso> RolesPermisos { get; set; } = null!;
-    public DbSet<Outbox> Outbox { get; set; } = null!;
+    public DbSet<OutboxMessage> Outbox { get; set; } = null!;
     public DbSet<TipoModulo> TiposModulo { get; set; } = null!;
     public DbSet<Modulo> Modulos { get; set; } = null!;
     public DbSet<AppModulo> AppsModulos { get; set; } = null!;
+    public DbSet<AppConfProvIden> AppsConfProvIden { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

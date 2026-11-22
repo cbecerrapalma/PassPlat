@@ -23,6 +23,7 @@ public class UsuarioDto
     public DateTime? FecMod { get; set; }
     public string? TenantNombre { get; set; }
     public string? EstadoNombre { get; set; }
+    public List<string> Apps { get; set; } = [];
 }
 
 public class CrearUsuarioDto

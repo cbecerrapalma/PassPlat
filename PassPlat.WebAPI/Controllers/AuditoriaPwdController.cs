@@ -1,5 +1,7 @@
 using CBP.Data.Abstractions;
 using CBP.MultiTenant.Abstractions;
+using PassPlat.WebAPI.Auth;
+using CBP.Results;
 using CBP.Services.Abstractions;
 using CBP.WebApi.Controllers;
 using CBP.WebApi.Models;
@@ -8,7 +10,8 @@ using Microsoft.AspNetCore.Mvc;
 using PassPlat.Aplicacion.Dtos.Core;
 using PassPlat.Aplicacion.Services;
 using PassPlat.Datos;
-using PassPlat.Dominio.Entities.Core;
+using PassPlat.Datos.Models;
+using System.Security.Claims;
 
 namespace PassPlat.WebAPI.Controllers;
 
@@ -25,35 +28,22 @@ public class AuditoriaPwdController : BaseApiController
         _uow = uow;
     }
 
-    [HttpGet] public async Task<IActionResult> GetAll(CancellationToken ct) => FromResultQuery(await _service.GetAllAsync());
-    [HttpGet("{id}")] public async Task<IActionResult> GetById(long id, CancellationToken ct) => FromResultQuery(await _service.GetByIdAsync(id));
-    [HttpGet("page")] public async Task<IActionResult> GetPaged([FromQuery] PaginationRequest request, CancellationToken ct)
+    // S95 · D2 — un no-sistema solo lee su tenant; is_system lee todos o el tenant pedido
+    private int? AlcanceTenant => User.AlcanceTenant(_tenantContext);
+    private IActionResult Lista(Result<IPagedResult<AuditoriaPwdDto>> result) => result.IsSuccess ? Ok(result.Value.Items) : FromResult(result);
+
+    [HttpGet] public async Task<IActionResult> GetAll(CancellationToken ct) => Lista(await _service.BuscarAsync(new FiltroAuditoriaPwd(IdTenant: AlcanceTenant), 1, int.MaxValue, ct));
+    [HttpGet("{id}")] public async Task<IActionResult> GetById(long id, CancellationToken ct)
     {
-        var options = new PaginationOptions<AuditoriaPwd>(request.PageNumber, request.PageSize);
-        var result = User.HasClaim("is_system", "true")
-            ? await _service.GetPagedAsync(options, ct)
-            : await _service.GetPagedAsync(options, ct);
+        var result = await _service.GetByIdAsync(id);
+        if (result.IsSuccess && AlcanceTenant is int propio && result.Value?.IdTenant != propio) return NotFound();
+        return FromResultQuery(result);
+    }
+    [HttpGet("page")] public async Task<IActionResult> GetPaged([FromQuery] PaginationRequest request, [FromQuery] string? search, [FromQuery] int? idTipoAccion, [FromQuery] int? nivelMinimo, [FromQuery] DateTime? desde, [FromQuery] DateTime? hasta, [FromQuery] int? idTenant, CancellationToken ct)
+    {
+        // S95 · D1 — la consulta aplica los filtros; un no-sistema queda en su tenant aunque mande idTenant
+        var result = await _service.BuscarAsync(new FiltroAuditoriaPwd(IdTenant: AlcanceTenant ?? idTenant, IdTipoAccion: idTipoAccion, NivelMinimo: nivelMinimo, Desde: desde, Hasta: hasta, Texto: search), request.PageNumber, request.PageSize, ct);
         return result.IsSuccess ? Ok(ToPagedResponse(result.Value)) : FromResult(result);
     }
-    [HttpGet("page/tenant/{idTenant}")] public async Task<IActionResult> GetPagedByTenant(int idTenant, [FromQuery] PaginationRequest request, CancellationToken ct)
-    {
-        var options = new PaginationOptions<AuditoriaPwd>(request.PageNumber, request.PageSize);
-        var repoResult = await _service.ObtenerPorTenantAsync(idTenant, request.PageSize, ct);
-        if (repoResult.IsFailure) return FromResult(repoResult);
-        var items = repoResult.Value;
-        var total = items.Count;
-        var paged = items.Skip((request.PageNumber - 1) * request.PageSize).Take(request.PageSize).ToList();
-        return Ok(ToPagedResponse(new PagedResultDto<AuditoriaPwdDto>(paged, total, request.PageNumber, request.PageSize)));
-    }
-    [HttpGet("usuario/{idUsuario}/{cantidad}")] public async Task<IActionResult> GetByUsuario(int idUsuario, int cantidad, CancellationToken ct) => FromResultQuery(await _service.ObtenerPorUsuarioAsync(idUsuario, cantidad));
-    [HttpGet("tenant/{cantidad}")] public async Task<IActionResult> GetByTenant(int cantidad, CancellationToken ct) => FromResultQuery(await _service.ObtenerPorTenantAsync(_tenantContext.CurrentId, cantidad));
-    [HttpGet("alto-riesgo/{nivelMinimo}/{cantidad}")] public async Task<IActionResult> GetAltoRiesgo(int nivelMinimo, int cantidad, CancellationToken ct) => FromResultQuery(await _service.ObtenerEventosAltoRiesgoAsync(nivelMinimo, cantidad));
-    [HttpPost("registrar")] public async Task<IActionResult> Registrar([FromBody] RegistrarAuditoriaPwdDto dto, CancellationToken ct)
-    {
-        dto.IdTenant = _tenantContext.CurrentId;
-        var result = await _service.RegistrarAuditoriaAsync(dto, ct);
-        if (result.IsFailure) return FromResult(result);
-        await _uow.SaveChangesAsync(ct);
-        return Ok(result.Value);
-    }
+    [HttpGet("usuario/{idUsuario}/{cantidad}")] public async Task<IActionResult> GetByUsuario(int idUsuario, int cantidad, CancellationToken ct) => Lista(await _service.BuscarAsync(new FiltroAuditoriaPwd(IdTenant: AlcanceTenant, IdUsuario: idUsuario), 1, cantidad, ct));
 }

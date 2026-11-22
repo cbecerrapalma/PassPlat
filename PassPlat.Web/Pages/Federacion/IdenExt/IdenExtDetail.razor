@@ -1,0 +1,150 @@
+@page "/federacion/iden-ext/{idUsuario:int}/{id:long}"
+@inject ApiClient Api
+@inject AuthService Auth
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@inject NavigationManager Navigation
+@using PassPlat.Web.Models
+@using PassPlat.Web.Shared
+
+@if (!Auth.TienePermiso("FED_IDENEXT_VER"))
+{
+    <SinPermiso PermisoRequerido="FED_IDENEXT_VER" />
+}
+else
+{
+<div class="iam-page">
+<MigasDePan Padre="@ListaUrl" Actual="@(_iden is null ? "Identidad" : (_iden.ProviderUserName ?? _iden.SubExterno))" />
+
+    @if (_cargando && _iden is null)
+    {
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="100%" Height="300px" Style="border-radius:10px;" />
+    }
+    else if (_iden is null)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-3">Identidad no encontrada</MudAlert>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="@VolverALista">Atrás</MudButton>
+    }
+    else
+    {
+        <div class="page-header">
+            <div class="page-title-row">
+                <div style="display:flex;gap:12px;align-items:center;">
+                    <h1 class="page-title">@(_iden.ProviderUserName ?? _iden.SubExterno)</h1>
+                    @if (!string.IsNullOrEmpty(_iden.EstadoNombre))
+                    {
+                        <span class="badge badge-active" style="background: @(_iden.EstadoColor ?? "var(--dat-verde)")22;color: @(_iden.EstadoColor ?? "var(--dat-verde)");border:1px solid @(_iden.EstadoColor ?? "var(--dat-verde)")44;">
+                            <span class="badge-dot" style="background:@(_iden.EstadoColor ?? "var(--dat-verde)");"></span>@_iden.EstadoNombre
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="badge @(_iden.Activo ? "badge-active" : "badge-inactive")">
+                            <span class="badge-dot"></span>@(_iden.Activo ? "Activo" : "Inactivo")
+                        </span>
+                    }
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <MudButton Variant="Variant.Outlined" OnClick="@VolverALista" StartIcon="@Icons.Material.Filled.ArrowBack">Atrás</MudButton>
+                    @if (Auth.TienePermiso("FED_IDENEXT_DESVINCULAR"))
+                    {
+                        <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="@(() => ConfirmUnlink(_iden))" StartIcon="@Icons.Material.Filled.LinkOff">Desvincular</MudButton>
+                    }
+                </div>
+            </div>
+            <p class="page-subtitle">@UsuarioNombre · @(_iden.ProvIdenNombre ?? $"#{_iden.IdProvIden}")</p>
+        </div>
+
+        <MudTabs @bind-ActivePanelIndex="_tabIndex" Class="detail-tabs" TabPanelsClass="pt-3">
+            <MudTabPanel Text="Información" Icon="@Icons.Material.Filled.Info">
+                <div class="detail-section">
+                    <div class="detail-section-title">Detalles de Identidad</div>
+                    <div class="field-row"><div class="field-label">Usuario</div><div class="field-value">@UsuarioNombre</div></div>
+                    <div class="field-row"><div class="field-label">Proveedor</div><div class="field-value">@(_iden.ProvIdenNombre ?? $"#{_iden.IdProvIden}")</div></div>
+                    <div class="field-row"><div class="field-label">Sub (ID Externo)</div><div class="field-value mono" style="font-size:10px;">@_iden.SubExterno</div></div>
+                    <div class="field-row"><div class="field-label">Provider UserName</div><div class="field-value">@(_iden.ProviderUserName ?? "—")</div></div>
+                    <div class="field-row"><div class="field-label">Email</div><div class="field-value">@(_iden.EmailExterno ?? "—")</div></div>
+                    <div class="field-row"><div class="field-label">Nombre</div><div class="field-value">@(_iden.NombreExterno ?? "—")</div></div>
+                    <div class="field-row"><div class="field-label">Es Principal</div><div class="field-value"><MudIcon Icon="@(_iden.EsPrincipal ? Icons.Material.Filled.Star : Icons.Material.Filled.StarBorder)" Size="Size.Small" Color="@(_iden.EsPrincipal ? Color.Warning : Color.Default)" /></div></div>
+                    <div class="field-row"><div class="field-label">Scopes</div><div class="field-value" style="font-size:10px;">@(_iden.Scopes ?? "—")</div></div>
+                    <div class="field-row"><div class="field-label">Último Login</div><div class="field-value">@(_iden.UltimoLogin?.ToString("dd MMM yyyy HH:mm") ?? "—")</div></div>
+                    <div class="field-row"><div class="field-label">Última IP</div><div class="field-value mono" style="font-size:10px;">@(_iden.UltimaIP ?? "—")</div></div>
+                    <div class="field-row"><div class="field-label">Último Dispositivo</div><div class="field-value">@(_iden.DispositivoModelo ?? "—")</div></div>
+                    <div class="field-row"><div class="field-label">Último Tenant</div><div class="field-value">@(_iden.UltimoTenantNombre ?? "—")</div></div>
+                    <div class="field-row"><div class="field-label">Creado</div><div class="field-value" style="color:var(--text-muted);">@(_iden.FecCrea?.ToString("dd MMM yyyy") ?? "—")</div></div>
+                </div>
+                @if (_iden.FecRevocacion.HasValue)
+                {
+                    <MudDivider Class="my-2" />
+                    <div class="detail-section">
+                        <div class="detail-section-title">Revocación</div>
+                        <div class="field-row"><div class="field-label">Fecha</div><div class="field-value" style="color:var(--mud-palette-error);">@_iden.FecRevocacion.Value.ToString("dd MMM yyyy HH:mm")</div></div>
+                        <div class="field-row"><div class="field-label">Motivo</div><div class="field-value">@(_iden.MotivoRevocacion ?? "—")</div></div>
+                        <div class="field-row"><div class="field-label">Revocado por</div><div class="field-value">@(_iden.UsuarioRevocaNombre ?? "—")</div></div>
+                    </div>
+                }
+            </MudTabPanel>
+            <MudTabPanel Text="Tokens" Icon="@Icons.Material.Filled.Key">
+                <div class="detail-section">
+                    <div class="detail-section-title">Tokens y Seguridad</div>
+                    <div class="field-row"><div class="field-label">Token Expira</div><div class="field-value">@(_iden.TokenExpiration?.ToString("dd MMM yyyy HH:mm") ?? "—")</div></div>
+                    <div class="field-row"><div class="field-label">Correlation ID</div><div class="field-value mono" style="font-size:10px;">@(_iden.CorrelationId?.ToString() ?? "—")</div></div>
+                    <MudDivider Class="my-2" />
+                    <MudText Typo="Typo.caption" Color="Color.Error" Class="d-flex align-center">
+                        <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="mr-1" />
+                        Los tokens almacenados están cifrados y no se muestran por seguridad.
+                    </MudText>
+                </div>
+            </MudTabPanel>
+        </MudTabs>
+    }
+</div>
+}
+
+@code {
+    [Parameter] public int IdUsuario { get; set; }
+    [Parameter] public long Id { get; set; }
+
+    private IdenExtDto? _iden;
+    private List<UsuarioDto> _usuarios = [];
+    private int _tabIndex;
+    private bool _cargando = true;
+
+    private const string ListaUrl = "/federacion/iden-ext";
+
+    // usuario/{idUsuario} no incluye Usuario: UsuarioNombre llega null y se toma de api/usuarios.
+    private string UsuarioNombre =>
+        _iden?.UsuarioNombre
+        ?? _usuarios.FirstOrDefault(u => u.Id == IdUsuario)?.NomUsuario
+        ?? $"#{IdUsuario}";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!Auth.TienePermiso("FED_IDENEXT_VER")) return; // S114 · D3
+        _cargando = true;
+        _tabIndex = 0;
+        try
+        {
+            _usuarios = await Api.GetAsync<List<UsuarioDto>>("api/usuarios") ?? [];
+            var identidades = await Api.GetAsync<List<IdenExtDto>>($"api/iden-ext/usuario/{IdUsuario}") ?? [];
+            _iden = identidades.FirstOrDefault(i => i.Id == Id);
+        }
+        catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error al cargar: {ex.Message}", Severity.Error); }
+        finally { _cargando = false; }
+    }
+
+    private void VolverALista() => Navigation.NavigateTo(ListaUrl);
+
+    private async Task ConfirmUnlink(IdenExtDto item)
+    {
+        var parameters = new DialogParameters { ["Title"] = "Confirmar", ["Message"] = $"Desvincular identidad de {item.ProvIdenNombre ?? $"#{item.IdProvIden}"} para {item.UsuarioNombre ?? $"#{item.IdUsuario}"}?", ["ConfirmText"] = "Si", ["CancelText"] = "Cancelar" };
+        var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parameters);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            var ok = await Api.PostVoidAsync($"api/iden-ext/{item.Id}/desvincular");
+            if (ok) { Snackbar.Add("Identidad desvinculada", Severity.Success); Navigation.NavigateTo(ListaUrl); }
+            else Snackbar.Add(Api.LastError ?? "Error al desvincular", Severity.Error);
+        }
+    }
+}

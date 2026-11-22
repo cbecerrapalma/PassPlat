@@ -3,8 +3,8 @@
 @inject AuthService Auth
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthStateProvider
-@inject AppSettings AppSettings
 @inject HttpClient Http
+@using CBP.Blazor.Mud.Login
 
 @if (_showSkeleton)
 {
@@ -33,25 +33,6 @@ else
                 <MudText Typo="Typo.body2" Align="Align.Center" Class="text-gray">@_subtitle</MudText>
             </div>
 
-            @if (_apps.Count > 0)
-            {
-                <MudText Typo="Typo.body2" Align="Align.Center" Class="mb-4 text-gray">Selecciona una aplicación para continuar</MudText>
-                <MudSelect Value="_selectedAppId"
-                           ValueChanged="@((int id) => { OnAppChanged(id); })"
-                           Label="Aplicación"
-                           Variant="Variant.Outlined"
-                           Margin="Margin.Dense"
-                           Class="mb-4"
-                           Disabled="_loading || _apps.Count == 0"
-                           AnchorOrigin="Origin.BottomCenter"
-                           ToStringFunc="@(a => _apps.FirstOrDefault(x => x.Id == a)?.Nombre ?? "")">
-                    @foreach (var app in _apps)
-                    {
-                        <MudSelectItem Value="@app.Id">@app.Nombre (@app.Codigo)</MudSelectItem>
-                    }
-                </MudSelect>
-            }
-
             @if (_tenants.Count > 0)
             {
                 <MudText Typo="Typo.body2" Align="Align.Center" Class="mb-4 text-gray">Selecciona un tenant para continuar</MudText>
@@ -62,7 +43,6 @@ else
                            Margin="Margin.Dense"
                            Class="mb-4"
                            Disabled="_loading || _tenants.Count == 0"
-                           AnchorOrigin="Origin.BottomCenter"
                            ToStringFunc="@(t => _tenants.FirstOrDefault(x => x.Id == t)?.Nombre ?? "")">
                     @foreach (var tenant in _tenants)
                     {
@@ -98,7 +78,8 @@ else
                             <MudIconButton Icon="@Icons.Material.Filled.VisibilityOff"
                                            Color="Color.Default"
                                            OnClick="@ToggleShowPassword"
-                                           Size="Size.Small" />
+                                           Size="Size.Small"
+                                           aria-label="Mostrar la contrasena" />
                         }
                         else
                         {
@@ -113,7 +94,8 @@ else
                             <MudIconButton Icon="@Icons.Material.Filled.Visibility"
                                            Color="Color.Default"
                                            OnClick="@ToggleShowPassword"
-                                           Size="Size.Small" />
+                                           Size="Size.Small"
+                                           aria-label="Ocultar la contrasena" />
                         }
                     </div>
 
@@ -153,6 +135,18 @@ else
                 <MudAlert Severity="Severity.Error" Class="mb-4 login-error" Variant="Variant.Filled">
                     @_errorMessage
                 </MudAlert>
+
+                @if (_pwdExpirada)
+                {
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Primary"
+                               Class="mb-4 d-block"
+                               Disabled="_loading"
+                               OnClick="@RecuperarPassword"
+                               Style="text-transform: none;">
+                        Restablecer mi contraseña
+                    </MudButton>
+                }
             }
 
              @if (!_mfaRequired && IsAuthenticationContextReady)
@@ -200,7 +194,7 @@ else
                     Volver al inicio de sesión
                 </MudButton>
 
-                @if (_mfaEsEmail)
+                @if (_mfaEsEmail && _mfaRef is null)
                 {
                     <MudButton Variant="Variant.Text" Color="Color.Primary" FullWidth="true"
                                OnClick="@ReenviarCodigoMfa" Disabled="_loading" Size="Size.Small" Class="text-caption mt-2">
@@ -229,31 +223,21 @@ else
                          }
                          @foreach (var prov in visibles)
                          {
-                             var cargando = _loadingProvider == prov.Codigo;
-                             <MudTooltip Text="@(prov.Tooltip ?? $"Continuar con {prov.Nombre}")">
-                                 <MudIconButton OnClick="@(() => IniciarConProveedorAsync(prov.Codigo))"
-                                                Icon="@(cargando ? null : GetProviderIcon(prov.Codigo))"
-                                                Color="@GetProviderColor(prov.Codigo, prov.Color)"
-                                                Variant="Variant.Outlined"
-                                                Size="Size.Large"
-                                                Disabled="@(cargando || _loading)"
-                                                Class="login-provider-icon">
-                                     @if (cargando)
-                                     {
-                                         <MudProgressCircular Indeterminate="true" Size="Size.Small" />
-                                     }
-                                 </MudIconButton>
-                             </MudTooltip>
+                             @* S128 D3 — botón compartido de CBP.Blazor.Mud (ícono y color desde los datos). *@
+                             <BotonProveedorExterno Compacto="true" Codigo="@prov.Codigo" Nombre="@prov.Nombre" Icono="@prov.Icono" Color="@prov.Color" Tooltip="@prov.Tooltip"
+                                                    Cargando="@(_loadingProvider == prov.Codigo)" Deshabilitado="@_loading" Class="login-provider-icon"
+                                                    OnClick="@(() => IniciarConProveedorAsync(prov.Codigo))" />
                          }
                          @if (resto.Count > 0)
                          {
                              <MudTooltip Text="Más opciones">
-                                 <MudIconButton Icon="@Icons.Material.Filled.MoreHoriz"
-                                                Variant="Variant.Outlined"
-                                                Size="Size.Large"
-                                                Disabled="_loading"
-                                                OnClick="@(() => _mostrarMasProveedores = !_mostrarMasProveedores)"
-                                                Class="login-provider-icon" />
+                                      <MudIconButton Icon="@Icons.Material.Filled.MoreHoriz"
+                                                     Variant="Variant.Outlined"
+                                                     Size="Size.Large"
+                                                     Disabled="_loading"
+                                                     OnClick="@(() => _mostrarMasProveedores = !_mostrarMasProveedores)"
+                                                     Class="login-provider-icon"
+                                                     aria-label="Mas opciones" />
                              </MudTooltip>
                          }
                      </div>
@@ -264,21 +248,9 @@ else
                          <div class="d-flex justify-center gap-3 mb-6 flex-wrap">
                              @foreach (var prov in resto2)
                              {
-                                 var cargando = _loadingProvider == prov.Codigo;
-                                 <MudTooltip Text="@(prov.Tooltip ?? $"Continuar con {prov.Nombre}")">
-                                     <MudIconButton OnClick="@(() => IniciarConProveedorAsync(prov.Codigo))"
-                                                    Icon="@(cargando ? null : GetProviderIcon(prov.Codigo))"
-                                                    Color="@GetProviderColor(prov.Codigo, prov.Color)"
-                                                    Variant="Variant.Outlined"
-                                                    Size="Size.Large"
-                                                    Disabled="@(cargando || _loading)"
-                                                    Class="login-provider-icon">
-                                         @if (cargando)
-                                         {
-                                             <MudProgressCircular Indeterminate="true" Size="Size.Small" />
-                                         }
-                                     </MudIconButton>
-                                 </MudTooltip>
+                                 <BotonProveedorExterno Compacto="true" Codigo="@prov.Codigo" Nombre="@prov.Nombre" Icono="@prov.Icono" Color="@prov.Color" Tooltip="@prov.Tooltip"
+                                                        Cargando="@(_loadingProvider == prov.Codigo)" Deshabilitado="@_loading" Class="login-provider-icon"
+                                                        OnClick="@(() => IniciarConProveedorAsync(prov.Codigo))" />
                              }
                          </div>
                      }
@@ -286,7 +258,7 @@ else
                  else
                  {
                      <MudText Typo="Typo.body2" Align="Align.Center" Class="mt-4 text-gray">
-                         No hay proveedores externos disponibles para este tenant.
+                         @(_errorProveedores ? "No se pudieron cargar los proveedores externos. Recarga la página." : "No hay proveedores externos disponibles para este tenant.")
                      </MudText>
                  }
              }
@@ -308,6 +280,8 @@ else
     private string _username = "";
     private string _password = "";
     private string _errorMessage = "";
+    /// <summary>S60 · D5 — el login respondió 403 PWD_EXPIRADA: la contraseña está vencida.</summary>
+    private bool _pwdExpirada;
     private MudBaseInput<string>? _usernameRef;
     private MudForm? _form;
 
@@ -320,18 +294,20 @@ else
     private int _mfaIdApp;
     private int _mfaIdMFAPrincipal;
     private string _mfaNomUsuario = "";
+    /// <summary>S125 · D4 — referencia opaca del MFA de un login externo (null = MFA del login normal).</summary>
+    private string? _mfaRef;
     private string _subtitle = "Inicia sesión para continuar";
 
-    private List<ProveedorItem> _proveedores = [];
+    private List<ExternalLoginProviderDto> _proveedores = [];
     private string? _loadingProvider;
     private bool _mostrarMasProveedores;
 
     private int _selectedTenantId;
-    private int _selectedAppId;
     private bool _cargandoProveedores;
+    /// <summary>S122 · D5 — la carga de proveedores falló (no es lo mismo que «no hay»).</summary>
+    private bool _errorProveedores;
     private int? _resolvedTenantId;
     private List<TenantItem> _tenants = [];
-    private List<AppItem> _apps = [];
 
     private int TenantIdContexto =>
         _resolvedTenantId ?? (_selectedTenantId > 0 ? _selectedTenantId : 0);
@@ -360,24 +336,37 @@ else
                 "proveedor_rechazo" => "Inicio de sesión cancelado por el proveedor.",
                 "proveedor_no_coincide" => "Error de coincidencia de proveedor.",
                 "redirect_uri_invalido" => "Error de configuración del proveedor.",
+                "error_interno" => "No se pudo completar el inicio de sesión con el proveedor. Intenta de nuevo.",
+                "mfa_no_disponible" => "No se pudo enviar el código de verificación. Intenta de nuevo.",
                 _ => $"Error de autenticación: {Uri.UnescapeDataString(errorParam ?? "")}"
             };
             _showError = true;
         }
 
-        _apps = await Auth.GetAppsAsync();
-        if (_apps.Count == 0)
+        // S125 · D4 — MFA del login externo: el callback trae una referencia opaca, no los ids.
+        var mfaRef = System.Web.HttpUtility.ParseQueryString(uri.Query).Get("mfaRef");
+        if (!string.IsNullOrEmpty(mfaRef))
         {
-            Auth.AppId = 0;
-            _showError = true;
-            _errorMessage = "No hay aplicaciones disponibles. Contacta al administrador.";
+            var tipoMfa = await Auth.ObtenerMfaExternoAsync(mfaRef);
+            if (tipoMfa.HasValue)
+            {
+                _mfaRef = mfaRef;
+                _mfaRequired = true;
+                _mfaEsEmail = tipoMfa.Value == 3;
+                _mfaMensaje = _mfaEsEmail
+                    ? "Se ha enviado un código de verificación a tu correo electrónico."
+                    : "Ingresa el código de verificación de tu aplicación de autenticación.";
+                _subtitle = "Verifica tu identidad";
+            }
+            else
+            {
+                _errorMessage = "La verificación venció. Inicia sesión de nuevo.";
+                _showError = true;
+            }
         }
-        else
-        {
-            _selectedAppId = _apps.Count == 1 ? _apps[0].Id : 0;
-            Auth.AppId = _selectedAppId;
-            _tenants = await ResolverTenantAsync();
-        }
+
+        // S76 · D2 — el portal siempre autentica con su propia app (Auth.AppId).
+        _tenants = await ResolverTenantAsync();
     }
 
     private async Task<List<TenantItem>> ResolverTenantAsync()
@@ -391,13 +380,6 @@ else
             await CargarProveedoresAsync();
         }
         return _tenants;
-    }
-
-    private void OnAppChanged(int id)
-    {
-        _selectedAppId = id;
-        Auth.AppId = id;
-        StateHasChanged();
     }
 
     private void OnTenantChanged(int id)
@@ -467,7 +449,12 @@ else
             }
             else
             {
-                _errorMessage = result.ErrorMessage ?? "Credenciales inválidas";
+                // S76 · D4 — sin acceso a la app del portal: mensaje propio, no el texto tecnico.
+                _errorMessage = string.Equals(result.ErrorCode, "SIN_ACCESO_APP", StringComparison.OrdinalIgnoreCase)
+                    ? "Tu usuario no tiene acceso a AccessPlat en este tenant. Solicita acceso al administrador."
+                    : result.ErrorMessage ?? "Credenciales inválidas";
+                // S60 · D5 — contraseña vencida: se ofrece el enlace al restablecimiento.
+                _pwdExpirada = string.Equals(result.ErrorCode, "PWD_EXPIRADA", StringComparison.OrdinalIgnoreCase);
                 _showError = true;
             }
         }
@@ -492,6 +479,21 @@ else
 
         try
         {
+            if (_mfaRef is not null)
+            {
+                var (url, error) = await Auth.ValidarMfaExternoAsync(_mfaRef, _mfaCode);
+                if (url is not null)
+                {
+                    Nav.NavigateTo(url, forceLoad: true);
+                }
+                else
+                {
+                    _errorMessage = error ?? "Código inválido";
+                    _showError = true;
+                }
+                return;
+            }
+
             var result = await Auth.CompletarLoginMFAAsync(
                 _mfaIdUsuario, _mfaIdTenant, _mfaIdApp,
                 _mfaIdMFAPrincipal, _mfaCode, _rememberMe);
@@ -519,6 +521,7 @@ else
 
     private void CancelarMfa()
     {
+        _mfaRef = null;
         _mfaRequired = false;
         _mfaCode = "";
         _mfaEsEmail = false;
@@ -616,17 +619,19 @@ else
         }
 
         _cargandoProveedores = true;
+        _errorProveedores = false;
         _proveedores = [];
         StateHasChanged();
 
         try
         {
-            var provs = await Http.GetFromJsonAsync<List<ProveedorItem>>($"api/auth/externo/proveedores-login?idTenant={idTenant}");
+            var provs = await Http.GetFromJsonAsync<List<ExternalLoginProviderDto>>($"api/auth/externo/proveedores-login?idTenant={idTenant}&idApp={Auth.AppId}");
             _proveedores = provs ?? [];
-            _providerCache[idTenant] = new CachedProviders { Providers = _proveedores, LoadedAt = DateTime.UtcNow };
+            _providerCache[idTenant] = new CachedProviders { Providers = _proveedores, LoadedAt = DateTime.Now };
         }
         catch
         {
+            _errorProveedores = true;
         }
         finally
         {
@@ -639,7 +644,7 @@ else
     {
         if (!IsAuthenticationContextReady)
         {
-            _errorMessage = "Selecciona una aplicación y un tenant antes de continuar.";
+            _errorMessage = "Selecciona un tenant antes de continuar.";
             _showError = true;
             return;
         }
@@ -679,46 +684,11 @@ else
         }
     }
 
-    private string GetProviderIcon(string codigo) => codigo switch
-    {
-        "GOOGLE" => Icons.Custom.Brands.Google,
-        "GITHUB" => Icons.Custom.Brands.GitHub,
-        "LINKEDIN" => Icons.Custom.Brands.LinkedIn,
-        "INSTAGRAM" => Icons.Material.Filled.CameraAlt,
-        "FACEBOOK" => Icons.Custom.Brands.Facebook,
-        _ => Icons.Material.Filled.AccountCircle
-    };
-
-    private Color GetProviderColor(string codigo, string? colorFromApi = null)
-    {
-        if (!string.IsNullOrWhiteSpace(colorFromApi) && Enum.TryParse<Color>(colorFromApi, out var parsed))
-            return parsed;
-        return codigo switch
-        {
-            "GOOGLE" => Color.Error,
-            "GITHUB" => Color.Dark,
-            "LINKEDIN" => Color.Info,
-            "INSTAGRAM" => Color.Secondary,
-            "FACEBOOK" => Color.Primary,
-            _ => Color.Default
-        };
-    }
-
-    private class ProveedorItem
-    {
-        public string Codigo { get; set; } = "";
-        public string Nombre { get; set; } = "";
-        public string Icono { get; set; } = "";
-        public string? Color { get; set; }
-        public string? Tooltip { get; set; }
-        public int OrdenVisual { get; set; }
-    }
-
     private class CachedProviders
     {
-        public List<ProveedorItem> Providers { get; init; } = [];
+        public List<ExternalLoginProviderDto> Providers { get; init; } = [];
         public DateTime LoadedAt { get; init; }
-        public bool IsExpired => DateTime.UtcNow - LoadedAt > TimeSpan.FromMinutes(ProviderCacheTtlMinutes);
+        public bool IsExpired => DateTime.Now - LoadedAt > TimeSpan.FromMinutes(ProviderCacheTtlMinutes);
     }
 
     private class AutorizarUrlResponse

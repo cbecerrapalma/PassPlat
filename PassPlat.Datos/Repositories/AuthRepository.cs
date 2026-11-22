@@ -57,7 +57,7 @@ public class AuthRepository : RepositoryAsync<Usuario>, IAuthRepository
                 .FirstOrDefaultAsync(ct);
             return Result<Usuario?>.Success(entity, allowNull: true);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<Usuario?>.Failure("DB_ERROR", ex.Message);
         }
@@ -84,7 +84,7 @@ public class AuthRepository : RepositoryAsync<Usuario>, IAuthRepository
                 .FirstOrDefaultAsync(ct);
             return Result<Usuario?>.Success(entity, allowNull: true);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<Usuario?>.Failure("DB_ERROR", ex.Message);
         }
@@ -100,26 +100,31 @@ public class AuthRepository : RepositoryAsync<Usuario>, IAuthRepository
                 .FirstOrDefaultAsync(ct);
             return Result<string?>.Success(entity, allowNull: true);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<string?>.Failure("DB_ERROR", ex.Message);
         }
     }
 
-    public async Task<Result<string?>> ObtenerRolCodigoPorAccesoAsync(int idUsuario, int idApp, CancellationToken ct = default)
+    public async Task<Result<bool>> ObtenerPwdExpiradaAsync(int idUsuario, int idTenant, CancellationToken ct = default)
     {
-        try
+        var parameters = new[]
         {
-            var entity = await Context.Set<Acceso>()
-                .Where(a => a.IdUsuario == idUsuario && a.IdApp == idApp && a.Activo)
-                .Select(a => a.Rol!.Codigo)
-                .FirstOrDefaultAsync(ct);
-            return Result<string?>.Success(entity, allowNull: true);
-        }
-        catch (Exception ex)
-        {
-            return Result<string?>.Failure("DB_ERROR", ex.Message);
-        }
+            RawParameter.Int("@IdUsuario", idUsuario),
+            RawParameter.Int("@IdTenant", idTenant)
+        };
+
+        var spResult = await _rawQuery.QuerySPAsync<PwdEstadoVencimientoResult>(
+            "SP_Pwd_EstadoVencimiento", parameters, ct);
+
+        if (spResult.IsFailure)
+            return Result<bool>.Failure(spResult.Error!);
+
+        var fila = spResult.Value.FirstOrDefault();
+        if (fila == null)
+            return Result<bool>.Failure("DB_ERROR", "SP_Pwd_EstadoVencimiento no devolvio fila");
+
+        return Result<bool>.Success(fila.PwdExpirada);
     }
 
     public async Task<Result<IReadOnlyList<string>>> ObtenerCodigosPermisosPorUsuarioAsync(int idUsuario, int idTenant, int idApp, CancellationToken ct = default)
@@ -145,8 +150,10 @@ public class AuthRepository : RepositoryAsync<Usuario>, IAuthRepository
     {
         try
         {
+            // S61 D3: el scope de plataforma solo aporta permisos de roles globales.
             var codigos = await Context.Set<Acceso>()
-                .Where(a => a.IdUsuario == idUsuario && a.IdApp == idApp && a.Activo && a.IdUsuarioTenant == null)
+                .Where(a => a.IdUsuario == idUsuario && a.IdApp == idApp && a.Activo && a.IdUsuarioTenant == null
+                            && a.Rol!.IdTenant == null)
                 .SelectMany(a => a.Rol!.RolesPermisos)
                 .Where(rp => rp.Activo)
                 .Select(rp => rp.Permiso!.Codigo)
@@ -155,7 +162,7 @@ public class AuthRepository : RepositoryAsync<Usuario>, IAuthRepository
 
             return Result<IReadOnlyList<string>>.Success(codigos);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<string>>.Failure("DB_ERROR", ex.Message);
         }
@@ -189,7 +196,7 @@ public class AuthRepository : RepositoryAsync<Usuario>, IAuthRepository
             var codigos = spResult.Value.Select(p => p.Codigo).Distinct().ToList();
             return Result<IReadOnlyList<string>>.Success(codigos);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<string>>.Failure("DB_ERROR", ex.Message);
         }
@@ -199,13 +206,73 @@ public class AuthRepository : RepositoryAsync<Usuario>, IAuthRepository
     {
         try
         {
+            // S61 D1/D3: acceso activo sin membresía + rol global + membresía activa en el tenant de plataforma.
             var exists = await Context.Set<Acceso>()
-                .AnyAsync(a => a.IdUsuario == idUsuario && a.IdApp == idApp && a.Activo && a.IdUsuarioTenant == null, ct);
+                .AnyAsync(a => a.IdUsuario == idUsuario && a.IdApp == idApp && a.Activo
+                               && a.IdUsuarioTenant == null
+                               && a.Rol!.IdTenant == null
+                               && Context.Set<UsuarioTenant>().Any(ut =>
+                                   ut.IdUsuario == idUsuario && ut.Activo
+                                   && Context.Set<Tenant>().Any(t => t.Id == ut.IdTenant && t.EsSistema)),
+                    ct);
             return Result<bool>.Success(exists);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<bool>.Failure("DB_ERROR", ex.Message);
+        }
+    }
+
+    // Tope de niveles de herencia de SP_Permisos_Usuario_Efectivos
+    private const int MaxNivelesHerencia = 32;
+
+    public async Task<Result<IReadOnlyList<PermisoDeRol>>> ObtenerPermisosDeRolesAsync(int idUsuario, int idTenant, int idApp, CancellationToken ct = default)
+    {
+        try
+        {
+            // roles base: Accesos activos en (tenant, app) con rol activo del tenant o global
+            var baseRoles = await Context.Set<Acceso>()
+                .Where(a => a.IdUsuario == idUsuario && a.IdTenant == idTenant && a.IdApp == idApp && a.Activo
+                            && a.Rol!.Activo && (a.Rol.IdTenant == null || a.Rol.IdTenant == idTenant))
+                .Select(a => new { a.IdRol, a.Rol!.Nombre })
+                .Distinct()
+                .ToListAsync(ct);
+
+            var roles = baseRoles.ToDictionary(r => r.IdRol, r => (Nombre: r.Nombre, Heredado: false));
+            var frontera = roles.Keys.ToList();
+
+            // herencia por niveles: mismo tenant, relación activa y padre activo; los visitados cortan los ciclos
+            for (var nivel = 0; nivel < MaxNivelesHerencia && frontera.Count > 0; nivel++)
+            {
+                var padres = await Context.Set<RolesHerencia>()
+                    .Where(h => h.Activo && h.IdTenant == idTenant && frontera.Contains(h.IdRolHijo) && h.RolPadre!.Activo)
+                    .Select(h => new { h.IdRolPadre, h.RolPadre!.Nombre })
+                    .Distinct()
+                    .ToListAsync(ct);
+
+                frontera = [];
+                foreach (var padre in padres.Where(p => !roles.ContainsKey(p.IdRolPadre)))
+                {
+                    roles[padre.IdRolPadre] = (padre.Nombre, true);
+                    frontera.Add(padre.IdRolPadre);
+                }
+            }
+
+            var idsRoles = roles.Keys.ToList();
+            var asignados = await Context.Set<RolPermiso>()
+                .Where(rp => rp.Activo && rp.Permiso!.Activo && idsRoles.Contains(rp.IdRol))
+                .Select(rp => new { rp.IdPermiso, rp.IdRol })
+                .ToListAsync(ct);
+
+            IReadOnlyList<PermisoDeRol> lista =
+            [
+                .. asignados.Select(a => new PermisoDeRol(a.IdPermiso, a.IdRol, roles[a.IdRol].Nombre, roles[a.IdRol].Heredado))
+            ];
+            return Result<IReadOnlyList<PermisoDeRol>>.Success(lista);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return Result<IReadOnlyList<PermisoDeRol>>.Failure("DB_ERROR", ex.Message);
         }
     }
 }

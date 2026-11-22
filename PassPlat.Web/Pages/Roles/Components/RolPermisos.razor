@@ -1,0 +1,195 @@
+@* S106 · D6 — pestaña «Permisos» de un rol: el mismo editor que la de un usuario (EditorPermisos), por aplicación.
+   Casilla marcada = el rol tiene el permiso; los cambios se acumulan y se guardan en una sola petición (todo o nada). *@
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@inject AuthService Auth
+@using PassPlat.Web.Shared.Permisos
+
+@if (_cargando)
+{
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="100%" Height="200px" />
+}
+else if (_apps.Count == 0)
+{
+    <MudText Typo="Typo.body2" Class="mud-text-secondary pa-4">Sin permisos configurados</MudText>
+}
+else
+{
+    <div class="permisos-selectores d-flex flex-wrap align-center gap-3 mb-3">
+        @if (_apps.Count == 1)
+        {
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Class="permiso-contexto">Aplicación: @_apps[0].Nombre</MudChip>
+        }
+        else
+        {
+            <MudSelect T="int" @key="@("app" + _versionSelectores)" Label="Aplicación" Variant="Variant.Outlined" Dense="true"
+                Value="_idApp" ValueChanged="CambiarAppAsync" Style="min-width:220px">
+                @foreach (var a in _apps)
+                {
+                    <MudSelectItem @key="a.IdApp" T="int" Value="@a.IdApp">@a.Nombre</MudSelectItem>
+                }
+            </MudSelect>
+        }
+    </div>
+
+    @if (_rolPropio)
+    {
+        <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3 autoedicion">Usted tiene asignado este rol: otro administrador debe cambiar sus permisos</MudAlert>
+    }
+
+    @if (SoloSistema)
+    {
+        <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">Rol global: solo el usuario de sistema puede cambiar sus permisos</MudAlert>
+    }
+
+    <div class="d-flex flex-wrap align-center gap-3 mb-3">
+        <MudText Typo="Typo.body2" Class="resumen-permisos">Tiene @_filas.Count(f => f.Tiene) de @_filas.Count en esta aplicación</MudText>
+    </div>
+
+    <EditorPermisos @key="_idApp" Permisos="_filas" Cambios="_cambios" Bloqueado="@Bloqueado" Guardando="@_guardando" ConOrigen="false"
+        OnGuardar="GuardarAsync" OnCambio="@(() => Task.CompletedTask)" />
+}
+
+@code {
+    [Parameter, EditorRequired] public RolDto Rol { get; set; } = default!;
+    /// <summary>Usuarios con este rol: el aviso de la confirmación dice a cuántos afecta el cambio.</summary>
+    [Parameter] public int UsuariosConRol { get; set; }
+    /// <summary>Permisos del catálogo activo que el rol tiene hoy (todas las aplicaciones).</summary>
+    [Parameter] public EventCallback<int> CountChanged { get; set; }
+
+    private sealed record AppOpcion(int IdApp, string Nombre);
+
+    private List<PermisoDto> _catalogo = [];
+    private HashSet<int> _asignados = [];
+    private List<AppOpcion> _apps = [];
+    private List<PermisoEditorDto> _filas = [];
+    // permiso → valor deseado; solo los que difieren de lo que el rol tiene hoy
+    private readonly Dictionary<int, bool> _cambios = [];
+    private int _idApp;
+    private int _versionSelectores;
+    private bool _cargando = true;
+    private bool _guardando;
+
+    // un rol global solo lo cambia el usuario de sistema (el administrador de un tenant lo ve en solo lectura)
+    private bool SoloSistema => Rol.IdTenant is null && !Auth.EsSistema;
+    // S107 · D4 — un rol que el usuario de la sesión tiene asignado se ve en solo lectura (salvo sistema)
+    private bool _rolPropio;
+    private bool Bloqueado => !Auth.TienePermiso("ROLES_EDITAR") || _guardando || SoloSistema || _rolPropio;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var catalogo = Api.GetAsync<List<PermisoDto>>("api/permisos/activos");
+            var delRol = Api.GetAsync<List<RolPermisoDto>>($"api/permisos/rol/{Rol.Id}");
+            var propios = !Auth.EsSistema && Auth.IdUsuario is int yo
+                ? Api.GetAsync<List<AccesoDto>>($"api/accesos/usuario/{yo}")
+                : Task.FromResult<List<AccesoDto>?>(null);
+            _catalogo = await catalogo ?? [];
+            _asignados = [.. (await delRol ?? []).Select(rp => rp.IdPermiso)];
+            _rolPropio = (await propios ?? []).Any(a => a.IdRol == Rol.Id && a.Activo);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar permisos: {ex.Message}", Severity.Error);
+        }
+
+        _apps = [.. _catalogo.Where(p => p.IdApp is not null)
+            .GroupBy(p => (Id: p.IdApp!.Value, Nombre: p.AppNombre ?? ""))
+            .Select(g => new AppOpcion(g.Key.Id, g.Key.Nombre))
+            .OrderBy(a => a.Nombre, StringComparer.CurrentCultureIgnoreCase)];
+        // la primera aplicación donde el rol ya tiene algo; si no, la primera
+        _idApp = _apps.FirstOrDefault(a => _catalogo.Any(p => p.IdApp == a.IdApp && _asignados.Contains(p.Id)))?.IdApp
+            ?? (_apps.Count > 0 ? _apps[0].IdApp : 0);
+        ArmarFilas();
+        _cargando = false;
+        await CountChanged.InvokeAsync(TotalAsignados);
+    }
+
+    private int TotalAsignados => _catalogo.Count(p => _asignados.Contains(p.Id));
+
+    private void ArmarFilas() => _filas =
+    [
+        .. _catalogo.Where(p => p.IdApp == _idApp).Select(p => new PermisoEditorDto
+        {
+            IdPermiso = p.Id, Codigo = p.Codigo, Nombre = p.Nombre, Descripcion = p.Descripcion, IdModulo = p.IdModulo,
+            ModuloNombre = p.ModuloNombre ?? p.ModuloCodigo ?? "", Orden = p.Orden, Tiene = _asignados.Contains(p.Id)
+        })
+    ];
+
+    private async Task CambiarAppAsync(int idApp)
+    {
+        if (idApp == _idApp) return;
+        if (_cambios.Count > 0)
+        {
+            var parameters = new DialogParameters
+            {
+                ["Title"] = "Descartar cambios",
+                ["Message"] = $"Hay {_cambios.Count} cambios sin guardar. ¿Descartarlos?",
+                ["ConfirmText"] = "Descartar", ["CancelText"] = "Seguir editando", ["ConfirmColor"] = Color.Warning
+            };
+            var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parameters);
+            var result = await dialog.Result;
+            if (result is not { Canceled: false }) { _versionSelectores++; return; }
+        }
+        _cambios.Clear();
+        _idApp = idApp;
+        _versionSelectores++;
+        ArmarFilas();
+    }
+
+    private async Task GuardarAsync()
+    {
+        if (_cambios.Count == 0 || Bloqueado) return;
+
+        var agregar = _cambios.Count(c => c.Value);
+        var parameters = new DialogParameters
+        {
+            ["Title"] = "Guardar permisos del rol",
+            ["Message"] = $"Se agregarán {agregar} y se quitarán {_cambios.Count - agregar} permisos del rol «{Rol.Nombre}». Afecta a {UsuariosConRol} usuarios con este rol.",
+            ["ConfirmText"] = "Guardar", ["CancelText"] = "Cancelar"
+        };
+        var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parameters);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled) return;
+
+        var dto = new AplicarPermisosRolDto { Cambios = [.. _cambios.Select(c => new CambioPermisoDto { IdPermiso = c.Key, Tiene = c.Value })] };
+
+        _guardando = true;
+        try
+        {
+            var (resultado, error) = await Api.PostWithErrorAsync<ResultadoAplicarPermisosRolDto>($"api/permisos/rol/{Rol.Id}/aplicar", dto);
+            if (resultado is null)
+            {
+                Snackbar.Add(error ?? "No se pudieron guardar los cambios", Severity.Error);
+                return;
+            }
+            Snackbar.Add($"{resultado.Agregados} agregados, {resultado.Quitados} quitados", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+            return;
+        }
+        finally { _guardando = false; }
+
+        await RecargarAsignadosAsync();
+    }
+
+    private async Task RecargarAsignadosAsync()
+    {
+        try
+        {
+            _asignados = [.. (await Api.GetAsync<List<RolPermisoDto>>($"api/permisos/rol/{Rol.Id}") ?? []).Select(rp => rp.IdPermiso)];
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar permisos: {ex.Message}", Severity.Error);
+            return;
+        }
+        _cambios.Clear();
+        ArmarFilas();
+        await CountChanged.InvokeAsync(TotalAsignados);
+    }
+}

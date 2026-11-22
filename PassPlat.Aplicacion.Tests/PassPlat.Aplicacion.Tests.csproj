@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
+    <PackageReference Include="Microsoft.IdentityModel.Tokens" />
+    <PackageReference Include="Moq" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PassPlat.Aplicacion\PassPlat.Aplicacion.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Caching\CBP.Caching.Abstractions\CBP.Caching.Abstractions.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Caching\CBP.Caching.Memory\CBP.Caching.Memory.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Data\CBP.Data.Asynchronous\CBP.Data.Asynchronous.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Data\CBP.Data.Synchronous\CBP.Data.Synchronous.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Data\CBP.Data.Utilities\CBP.Data.Utilities.csproj" />
+    <ProjectReference Include="..\..\CBP\CBP.Infraestructure\CBP.Logging\CBP.Logging.csproj" />
+    <ProjectReference Include="..\PassPlat.Datos\PassPlat.Datos.csproj" />
+    <!-- S95: pruebas del SDK PassPlat.Client (HttpMessageHandler falso, sin red ni BD). -->
+    <ProjectReference Include="..\PassPlat.Client\PassPlat.Client.csproj" />
+  </ItemGroup>
+
+</Project>
+

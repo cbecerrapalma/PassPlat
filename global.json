@@ -1,0 +1,7 @@
+{
+  // S92.2-K4b: runner MTP para `dotnet test` en .NET 10 SDK (el modo VSTest fue
+  // retirado por Microsoft.Testing.Platform 2.x). Sin seccion "sdk": no fija SDK.
+  "test": {
+    "runner": "Microsoft.Testing.Platform"
+  }
+}

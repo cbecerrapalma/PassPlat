@@ -24,7 +24,7 @@ public class TipoBloqueoRepository : RepositoryAsync<TipoBloqueo>, ITipoBloqueoR
             var list = await DbSet.Where(t => t.Activo).ToListAsync(ct);
             return Result<IReadOnlyList<TipoBloqueo>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<TipoBloqueo>>.Failure("DB_ERROR", ex.Message);
         }

@@ -1,3 +1,4 @@
+using CBP.Blazor;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
@@ -14,8 +15,10 @@ var appSettings = builder.Configuration.GetSection("AppSettings").Get<AppSetting
 builder.Services.AddSingleton(appSettings);
 
 builder.Services.AddMudServices();
+builder.Services.AddCbpBlazor(); // S89 · D4 — IFileDownloadService (descarga del CSV del panel)
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<ApiClient>();
+builder.Services.AddScoped<MenuService>();
 builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthenticationStateProvider>();
 builder.Services.AddAuthorizationCore(options =>
 {

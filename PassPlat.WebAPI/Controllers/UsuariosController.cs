@@ -12,9 +12,11 @@ using Microsoft.AspNetCore.Mvc;
 using PassPlat.Aplicacion.Dtos.Core;
 using PassPlat.Aplicacion.Services;
 using PassPlat.Aplicacion.Services.Email;
+using CBP.Data.Utilities.Helpers;
 using PassPlat.Datos;
 using PassPlat.Datos.Repositories;
 using PassPlat.Dominio.Entities.Core;
+using PassPlat.WebAPI.Auth;
 
 namespace PassPlat.WebAPI.Controllers;
 
@@ -29,8 +31,10 @@ public class UsuariosController : BaseApiController
     private readonly IValidator<CrearUsuarioDto> _crearValidator;
     private readonly IEmailQueue _emailQueue;
     private readonly IUsuarioTenantRepository _usuarioTenantRepo;
+    private readonly IUsuarioPermisoService _usuarioPermiso;
+    private readonly ILogger<UsuariosController> _logger;
 
-    public UsuariosController(IUsuarioService service, ITenantContext tenantContext, IPasswordService passwordService, IPoliticaPwdService politicaPwdService, IUnitOfWorkAsync uow, IValidator<CrearUsuarioDto> crearValidator, IEmailQueue emailQueue, IUsuarioTenantRepository usuarioTenantRepo)
+    public UsuariosController(IUsuarioService service, ITenantContext tenantContext, IPasswordService passwordService, IPoliticaPwdService politicaPwdService, IUnitOfWorkAsync uow, IValidator<CrearUsuarioDto> crearValidator, IEmailQueue emailQueue, IUsuarioTenantRepository usuarioTenantRepo, ILogger<UsuariosController> logger, IUsuarioPermisoService usuarioPermiso)
     {
         _service = service;
         _tenantContext = tenantContext;
@@ -40,11 +44,21 @@ public class UsuariosController : BaseApiController
         _crearValidator = crearValidator;
         _emailQueue = emailQueue;
         _usuarioTenantRepo = usuarioTenantRepo;
+        _logger = logger;
+        _usuarioPermiso = usuarioPermiso;
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll(CancellationToken ct)
+    public async Task<IActionResult> GetAll(CancellationToken ct, [FromQuery] int? idApp)
     {
+        if (idApp.HasValue)
+        {
+            var denegado = await ValidarAppAsync(idApp.Value, ct);
+            if (denegado is not null) return denegado;
+            var pagedResult = await _service.ObtenerPaginadoFiltradoAsync(User.AlcanceTenant(_tenantContext), idApp.Value, null, null, new PaginationOptions<Usuario>(1, 200), ct);
+            if (pagedResult.IsFailure) return FromResult(pagedResult);
+            return Ok(pagedResult.Value.Items);
+        }
         if (_tenantContext.HasTenant)
         {
             var options = new PaginationOptions<Usuario>(pageNumber: 1, pageSize: 200);
@@ -64,32 +78,26 @@ public class UsuariosController : BaseApiController
     }
 
     [HttpGet("page")]
-    public async Task<IActionResult> GetPaged([FromQuery] PaginationRequest request, [FromQuery] string? search, CancellationToken ct)
+    public async Task<IActionResult> GetPaged([FromQuery] PaginationRequest request, [FromQuery] string? search, [FromQuery] int? idTenant, [FromQuery] int? idApp, [FromQuery] int? miembroDe, CancellationToken ct)
     {
+        // S111 · D4 — con idApp se exige Acceso activo a la app en el tenant (403 SIN_ACCESO_APP)
+        if (idApp is int app && await ValidarAppAsync(app, ct) is { } denegado)
+            return denegado;
+
         var options = new PaginationOptions<Usuario>(request.PageNumber, request.PageSize);
-        if (!User.HasClaim("is_system", "true"))
-        {
-            var tenantResult = await _service.ObtenerPaginadoPorTenantAsync(_tenantContext.CurrentId, options, search, ct);
-            return tenantResult.IsSuccess ? Ok(ToPagedResponse(tenantResult.Value)) : FromResult(tenantResult);
-        }
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            var searchResult = await _service.ObtenerPaginadoConBusquedaAsync(options, search, ct);
-            if (searchResult.IsFailure) return FromResult(searchResult);
-            return Ok(ToPagedResponse(searchResult.Value));
-        }
-        var result = await _service.GetPagedAsync(options, ct);
+        // S85 · D5 — un no-sistema nunca ve otro tenant, aunque mande idTenant
+        // S93 · D2 — miembroDe filtra por membresía activa en lugar del tenant de origen; un no-sistema queda en el suyo
+        var esSistema = User.HasClaim("is_system", "true");
+        int? miembro = miembroDe.HasValue ? (esSistema ? miembroDe : _tenantContext.CurrentId) : null;
+        int? tenant = miembro.HasValue ? null : (esSistema ? idTenant : _tenantContext.CurrentId);
+        var result = await _service.ObtenerPaginadoFiltradoAsync(tenant, idApp, miembro, search, options, ct);
         return result.IsSuccess ? Ok(ToPagedResponse(result.Value)) : FromResult(result);
     }
-
-    [HttpGet("count")]
-    public async Task<IActionResult> Count(CancellationToken ct)
-        => FromResultQuery(await _service.CountAsync(ct));
 
     [HttpGet("nomusuario/{nomUsuario}")]
     public async Task<IActionResult> GetByNomUsuario(string nomUsuario, CancellationToken ct)
     {
-        var uid = GetIdUsuario();
+        var uid = User.IdUsuario();
         if (uid == null) return Unauthorized(new { codigo = "ACCESO_DENEGADO" });
         return FromResultQuery(await _service.ObtenerPorNomUsuarioAsync(_tenantContext.CurrentId, nomUsuario, ct));
     }
@@ -97,24 +105,16 @@ public class UsuariosController : BaseApiController
     [HttpGet("email/{email}")]
     public async Task<IActionResult> GetByEmail(string email, CancellationToken ct)
     {
-        var uid = GetIdUsuario();
+        var uid = User.IdUsuario();
         if (uid == null) return Unauthorized(new { codigo = "ACCESO_DENEGADO" });
         return FromResultQuery(await _service.ObtenerPorEmailAsync(_tenantContext.CurrentId, email, ct));
     }
-
-    [HttpGet("con-intentos-excedidos")]
-    public async Task<IActionResult> GetConIntentosExcedidos(CancellationToken ct)
-        => FromResultQuery(await _service.ObtenerConIntentosExcedidosAsync(_tenantContext.CurrentId, 5, ct));
-
-    [HttpGet("con-password-expirada")]
-    public async Task<IActionResult> GetConPasswordExpirada(CancellationToken ct)
-        => FromResultQuery(await _service.ObtenerConPasswordExpiradaAsync(_tenantContext.CurrentId, 90, ct));
 
     [HttpPost]
     [Authorize(Policy = "USUARIOS_CREAR")]
     public async Task<IActionResult> Create([FromBody] CrearUsuarioDto dto, CancellationToken ct)
     {
-        var uid = GetIdUsuario();
+        var uid = User.IdUsuario();
         if (uid == null) return Unauthorized(new { codigo = "ACCESO_DENEGADO" });
         dto.Email = string.IsNullOrWhiteSpace(dto.Email) ? null : dto.Email;
 
@@ -129,15 +129,6 @@ public class UsuariosController : BaseApiController
         {
             var result = await _service.CrearAsync(dto, ct);
             if (result.IsFailure) return FromResult(result);
-            try
-            {
-                await _uow.SaveChangesAsync(ct);
-            }
-            catch (DbUpdateException ex)
-            {
-                var msg = ex.InnerException?.Message ?? ex.Message;
-                return BadRequest(new { codigo = "DB_CONSTRAINT", mensaje = msg });
-            }
             await _service.EnviarBienvenidaAsync(dto.Email, dto.NomUsuario, dto.IdTenant, result.Value.Id, dto.IdApp, ct);
             return CreatedAtAction(nameof(GetById), new { id = result.Value.Id }, result.Value);
         }
@@ -167,6 +158,14 @@ public class UsuariosController : BaseApiController
         return CreatedAtAction(nameof(GetById), new { id = spResult.Value.IdUsuario.Value }, usuario.Value);
     }
 
+    // S111 · D4 — valida que quien llama tenga Acceso activo a la app en su tenant (403 SIN_ACCESO_APP)
+    private async Task<IActionResult?> ValidarAppAsync(int idApp, CancellationToken ct)
+    {
+        var apps = await _usuarioPermiso.ObtenerAppsPermitidasAsync(User.IdUsuario() ?? 0, User.AlcanceTenant(_tenantContext), idApp, ct);
+        if (apps.IsFailure) return FromResult(apps);
+        return null;
+    }
+
     [HttpPut("{id}")]
     [Authorize(Policy = "USUARIOS_EDITAR")]
     public async Task<IActionResult> Update(int id, [FromBody] ActualizarUsuarioDto dto, CancellationToken ct)
@@ -182,8 +181,7 @@ public class UsuariosController : BaseApiController
         }
         catch (DbUpdateException ex)
         {
-            var msg = ex.InnerException?.Message ?? ex.Message;
-            return BadRequest(new { codigo = "DB_CONSTRAINT", mensaje = msg });
+            return RestriccionBd("actualizar", ex);
         }
         return FromResult(result);
     }
@@ -192,7 +190,7 @@ public class UsuariosController : BaseApiController
     [Authorize(Policy = "USUARIOS_ELIMINAR")]
     public async Task<IActionResult> Delete(int id, CancellationToken ct)
     {
-        var uid = GetIdUsuario();
+        var uid = User.IdUsuario();
         if (uid == id) return BadRequest(new { codigo = "AUTO_ELIMINACION" });
         if (_tenantContext.HasTenant && !await EsMiembroTenantActualAsync(id, ct))
             return NotFound();
@@ -204,8 +202,7 @@ public class UsuariosController : BaseApiController
         }
         catch (DbUpdateException ex)
         {
-            var msg = ex.InnerException?.Message ?? ex.Message;
-            return BadRequest(new { codigo = "DB_CONSTRAINT", mensaje = msg });
+            return RestriccionBd("eliminar", ex);
         }
         return FromResult(result);
     }
@@ -247,7 +244,7 @@ public class UsuariosController : BaseApiController
         if (string.IsNullOrWhiteSpace(request.NuevaPassword))
             return BadRequest(new { codigo = "PASSWORD_REQUIRED", mensaje = "La nueva contraseña es obligatoria" });
 
-        var idUsrEjecutor = GetIdUsuario();
+        var idUsrEjecutor = User.IdUsuario();
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString()
             ?? Request.Headers["X-Forwarded-For"].FirstOrDefault()
             ?? "unknown";
@@ -259,65 +256,6 @@ public class UsuariosController : BaseApiController
 
         await _uow.SaveChangesAsync(ct);
         return FromResult(result);
-    }
-
-    [HttpPost("{id}/agregar-password-local")]
-    [Authorize(Policy = "USUARIOS_EDITAR")]
-    public async Task<IActionResult> AgregarPasswordLocal(int id, [FromBody] AgregarPasswordLocalRequest request, CancellationToken ct)
-    {
-        var uid = GetIdUsuario();
-        if (uid == null) return Unauthorized(new { codigo = "ACCESO_DENEGADO" });
-
-        // Users can only add password to themselves, or admins to any user
-        if (uid != id && !User.HasClaim("is_system", "true"))
-            return Unauthorized(new { codigo = "ACCESO_DENEGADO", mensaje = "Solo puede agregar contraseña a su propia cuenta" });
-
-        if (_tenantContext.HasTenant && !await EsMiembroTenantActualAsync(id, ct))
-            return NotFound();
-
-        if (string.IsNullOrWhiteSpace(request.NuevaPassword))
-            return BadRequest(new { codigo = "PASSWORD_REQUIRED", mensaje = "La nueva contraseña es obligatoria" });
-
-        // Verify user exists and is not deleted
-        var usuarioResult = await _service.GetByIdAsync(id, ct);
-        if (usuarioResult.IsFailure || usuarioResult.Value == null)
-            return NotFound(new { codigo = "USER_NOT_FOUND", mensaje = "Usuario no encontrado" });
-
-        var usuario = usuarioResult.Value;
-        if (usuario.Eliminado)
-            return BadRequest(new { codigo = "USER_DELETED", mensaje = "Usuario eliminado" });
-
-        // If user already has local password, use change password flow instead
-        if (usuario.TienePasswordLocal)
-            return BadRequest(new { codigo = "ALREADY_HAS_PASSWORD", mensaje = "El usuario ya tiene contraseña local. Use el flujo de cambio de contraseña." });
-
-        // Validate password against policy
-        var policyResult = await _politicaPwdService.ObtenerPoliticaAplicableAsync(_tenantContext.CurrentId, idApp: null, ct);
-        var cbpPolicy = PoliticaPwdDtoToCbpPolicy(policyResult.IsSuccess ? policyResult.Value! : null);
-        var hashResult = await _passwordService.HashPasswordAsync(request.NuevaPassword, cbpPolicy, ct);
-        if (hashResult.IsFailure)
-            return BadRequest(new { codigo = "PASSWORD_POLICY_FAILED", mensaje = hashResult.Error!.Message });
-
-        // Create HistorialPwd and set TienePasswordLocal=1
-        var cambioResult = await _passwordService.CambiarPasswordAsync(
-            id, _tenantContext.CurrentId, hashResult.Value, pepperVersion: 1,
-            idTipoCambio: (int)PassPlat.Dominio.Enums.ETipoCambioPwd.PrimerUso,
-            idDisp: null, idIP: null, idAgente: null, ct);
-
-        if (cambioResult.IsFailure)
-            return BadRequest(new { codigo = cambioResult.Error!.Code, mensaje = cambioResult.Error.Message });
-
-        await _uow.SaveChangesAsync(ct);
-
-        await _emailQueue.EnqueueAsync(new EmailJob(
-            EmailJobKind.PasswordLocalAdded,
-            usuario.Email ?? "",
-            usuario.Nombre ?? usuario.NomUsuario,
-            new Dictionary<string, object?>(),
-            _tenantContext.CurrentId,
-            id));
-
-        return Ok(new { mensaje = "Contraseña local agregada correctamente. Ahora puede iniciar sesión con usuario y contraseña." });
     }
 
     private static CBP.Security.Cryptography.Models.PoliticaPwd PoliticaPwdDtoToCbpPolicy(PoliticaPwdDto? dto)
@@ -377,8 +315,30 @@ public class UsuariosController : BaseApiController
         }
     }
 
-    private int? GetIdUsuario() =>
-        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
+    // S65.1: el texto de la excepción (SQL, índice, valor duplicado) no se devuelve al cliente.
+    private IActionResult RestriccionBd(string accion, DbUpdateException ex)
+    {
+        var numero = SqlErrorRedactor.GetErrorNumber(ex);
+        var innerEx = ex.InnerException;
+        var innerMessage = innerEx?.Message;
+        var detalle = SqlErrorRedactor.Redact(innerMessage);
+        _logger.LogWarning("Restricción de BD en usuarios {Accion} trace {TraceId} {Numero}: {Detalle}", accion, HttpContext.TraceIdentifier, numero, detalle);
+        var mensaje = EsViolacionIndiceUnico(ex)
+            ? "Ya existe un usuario con ese nombre de usuario o email."
+            : "No se pudo guardar el usuario: los datos no cumplen una restricción de la base de datos.";
+        return BadRequest(new { codigo = "DB_CONSTRAINT", mensaje });
+    }
+
+    private static bool EsViolacionIndiceUnico(DbUpdateException ex)
+    {
+        for (var e = ex.InnerException; e != null; e = e.InnerException)
+        {
+            if (e is Microsoft.Data.SqlClient.SqlException sqlex &&
+                (sqlex.Number == 2601 || sqlex.Number == 2627))
+                return true;
+        }
+        return false;
+    }
 }
 
 public class PaginationRequest
@@ -388,12 +348,6 @@ public class PaginationRequest
 }
 
 public class CambiarPwdAdminRequest
-{
-    [Required(AllowEmptyStrings = false)]
-    public string NuevaPassword { get; init; } = string.Empty;
-}
-
-public class AgregarPasswordLocalRequest
 {
     [Required(AllowEmptyStrings = false)]
     public string NuevaPassword { get; init; } = string.Empty;

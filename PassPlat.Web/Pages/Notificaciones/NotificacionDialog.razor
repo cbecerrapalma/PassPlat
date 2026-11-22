@@ -1,24 +1,28 @@
 @inject ApiClient Api
 @inject ISnackbar Snackbar
 
-<MudDialog Options="_dialogOptions">
+<MudDialog Options="@OpcionesDialogo.Dialogo(TamanoDialogo.Compacto)" Class="dialogo-formulario">
     <TitleContent>
-        <MudText Typo="Typo.h6">Nueva Notificación</MudText>
+        <TituloDialogo Icono="@Icons.Material.Filled.Add" Texto="Nueva Notificación" />
     </TitleContent>
     <DialogContent>
-        <MudTextField @bind-Value="_asunto" Label="Asunto" Variant="Variant.Outlined" Class="mb-3" />
-        <MudTextField @bind-Value="_mensaje" Label="Mensaje" Variant="Variant.Outlined" Class="mb-3" Lines="3" />
+        <AlertaErrorDialogo Mensaje="@_errorServidor" />
+        <MudForm @ref="_form">
+        <div class="dialogo-campos">
+            <MudTextField @bind-Value="_asunto" Label="Asunto" Variant="Variant.Outlined" Required="true" RequiredError="El asunto es requerido" MaxLength="200" />
+            <MudTextField @bind-Value="_mensaje" Label="Mensaje" Variant="Variant.Outlined" Lines="3" MaxLength="4000" />
+        </div>
+        </MudForm>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="@(() => MudDialog.Cancel())">Cancelar</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@Save" Disabled="@_saving">Crear</MudButton>
+        <BotonGuardarDialogo Texto="Crear" Guardando="@_saving" OnClick="@Save" />
     </DialogActions>
 </MudDialog>
 
 @code {
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
-
-    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+    private string? _errorServidor;
 
     [Parameter] public int IdUsuario { get; set; }
 
@@ -26,6 +30,7 @@
     private string _asunto = "";
     private string _mensaje = "";
     private bool _saving;
+    private MudForm _form = null!;
 
     protected override void OnInitialized()
     {
@@ -34,6 +39,8 @@
 
     private async Task Save()
     {
+        await _form.ValidateAsync();
+        if (!_form.IsValid) return;
         _saving = true;
         try
         {
@@ -45,11 +52,11 @@
                 MudDialog.Close(DialogResult.Ok(true));
             }
             else
-                Snackbar.Add(Api.LastError ?? "Error al crear notificación", Severity.Error);
+                _errorServidor = Api.LastError ?? "Error al crear notificación";
         }
         catch (Exception ex)
         {
-            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+            _errorServidor = Api.LastError ?? $"Error: {ex.Message}";
         }
         finally
         {

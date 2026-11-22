@@ -17,7 +17,7 @@ public class IPConfiguration : IEntityTypeConfiguration<IP>
         builder.Property(d => d.Pais).HasMaxLength(100);
         builder.Property(d => d.Ciudad).HasMaxLength(100);
         builder.Property(d => d.EsSospechosa).HasDefaultValue(false).IsRequired();
-        builder.Property(d => d.FecPrimerUso).HasDefaultValueSql("sysutcdatetime()").IsRequired();
+        builder.Property(d => d.FecPrimerUso).HasDefaultValueSql("sysdatetime()").IsRequired();
         builder.Property(d => d.UltUso);
 
         builder.HasIndex(d => d.Direccion).IsUnique();

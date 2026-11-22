@@ -22,7 +22,7 @@ public class AudIdenExtConfiguration : IEntityTypeConfiguration<AudIdenExt>
         builder.Property(a => a.IP).HasMaxLength(45);
         builder.Property(a => a.UserAgent).HasMaxLength(500);
         builder.Property(a => a.CorrelationId).HasMaxLength(50);
-        builder.Property(a => a.FecEvento).HasDefaultValueSql("sysutcdatetime()").IsRequired();
+        builder.Property(a => a.FecEvento).HasDefaultValueSql("sysdatetime()").IsRequired();
 
         builder.Property(a => a.TraceId).HasMaxLength(100);
         builder.Property(a => a.SessionId);

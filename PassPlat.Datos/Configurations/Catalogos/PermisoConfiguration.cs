@@ -18,7 +18,7 @@ public class PermisoConfiguration : IEntityTypeConfiguration<Permiso>
         builder.Property(p => p.IdModulo).IsRequired();
         builder.Property(p => p.Orden).HasColumnType("tinyint").HasDefaultValue(0);
         builder.Property(p => p.Activo).HasDefaultValue(true).IsRequired();
-        builder.Property(p => p.FecCrea).HasDefaultValueSql("sysutcdatetime()").IsRequired();
+        builder.Property(p => p.FecCrea).HasDefaultValueSql("sysdatetime()").IsRequired();
 
         builder.HasOne(p => p.Modulo).WithMany(m => m.Permisos).HasForeignKey(p => p.IdModulo)
             .OnDelete(DeleteBehavior.Restrict);

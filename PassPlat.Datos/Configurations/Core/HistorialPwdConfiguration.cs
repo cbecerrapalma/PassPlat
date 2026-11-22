@@ -27,7 +27,7 @@ public class HistorialPwdConfiguration : IEntityTypeConfiguration<HistorialPwd>
         builder.Property(h => h.EsActual).HasDefaultValue(false).IsRequired();
         builder.Property(h => h.EsForzado).HasDefaultValue(false).IsRequired();
         builder.Property(h => h.EsComprometida).HasDefaultValue(false).IsRequired();
-        builder.Property(h => h.FecRegistro).HasDefaultValueSql("sysutcdatetime()");
+        builder.Property(h => h.FecRegistro).HasDefaultValueSql("sysdatetime()");
         builder.Property(h => h.FecExpira);
         builder.Property(h => h.Complejidad);
         builder.Property(h => h.Fortaleza).HasPrecision(5, 2);

@@ -1,11 +1,14 @@
 using AutoMapper;
 using CBP.Data.Abstractions;
 using CBP.Results;
+using CBP.Results.Errors;
 using CBP.Services.Abstractions;
 using CBP.Services.Async;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using PassPlat.Aplicacion.Dtos.Core;
 using PassPlat.Aplicacion.Services.Email;
+using CBP.Data.Utilities.Helpers;
 using PassPlat.Datos;
 using PassPlat.Datos.Repositories;
 using PassPlat.Datos.SPResults;
@@ -18,13 +21,11 @@ public interface IUsuarioService : IServiceAsync<Usuario, UsuarioDto>
     Task<Result<UsuarioDto?>> ObtenerPorNomUsuarioAsync(int idTenant, string nomUsuario, CancellationToken ct = default);
     Task<Result<UsuarioDto?>> ObtenerPorEmailAsync(int idTenant, string email, CancellationToken ct = default);
     Task<Result<UsuarioDto?>> ObtenerCompletoPorIdAsync(int idUsuario, CancellationToken ct = default);
-    Task<Result<IReadOnlyList<UsuarioDto>>> ObtenerConIntentosExcedidosAsync(int idTenant, byte maxIntentos, CancellationToken ct = default);
-    Task<Result<IReadOnlyList<UsuarioDto>>> ObtenerConPasswordExpiradaAsync(int idTenant, int diasVigencia, CancellationToken ct = default);
     Task<Result<UsuarioDto>> CrearAsync(CrearUsuarioDto dto, CancellationToken ct = default);
     Task<Result> ActualizarAsync(ActualizarUsuarioDto dto, CancellationToken ct = default);
     Task<Result> MarcarEliminadoAsync(int idUsuario, CancellationToken ct = default);
-    Task<Result<IPagedResult<UsuarioDto>>> ObtenerPaginadoConBusquedaAsync(PaginationOptions<Usuario> options, string search, CancellationToken ct = default);
     Task<Result<IPagedResult<UsuarioDto>>> ObtenerPaginadoPorTenantAsync(int idTenant, PaginationOptions<Usuario> options, string? search, CancellationToken ct = default);
+    Task<Result<IPagedResult<UsuarioDto>>> ObtenerPaginadoFiltradoAsync(int? idTenant, int? idApp, int? idTenantMiembro, string? search, PaginationOptions<Usuario> options, CancellationToken ct = default);
     Task<Result<CrearUsuarioResult>> CrearConPasswordAsync(int idTenant, int idEstado, string nomUsuario, string? email, string nombre, string apellido, string? hashPwd, string algoritmo = "Argon2id", byte pepperVersion = 1, int? idTipoCambio = null, bool emailVerificado = false, int? idUsrEjecutor = null, int? idTipoAccion = null, int? idDisp = null, int? idIP = null, int? idAgente = null, CancellationToken ct = default);
     Task EnviarBienvenidaAsync(string? email, string nomUsuario, int? idTenant = null, int? idUsuario = null, int? idApp = null, CancellationToken ct = default);
 }
@@ -71,27 +72,38 @@ public class UsuarioService : ServiceAsync<Usuario, UsuarioDto>, IUsuarioService
         return Result<UsuarioDto?>.Success(dto, allowNull: true);
     }
 
-    public async Task<Result<IReadOnlyList<UsuarioDto>>> ObtenerConIntentosExcedidosAsync(int idTenant, byte maxIntentos, CancellationToken ct = default)
-    {
-        var usuariosResult = await _repo.ObtenerConIntentosExcedidosAsync(idTenant, maxIntentos, ct);
-        if (usuariosResult.IsFailure) return Result<IReadOnlyList<UsuarioDto>>.Failure(usuariosResult.Error!);
-        return Result<IReadOnlyList<UsuarioDto>>.Success(Mapper.Map<IReadOnlyList<UsuarioDto>>(usuariosResult.Value));
-    }
-
-    public async Task<Result<IReadOnlyList<UsuarioDto>>> ObtenerConPasswordExpiradaAsync(int idTenant, int diasVigencia, CancellationToken ct = default)
-    {
-        var usuariosResult = await _repo.ObtenerConPasswordExpiradaAsync(idTenant, diasVigencia, ct);
-        if (usuariosResult.IsFailure) return Result<IReadOnlyList<UsuarioDto>>.Failure(usuariosResult.Error!);
-        return Result<IReadOnlyList<UsuarioDto>>.Success(Mapper.Map<IReadOnlyList<UsuarioDto>>(usuariosResult.Value));
-    }
-
     public async Task<Result<UsuarioDto>> CrearAsync(CrearUsuarioDto dto, CancellationToken ct = default)
     {
         var usuario = Usuario.Crear(dto.IdTenant, dto.IdEstado, dto.NomUsuario, dto.Email, dto.Nombre, dto.Apellido);
         var addResult = _repo.Add(usuario);
         if (addResult.IsFailure) return Result<UsuarioDto>.Failure(addResult.Error!);
-        await _uow.SaveChangesAsync(ct);
+        try
+        {
+            await _uow.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex)
+        {
+            var numero = SqlErrorRedactor.GetErrorNumber(ex);
+            var detalle = SqlErrorRedactor.Redact(ex.InnerException?.Message);
+            _logger.LogWarning("Restricción de BD al crear usuario en tenant {IdTenant} {Numero}: {Detalle}", dto.IdTenant, numero, detalle);
+            var mensaje = EsViolacionIndiceUnico(ex)
+                ? "Ya existe un usuario con ese nombre de usuario o email."
+                : "No se pudo guardar el usuario: los datos no cumplen una restricción de la base de datos.";
+            return Result<UsuarioDto>.Failure(new Error("DB_CONSTRAINT", mensaje, null, 400, ErrorType.Validation));
+        }
         return Result<UsuarioDto>.Success(Mapper.Map<UsuarioDto>(usuario));
+    }
+
+    private static bool EsViolacionIndiceUnico(DbUpdateException ex)
+    {
+        for (var e = ex.InnerException; e != null; e = e.InnerException)
+        {
+            if (e is Microsoft.Data.SqlClient.SqlException sqlException &&
+                (sqlException.Number == 2601 || sqlException.Number == 2627))
+                return true;
+        }
+
+        return false;
     }
 
     public async Task<Result> ActualizarAsync(ActualizarUsuarioDto dto, CancellationToken ct = default)
@@ -183,9 +195,9 @@ public class UsuarioService : ServiceAsync<Usuario, UsuarioDto>, IUsuarioService
         }
     }
 
-    public async Task<Result<IPagedResult<UsuarioDto>>> ObtenerPaginadoConBusquedaAsync(PaginationOptions<Usuario> options, string search, CancellationToken ct = default)
+    public async Task<Result<IPagedResult<UsuarioDto>>> ObtenerPaginadoPorTenantAsync(int idTenant, PaginationOptions<Usuario> options, string? search, CancellationToken ct = default)
     {
-        var pagResult = await _repo.BuscarPaginadoAsync(search, options.PageNumber, options.PageSize, ct);
+        var pagResult = await _repo.BuscarPaginadoPorTenantAsync(idTenant, search ?? "", options.PageNumber, options.PageSize, ct);
         if (pagResult.IsFailure) return Result<IPagedResult<UsuarioDto>>.Failure(pagResult.Error!);
         var (items, totalCount) = pagResult.Value;
         var mapped = Mapper.Map<IReadOnlyList<UsuarioDto>>(items);
@@ -193,9 +205,10 @@ public class UsuarioService : ServiceAsync<Usuario, UsuarioDto>, IUsuarioService
             new PagedResultDto<UsuarioDto>(mapped, totalCount, options.PageNumber, options.PageSize));
     }
 
-    public async Task<Result<IPagedResult<UsuarioDto>>> ObtenerPaginadoPorTenantAsync(int idTenant, PaginationOptions<Usuario> options, string? search, CancellationToken ct = default)
+    // S85 · D5 — filtro por tenant y por app sobre todas las páginas
+    public async Task<Result<IPagedResult<UsuarioDto>>> ObtenerPaginadoFiltradoAsync(int? idTenant, int? idApp, int? idTenantMiembro, string? search, PaginationOptions<Usuario> options, CancellationToken ct = default)
     {
-        var pagResult = await _repo.BuscarPaginadoPorTenantAsync(idTenant, search ?? "", options.PageNumber, options.PageSize, ct);
+        var pagResult = await _repo.BuscarPaginadoFiltradoAsync(idTenant, idApp, idTenantMiembro, search, options.PageNumber, options.PageSize, ct);
         if (pagResult.IsFailure) return Result<IPagedResult<UsuarioDto>>.Failure(pagResult.Error!);
         var (items, totalCount) = pagResult.Value;
         var mapped = Mapper.Map<IReadOnlyList<UsuarioDto>>(items);

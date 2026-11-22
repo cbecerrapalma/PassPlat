@@ -1,5 +1,6 @@
 using AutoMapper;
 using CBP.Results;
+using CBP.Results.Errors;
 using CBP.Services.Abstractions;
 using CBP.Services.Async;
 using Microsoft.Extensions.Logging;
@@ -17,8 +18,8 @@ public interface IMFAService : IServiceAsync<MFA, MFADto>
 {
     Task<Result<ValidarMFAResult>> ValidarMFAAsync(int idUsuario, int idTenant, int idTipoMFA, string idMFA, CancellationToken ct = default);
     Task<Result<IReadOnlyList<MFADto>>> ObtenerMetodosPorUsuarioAsync(int idUsuario, CancellationToken ct = default);
+    Task<Result<IReadOnlyList<MFADto>>> ObtenerMetodosVisiblesAsync(int idSolicitante, int idUsuario, int idTenant, CancellationToken ct = default);
     Task<Result<MFADto?>> ObtenerMetodoPrincipalAsync(int idUsuario, CancellationToken ct = default);
-    Task<Result<MFADto>> RegistrarMFAAsync(RegistrarMFADto dto, CancellationToken ct = default);
     Task<Result> RevocarMetodoAsync(int idUsuario, int idMFARegistro, int? idTenant = null, int? idApp = null, CancellationToken ct = default);
 }
 
@@ -29,9 +30,11 @@ public class MFAService : ServiceAsync<MFA, MFADto>, IMFAService
     private readonly IUsuarioRepository _usuarioRepo;
     private readonly IEmailQueue _emailQueue;
     private readonly ILogger<MFAService> _logger;
+    private readonly IUsuarioTenantRepository _usuarioTenantRepo;
 
     public MFAService(MFARepository repo, IMapper mapper, IMfaCodeStore mfaCodeStore,
-        IUsuarioRepository usuarioRepo, IEmailQueue emailQueue, ILogger<MFAService> logger)
+        IUsuarioRepository usuarioRepo, IEmailQueue emailQueue, ILogger<MFAService> logger,
+        IUsuarioTenantRepository usuarioTenantRepo)
         : base(repo, mapper)
     {
         _repo = repo;
@@ -39,30 +42,7 @@ public class MFAService : ServiceAsync<MFA, MFADto>, IMFAService
         _usuarioRepo = usuarioRepo;
         _emailQueue = emailQueue;
         _logger = logger;
-    }
-
-    public async Task<Result<ValidarMFAResult>> ValidarEmailAsync(int idUsuario, int idTenant, string code, CancellationToken ct = default)
-    {
-        try
-        {
-            var usuarioResult = await _usuarioRepo.ObtenerPorIdAsync(idUsuario, ct);
-            if (usuarioResult.IsFailure) return Result<ValidarMFAResult>.Failure(usuarioResult.Error!);
-            var usuario = usuarioResult.Value;
-
-            if (usuario == null || string.IsNullOrWhiteSpace(usuario.Email))
-                return Result<ValidarMFAResult>.Failure("NO_EMAIL", "El usuario no tiene un correo electrónico registrado");
-
-            var valido = await _mfaCodeStore.ValidateAndConsumeAsync(idUsuario, idTenant, code, ct);
-            return Result<ValidarMFAResult>.Success(new ValidarMFAResult
-            {
-                Exito = valido ? 1 : 0,
-                EsPrincipal = valido
-            });
-        }
-        catch (Exception ex)
-        {
-            return Result<ValidarMFAResult>.Failure("MFA_VALIDATE_ERROR", ex.Message);
-        }
+        _usuarioTenantRepo = usuarioTenantRepo;
     }
 
     public async Task<Result<ValidarMFAResult>> ValidarMFAAsync(int idUsuario, int idTenant, int idTipoMFA, string idMFA, CancellationToken ct = default)
@@ -81,22 +61,24 @@ public class MFAService : ServiceAsync<MFA, MFADto>, IMFAService
         return result;
     }
 
-    public async Task<Result<MFADto>> RegistrarMFAAsync(RegistrarMFADto dto, CancellationToken ct = default)
-    {
-        var entity = Mapper.Map<MFA>(dto);
-        entity.FecAlta = DateTime.Now;
-        var addResult = Repository.Add(entity);
-        if (addResult.IsFailure) return Result<MFADto>.Failure(addResult.Error!);
-
-        await NotificarMFAAsync(dto.IdUsuario, EmailJobKind.MfaEnabled, dto.IdTenant, null, ct);
-        return Result<MFADto>.Success(Mapper.Map<MFADto>(entity));
-    }
-
     public async Task<Result<IReadOnlyList<MFADto>>> ObtenerMetodosPorUsuarioAsync(int idUsuario, CancellationToken ct = default)
     {
         var metodosResult = await _repo.ObtenerMetodosPorUsuarioAsync(idUsuario, ct);
         if (metodosResult.IsFailure) return Result<IReadOnlyList<MFADto>>.Failure(metodosResult.Error!);
         return Result<IReadOnlyList<MFADto>>.Success(Mapper.Map<IReadOnlyList<MFADto>>(metodosResult.Value));
+    }
+
+    // S69 · D2 — Visibilidad de métodos MFA para otro usuario del tenant
+    public async Task<Result<IReadOnlyList<MFADto>>> ObtenerMetodosVisiblesAsync(int idSolicitante, int idUsuario, int idTenant, CancellationToken ct = default)
+    {
+        if (idSolicitante != idUsuario)
+        {
+            var resMem = await _usuarioTenantRepo.ObtenerActivoPorTenantAsync(idUsuario, idTenant, ct);
+            if (resMem.IsFailure) return Result<IReadOnlyList<MFADto>>.Failure(resMem.Error!);
+            if (resMem.Value is null) return Result<IReadOnlyList<MFADto>>.Failure(CommonErrors.Authorization.Forbidden("métodos MFA del usuario"));
+        }
+
+        return await ObtenerMetodosPorUsuarioAsync(idUsuario, ct);
     }
 
     public async Task<Result<MFADto?>> ObtenerMetodoPrincipalAsync(int idUsuario, CancellationToken ct = default)

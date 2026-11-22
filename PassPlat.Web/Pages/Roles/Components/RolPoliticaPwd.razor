@@ -1,0 +1,175 @@
+@* S102 · D1 — pestaña Política de RolDetail (antes en /admin/roles-permisos) *@
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@inject AuthService Auth
+
+@if (!IsActive && !_cargado)
+{
+    return;
+}
+
+@if (!_cargado)
+{
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="100%" Height="120px" />
+}
+else
+{
+    <div class="detail-section">
+        <div class="d-flex align-center gap-2 mb-4">
+            @if (_politicaAsignada is not null)
+            {
+                <MudChip T="string" Color="Color.Success" Size="Size.Medium">@_politicaAsignada.PoliticaNombre</MudChip>
+                @if (_puedeEditar)
+                {
+                    <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small"
+                        OnClick="@DesasignarPolitica" Disabled="@_guardando">
+                        @(_guardando ? "Quitando..." : "Quitar")
+                    </MudButton>
+                }
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Class="text-secondary">
+                    <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="mr-1" />
+                    Este rol no tiene política de contraseña asignada
+                </MudText>
+            }
+            <MudSpacer />
+            @if (_puedeEditar)
+            {
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                    OnClick="@AbrirAsignarPolitica" StartIcon="@Icons.Material.Filled.Policy">
+                    @(_politicaAsignada is null ? "Asignar Política" : "Cambiar Política")
+                </MudButton>
+            }
+        </div>
+
+        @if (_politicaAsignada is not null && _politicaDetalle is not null)
+        {
+            <MudDivider Class="mb-4" />
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudText Typo="Typo.subtitle2" Class="mb-1">Requisitos de Complejidad</MudText>
+                    <div class="d-flex flex-wrap gap-1">
+                        <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">
+                            Min @_politicaDetalle.LongMin - Max @_politicaDetalle.LongMax
+                        </MudChip>
+                        @if (_politicaDetalle.ReqMayuscula)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">Mayúscula</MudChip>
+                        }
+                        @if (_politicaDetalle.ReqMinuscula)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">Minúscula</MudChip>
+                        }
+                        @if (_politicaDetalle.ReqNumero)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">Número</MudChip>
+                        }
+                        @if (_politicaDetalle.ReqEspecial)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">Especial</MudChip>
+                        }
+                    </div>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudText Typo="Typo.subtitle2" Class="mb-1">Seguridad</MudText>
+                    <div class="d-flex flex-wrap gap-1">
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined">MaxIntentos: @_politicaDetalle.MaxIntentos</MudChip>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined">DurBloqueo: @_politicaDetalle.DurBloqueoMin min</MudChip>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined">Vigencia: @_politicaDetalle.DiasVigencia días</MudChip>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined">Recordar: @_politicaDetalle.PwdRecordadas</MudChip>
+                    </div>
+                </MudItem>
+            </MudGrid>
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public RolDto Rol { get; set; } = default!;
+    [Parameter] public bool IsActive { get; set; }
+
+    private List<PoliticaPwdDto> _politicas = [];
+    private RolPoliticaPwdDto? _politicaAsignada;
+    private PoliticaPwdDto? _politicaDetalle;
+    private bool _pedido;
+    private bool _cargado;
+    private bool _guardando;
+    private bool _puedeEditar => Auth.TienePermiso("POLITICASPWD_EDITAR");
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // RolDetail vuelve a pasar Rol (RolDto) en su segundo render, antes de que termine
+        // la carga: _pedido se marca antes del primer await para cargar una sola vez, y
+        // _cargado sigue mostrando el esqueleto hasta que llega la respuesta.
+        if (IsActive && !_pedido)
+        {
+            _pedido = true;
+            try
+            {
+                _politicas = await Api.GetAsync<List<PoliticaPwdDto>>("api/politicaspwd") ?? [];
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add(Api.LastError ?? $"Error al cargar políticas: {ex.Message}", Severity.Error);
+            }
+            await CargarPolitica();
+            _cargado = true;
+        }
+    }
+
+    private async Task CargarPolitica()
+    {
+        try
+        {
+            var politicasRol = await Api.GetAsync<List<RolPoliticaPwdDto>>($"api/rolespoliticaspwd/rol/{Rol.Id}") ?? [];
+            _politicaAsignada = politicasRol.FirstOrDefault(rp => rp.Activo);
+            _politicaDetalle = _politicaAsignada is not null
+                ? _politicas.FirstOrDefault(p => p.Id == _politicaAsignada.IdPolitica)
+                : null;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar política: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task AbrirAsignarPolitica()
+    {
+        var parameters = new DialogParameters
+        {
+            ["RolPreSeleccionado"] = Rol,
+            ["Politicas"] = _politicas,
+            ["IdTenant"] = Auth.IdTenant
+        };
+        var dialog = await Dialog.ShowAsync<RolPoliticaPwdDialog>("Asignar Política a Rol", parameters, OpcionesDialogo.Dialogo(TamanoDialogo.Compacto));
+        var result = await dialog.Result;
+        if (result is { Canceled: false }) await CargarPolitica();
+    }
+
+    private async Task DesasignarPolitica()
+    {
+        if (_politicaAsignada is null) return;
+        var parameters = new DialogParameters
+        {
+            ["Title"] = "Confirmar",
+            ["Message"] = $"¿Quitar la política '{_politicaAsignada.PoliticaNombre}' de este rol?",
+            ["ConfirmText"] = "Quitar", ["CancelText"] = "Cancelar", ["ConfirmColor"] = Color.Error
+        };
+        var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parameters);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled) return;
+
+        _guardando = true;
+        try
+        {
+            var ok = await Api.PostVoidAsync($"api/rolespoliticaspwd/{_politicaAsignada.Id}/desactivar");
+            if (ok) { Snackbar.Add("Política removida", Severity.Success); await CargarPolitica(); }
+            else Snackbar.Add(Api.LastError ?? "Error al remover política", Severity.Error);
+        }
+        catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error); }
+        finally { _guardando = false; }
+    }
+}

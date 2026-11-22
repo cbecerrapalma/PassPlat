@@ -1,0 +1,55 @@
+@implements IDisposable
+@inject MenuService Menu
+@inject NavigationManager Nav
+
+@* S86 · D1 — migas de pan desde el catalogo de modulos (api/modulos/menu): Panel principal, grupo, ..., pagina. *@
+<MudBreadcrumbs Class="@Class" Items="@_items" />
+
+@code {
+    /// <summary>Lista de la que cuelga una ficha (puede llevar consulta). Sin ella, el rastro es el de la página actual.</summary>
+    [Parameter] public string? Padre { get; set; }
+
+    /// <summary>Último tramo de una ficha (el nombre del registro). Con él, el módulo de <see cref="Padre"/> es un enlace.</summary>
+    [Parameter] public string? Actual { get; set; }
+
+    [Parameter] public string Class { get; set; } = "mb-3";
+
+    private List<BreadcrumbItem> _items = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        Menu.Cambio += AlCambiarMenu;
+        _items = Construir();
+        await Menu.AsegurarCargaAsync();
+    }
+
+    protected override void OnParametersSet() => _items = Construir();
+
+    private void AlCambiarMenu() => InvokeAsync(() =>
+    {
+        _items = Construir();
+        StateHasChanged();
+    });
+
+    private List<BreadcrumbItem> Construir()
+    {
+        var catalogo = Menu.Catalogo;
+        var inicio = catalogo.RastroDe("/").LastOrDefault()?.Nombre ?? "Panel principal";
+        var items = new List<BreadcrumbItem> { new(inicio, "/") };
+
+        var rastro = catalogo.RastroDe(Padre ?? Nav.ToBaseRelativePath(Nav.Uri));
+        for (var i = 0; i < rastro.Count; i++)
+        {
+            var href = rastro[i].Ruta;
+            if (i == rastro.Count - 1)
+                href = Actual is null ? null : Padre ?? href;
+            items.Add(new BreadcrumbItem(rastro[i].Nombre, href));
+        }
+
+        if (Actual is not null)
+            items.Add(new BreadcrumbItem(Actual, null));
+        return items;
+    }
+
+    public void Dispose() => Menu.Cambio -= AlCambiarMenu;
+}

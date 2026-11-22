@@ -2,6 +2,7 @@ using AutoMapper;
 using CBP.Logging;
 using CBP.Logging.Models;
 using CBP.Results;
+using CBP.Results.Errors;
 using CBP.Services.Abstractions;
 using CBP.Services.Async;
 using Microsoft.AspNetCore.Http;
@@ -19,8 +20,8 @@ public interface IBloqueoService : IServiceAsync<Bloqueo, BloqueoDto>
     Task<Result<bool>> EstaBloqueadoAsync(int idUsuario, int idTenant, CancellationToken ct = default);
     Task<Result<BloqueoDto?>> ObtenerBloqueoActivoAsync(int idUsuario, int idTenant, CancellationToken ct = default);
     Task<Result<BloqueoDto>> CrearBloqueoAsync(CrearBloqueoDto dto, CancellationToken ct = default);
-    Task<Result> DesactivarBloqueosVencidosAsync(CancellationToken ct = default);
     Task<Result<IReadOnlyList<BloqueoDto>>> ObtenerBloqueosPorUsuarioAsync(int idUsuario, int idTenant, CancellationToken ct = default);
+    Task<Result<IReadOnlyList<BloqueoDto>>> ObtenerBloqueosVisiblesAsync(int idSolicitante, int idUsuario, int idTenant, CancellationToken ct = default);
 }
 
 public class BloqueoService : ServiceAsync<Bloqueo, BloqueoDto>, IBloqueoService
@@ -31,9 +32,10 @@ public class BloqueoService : ServiceAsync<Bloqueo, BloqueoDto>, IBloqueoService
     private readonly ILogger<BloqueoService> _logger;
     private readonly CBP.Logging.Interfaces.ILoggerService _olog;
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IUsuarioTenantRepository _usuarioTenantRepo;
 
     public BloqueoService(BloqueoRepository repo, IMapper mapper, IUsuarioRepository usuarioRepo, IEmailQueue emailQueue, ILogger<BloqueoService> logger,
-        CBP.Logging.Interfaces.ILoggerService olog, IHttpContextAccessor httpContextAccessor)
+        CBP.Logging.Interfaces.ILoggerService olog, IHttpContextAccessor httpContextAccessor, IUsuarioTenantRepository usuarioTenantRepo)
         : base(repo, mapper)
     {
         _repo = repo;
@@ -42,6 +44,7 @@ public class BloqueoService : ServiceAsync<Bloqueo, BloqueoDto>, IBloqueoService
         _logger = logger;
         _olog = olog;
         _httpContextAccessor = httpContextAccessor;
+        _usuarioTenantRepo = usuarioTenantRepo;
     }
 
     public async Task<Result<bool>> EstaBloqueadoAsync(int idUsuario, int idTenant, CancellationToken ct = default)
@@ -85,39 +88,6 @@ public class BloqueoService : ServiceAsync<Bloqueo, BloqueoDto>, IBloqueoService
         return result;
     }
 
-    public async Task<Result> DesactivarBloqueosVencidosAsync(CancellationToken ct = default)
-    {
-        var vencidosResult = await _repo.ObtenerBloqueosTemporalesVencidosAsync(ct);
-        if (vencidosResult.IsFailure) return Result.Failure(vencidosResult.Error!);
-        var vencidos = vencidosResult.Value;
-
-        foreach (var bloqueo in vencidos)
-        {
-            var notifResult = await NotificarDesbloqueoAsync(bloqueo.IdUsuario, bloqueo.IdTenant, ct);
-            if (notifResult.IsFailure)
-                _logger.LogWarning("Desbloqueo de usuario {IdUsuario} sin notificación por email: {Error}", bloqueo.IdUsuario, notifResult.Error?.Message);
-        }
-
-        var repoResult = await _repo.DesactivarBloqueosVencidosAsync(ct);
-        if (repoResult.IsFailure) return Result.Failure(repoResult.Error!);
-        if (vencidos.Count > 0)
-        {
-            _olog.LogInformation(new LogEvent
-            {
-                EventName = LoggingEvents.AccountUnlocked,
-                Scope = LoggingScopes.Authorization,
-                Message = "Cuentas desbloqueadas tras vencimiento",
-                Properties = new Dictionary<string, object?>
-                {
-                    [LoggingPropertyNames.Category] = LoggingCategories.ApplicationSecurity,
-                    [LoggingPropertyNames.Operation] = LoggingOperations.Update,
-                    [LoggingPropertyNames.CorrelationId] = _httpContextAccessor.HttpContext?.Items[LoggingPropertyNames.HttpCorrelationIdKey] as string,
-                }
-            });
-        }
-        return Result.Success();
-    }
-
     public async Task<Result<IReadOnlyList<BloqueoDto>>> ObtenerBloqueosPorUsuarioAsync(int idUsuario, int idTenant, CancellationToken ct = default)
     {
         var bloqueosResult = await _repo.ObtenerBloqueosPorUsuarioAsync(idUsuario, idTenant, ct);
@@ -126,32 +96,18 @@ public class BloqueoService : ServiceAsync<Bloqueo, BloqueoDto>, IBloqueoService
         return Result<IReadOnlyList<BloqueoDto>>.Success(Mapper.Map<IReadOnlyList<BloqueoDto>>(bloqueos));
     }
 
-    private async Task<Result> NotificarDesbloqueoAsync(int idUsuario, int idTenant, CancellationToken ct)
+    // S68.2 · D1 — un usuario ve sus bloqueos; para ver los de otro, ese otro debe ser
+    // miembro activo del tenant actual (el permiso BLOQUEOS_VER lo exige la política del controlador).
+    public async Task<Result<IReadOnlyList<BloqueoDto>>> ObtenerBloqueosVisiblesAsync(int idSolicitante, int idUsuario, int idTenant, CancellationToken ct = default)
     {
-        try
+        if (idSolicitante != idUsuario)
         {
-            var usuarioResult = await _usuarioRepo.ObtenerPorIdAsync(idUsuario, ct);
-            if (usuarioResult.IsFailure) return Result.Failure(usuarioResult.Error!);
-            var usuario = usuarioResult.Value;
-            if (usuario == null || string.IsNullOrWhiteSpace(usuario.Email))
-                return Result.Success();
-
-            await _emailQueue.EnqueueAsync(new EmailJob(
-                EmailJobKind.UserUnblocked,
-                usuario.Email,
-                usuario.NomUsuario,
-                new Dictionary<string, object?> { ["FechaDesbloqueo"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") },
-                idTenant,
-                usuario.Id,
-                null,
-                null), ct);
-            return Result.Success();
+            var membresia = await _usuarioTenantRepo.ObtenerActivoPorTenantAsync(idUsuario, idTenant, ct);
+            if (membresia.IsFailure) return Result<IReadOnlyList<BloqueoDto>>.Failure(membresia.Error!);
+            if (membresia.Value is null)
+                return Result<IReadOnlyList<BloqueoDto>>.Failure(CommonErrors.Authorization.Forbidden("bloqueos del usuario"));
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error al encolar notificación de desbloqueo para usuario {IdUsuario}", idUsuario);
-            return Result.Failure("NOTIFY_ERROR", "Error al encolar notificación de desbloqueo");
-        }
+        return await ObtenerBloqueosPorUsuarioAsync(idUsuario, idTenant, ct);
     }
 
     private async Task<Result> NotificarBloqueoAsync(int idUsuario, DateTime? fecFin, int? idTenant = null, int? idApp = null, CancellationToken ct = default)

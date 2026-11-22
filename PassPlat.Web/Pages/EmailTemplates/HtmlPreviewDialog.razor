@@ -5,7 +5,7 @@
         height: 500px;
         min-height: 500px;
         border: 0;
-        background: #fff;
+        background: var(--dat-blanco);
     }
     @@media (max-height: 700px) {
         .email-preview-frame {
@@ -18,15 +18,17 @@
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 
-<MudDialog>
+<MudDialog Class="dialogo-formulario">
     <TitleContent>
-        <MudText Typo="Typo.h6">@Title</MudText>
+        <TituloDialogo Icono="@Icons.Material.Filled.Visibility" Texto="@Title" />
     </TitleContent>
     <DialogContent>
-        <MudPaper Class="pa-2" Elevation="0" Outlined="true" Style="height:520px;">
-            <iframe @ref="_iframe" id="@_iframeId" class="email-preview-frame" sandbox="" title="Vista previa del correo" style="display:block; width:100%; height:500px; min-height:500px; border:0; background:#fff;"></iframe>
-        </MudPaper>
-        <MudText Typo="Typo.caption" Class="mt-2">Preview aislado — sandbox sin scripts. Placeholders Fluid se muestran tal cual.</MudText>
+        <div class="dialogo-campos">
+            <MudPaper Class="pa-2" Elevation="0" Outlined="true" Style="height:520px;">
+                <iframe @ref="_iframe" id="@_iframeId" class="email-preview-frame" sandbox="" title="Vista previa del correo" style="display:block; width:100%; height:500px; min-height:500px; border:0; background:var(--dat-blanco);"></iframe>
+            </MudPaper>
+            <MudText Typo="Typo.caption">Vista previa aislada — sandbox sin scripts. Los placeholders Fluid se muestran tal cual.</MudText>
+        </div>
     </DialogContent>
     <DialogActions>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => MudDialog.Close(DialogResult.Ok(true)))">@ButtonText</MudButton>

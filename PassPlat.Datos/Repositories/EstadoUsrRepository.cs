@@ -25,7 +25,7 @@ public class EstadoUsrRepository : RepositoryAsync<EstadoUsr>, IEstadoUsrReposit
             var entity = await DbSet.FirstOrDefaultAsync(e => e.Codigo == codigo, ct);
             return Result<EstadoUsr?>.Success(entity, allowNull: true);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<EstadoUsr?>.Failure("DB_ERROR", ex.Message);
         }
@@ -38,7 +38,7 @@ public class EstadoUsrRepository : RepositoryAsync<EstadoUsr>, IEstadoUsrReposit
             var list = await DbSet.Where(e => e.Activo).ToListAsync(ct);
             return Result<IReadOnlyList<EstadoUsr>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<EstadoUsr>>.Failure("DB_ERROR", ex.Message);
         }

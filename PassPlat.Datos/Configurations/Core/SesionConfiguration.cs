@@ -17,8 +17,8 @@ public class SesionConfiguration : IEntityTypeConfiguration<Sesion>
         builder.Property(s => s.IdApp).IsRequired();
         builder.Property(s => s.IdTokenExt).HasMaxLength(128).IsRequired();
         builder.Property(s => s.HashRefresh).HasMaxLength(128);
-        builder.Property(s => s.FecInicio).HasDefaultValueSql("sysutcdatetime()").IsRequired();
-        builder.Property(s => s.UltActividad).HasDefaultValueSql("sysutcdatetime()").IsRequired();
+        builder.Property(s => s.FecInicio).HasDefaultValueSql("sysdatetime()").IsRequired();
+        builder.Property(s => s.UltActividad).HasDefaultValueSql("sysdatetime()").IsRequired();
         builder.Property(s => s.FecExpira).IsRequired();
         builder.Property(s => s.EsActiva).HasDefaultValue(true).IsRequired();
 

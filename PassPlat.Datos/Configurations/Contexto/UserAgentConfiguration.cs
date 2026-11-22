@@ -18,7 +18,7 @@ public class UserAgentConfiguration : IEntityTypeConfiguration<UserAgent>
         builder.Property(u => u.Version).HasMaxLength(50);
         builder.Property(u => u.SistemaOperativo).HasMaxLength(100);
         builder.Property(u => u.EsMovil).HasDefaultValue(false);
-        builder.Property(u => u.FecPrimerUso).HasDefaultValueSql("sysutcdatetime()").IsRequired();
+        builder.Property(u => u.FecPrimerUso).HasDefaultValueSql("sysdatetime()").IsRequired();
         builder.Property(u => u.FecUltUso);
         builder.Property(u => u.VecesUsado).HasDefaultValue(1).IsRequired();
 

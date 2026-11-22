@@ -1,51 +1,60 @@
 @inject ApiClient Api
 @inject ISnackbar Snackbar
 
-<MudDialog Options="_dialogOptions">
+<MudDialog Options="@OpcionesDialogo.Dialogo(TamanoDialogo.Estandar)" Class="dialogo-formulario">
     <TitleContent>
-        <MudText Typo="Typo.h6">Vincular Identidad Externa</MudText>
+        <TituloDialogo Icono="@Icons.Material.Filled.Link" Texto="Vincular Identidad Externa" />
     </TitleContent>
     <DialogContent>
-        <MudSelect @bind-Value="_idTenant" Label="Tenant" Variant="Variant.Outlined" Class="mb-3" Required="true"
-                    Error="@(_submitted && _idTenant == 0)" ErrorText="El tenant es requerido">
-            @foreach (var t in _tenants)
-            {
-                <MudSelectItem Value="t.Id">@t.Nombre (@t.Codigo)</MudSelectItem>
-            }
-        </MudSelect>
-        <MudSelect @bind-Value="_idUsuario" Label="Usuario" Variant="Variant.Outlined" Class="mb-3" Required="true"
-                    Error="@(_submitted && _idUsuario == 0)" ErrorText="El usuario es requerido">
-            @foreach (var u in _usuarios)
-            {
-                <MudSelectItem Value="u.Id">@u.NomUsuario @(!string.IsNullOrEmpty(u.Email) ? $"({u.Email})" : "")</MudSelectItem>
-            }
-        </MudSelect>
-        <MudSelect @bind-Value="_idProvIden" Label="Proveedor" Variant="Variant.Outlined" Class="mb-3" Required="true"
-                    Error="@(_submitted && _idProvIden == 0)" ErrorText="El proveedor es requerido">
-            @foreach (var p in _providers)
-            {
-                <MudSelectItem Value="p.Id">@p.Nombre (@p.Codigo)</MudSelectItem>
-            }
-        </MudSelect>
-        <MudTextField @bind-Value="_subExterno" Label="Sub (ID Externo)" Variant="Variant.Outlined" Class="mb-3" Required="true"
-                      Error="@(_submitted && string.IsNullOrWhiteSpace(_subExterno))" ErrorText="El ID externo es requerido" HelperText="Identificador único del usuario en el proveedor" />
-        <MudTextField @bind-Value="_providerUserName" Label="Provider UserName" Variant="Variant.Outlined" Class="mb-3" />
-        <MudTextField @bind-Value="_emailExterno" Label="Email Externo" Variant="Variant.Outlined" Class="mb-3" />
-        <MudTextField @bind-Value="_nombreExterno" Label="Nombre Externo" Variant="Variant.Outlined" Class="mb-3" />
-        <MudTextField @bind-Value="_avatar" Label="Avatar URL" Variant="Variant.Outlined" Class="mb-3" />
+        <AlertaErrorDialogo Mensaje="@_errorServidor" />
+        <MudForm @ref="_form">
+        <div class="dialogo-campos">
+            <div class="dialogo-fila">
+                <MudSelect @bind-Value="_idTenant" Label="Tenant" Variant="Variant.Outlined" Required="true"
+                            RequiredError="El tenant es requerido"
+                            Validation="@(new Func<int, string?>(v => v == 0 ? "El tenant es requerido" : null))">
+                    @foreach (var t in _tenants)
+                    {
+                        <MudSelectItem Value="t.Id">@t.Nombre (@t.Codigo)</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudSelect @bind-Value="_idProvIden" Label="Proveedor" Variant="Variant.Outlined" Required="true"
+                            RequiredError="El proveedor es requerido"
+                            Validation="@(new Func<int, string?>(v => v == 0 ? "El proveedor es requerido" : null))">
+                    @foreach (var p in _providers)
+                    {
+                        <MudSelectItem Value="p.Id">@p.Nombre (@p.Codigo)</MudSelectItem>
+                    }
+                </MudSelect>
+            </div>
+            <MudSelect @bind-Value="_idUsuario" Label="Usuario" Variant="Variant.Outlined" Required="true"
+                        RequiredError="El usuario es requerido"
+                        Validation="@(new Func<int, string?>(v => v == 0 ? "El usuario es requerido" : null))">
+                @foreach (var u in _usuarios)
+                {
+                    <MudSelectItem Value="u.Id">@u.NomUsuario @(!string.IsNullOrEmpty(u.Email) ? $"({u.Email})" : "")</MudSelectItem>
+                }
+            </MudSelect>
+            <MudTextField @bind-Value="_subExterno" Label="Sub (ID Externo)" Variant="Variant.Outlined" Required="true"
+                          RequiredError="El ID externo es requerido" HelperText="Identificador único del usuario en el proveedor" />
+            <div class="dialogo-fila">
+                <MudTextField @bind-Value="_providerUserName" Label="Provider UserName" Variant="Variant.Outlined" />
+                <MudTextField @bind-Value="_emailExterno" Label="Email Externo" Variant="Variant.Outlined" />
+                <MudTextField @bind-Value="_nombreExterno" Label="Nombre Externo" Variant="Variant.Outlined" />
+                <MudTextField @bind-Value="_avatar" Label="Avatar URL" Variant="Variant.Outlined" />
+            </div>
+        </div>
+        </MudForm>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="@(() => MudDialog.Cancel())">Cancelar</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@Save" Disabled="@(!CanSave() || _saving)">
-            Vincular
-        </MudButton>
+        <BotonGuardarDialogo Texto="Asignar" Guardando="@_saving" OnClick="@Save" />
     </DialogActions>
 </MudDialog>
 
 @code {
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
-
-    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+    private string? _errorServidor;
 
     [Parameter] public bool IsEdit { get; set; }
 
@@ -61,7 +70,7 @@
     private string? _nombreExterno;
     private string? _avatar;
     private bool _saving;
-    private bool _submitted;
+    private MudForm _form = null!;
 
     protected override async Task OnInitializedAsync()
     {
@@ -74,13 +83,10 @@
         catch { }
     }
 
-    private bool CanSave() => _idTenant > 0 && _idUsuario > 0 && _idProvIden > 0
-        && !string.IsNullOrWhiteSpace(_subExterno);
-
     private async Task Save()
     {
-        _submitted = true;
-        if (!CanSave()) return;
+        await _form.ValidateAsync();
+        if (!_form.IsValid) return;
         _saving = true;
         try
         {
@@ -94,11 +100,11 @@
                 MudDialog.Close(DialogResult.Ok(true));
             }
             else
-                Snackbar.Add(Api.LastError ?? "Error al vincular", Severity.Error);
+                _errorServidor = Api.LastError ?? "Error al vincular";
         }
         catch (Exception ex)
         {
-            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+            _errorServidor = Api.LastError ?? $"Error: {ex.Message}";
         }
         finally
         {

@@ -6,7 +6,8 @@ public class BuscarIdenExtRequest
     public int PageSize { get; set; } = 20;
     public int? IdEstado { get; init; }
     public int? IdProveedor { get; init; }
-    public int? IdTenant { get; init; }
+    // S95 · D2 — el controlador lo fija al tenant de la sesión para un no-sistema
+    public int? IdTenant { get; set; }
     public bool? ConMFA { get; init; }
     public bool? SoloExpirados { get; init; }
     public string? TextoLibre { get; init; }

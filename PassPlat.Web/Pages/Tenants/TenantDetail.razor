@@ -3,64 +3,69 @@
 @inject ISnackbar Snackbar
 @inject IDialogService Dialog
 @inject NavigationManager Navigation
+@inject AuthService Auth
 @using PassPlat.Web.Models
+@using PassPlat.Web.Pages.DominiosTenant
 
-<MudContainer>
-    <MudBreadcrumbs Class="mb-3">
-        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
-        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/tenants"))">Administración</MudBreadcrumbItem>
-        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/tenants"))">Tenants</MudBreadcrumbItem>
-        <MudBreadcrumbItem>@(_tenant?.Nombre ?? "Detalle")</MudBreadcrumbItem>
-    </MudBreadcrumbs>
-    <MudText Typo="Typo.h4" Class="mb-4">
-        <MudTooltip Text="Volver a Tenants">
-            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="@(() => Navigation.NavigateTo("/tenants"))" Class="mr-2" />
-        </MudTooltip>
-        Tenant: @_tenant?.Nombre
-        @if (_tenant?.Codigo == "SISTEMA")
-        {
-            <MudChip T="string" Size="Size.Small" Color="Color.Primary" Class="ml-2">SISTEMA</MudChip>
-        }
-    </MudText>
+@if (!Auth.TienePermiso("TENANTS_VER"))
+{
+    <SinPermiso PermisoRequerido="TENANTS_VER" />
+}
+else
+{
+<div class="iam-page">
+<MigasDePan Padre="/tenants" Actual="@(_tenant?.Nombre ?? "Detalle")" />
 
     @if (_loading)
     {
-        <MudSkeleton Width="100%" Height="400px" />
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="100%" Height="300px" Style="border-radius:10px;" />
     }
     else if (_tenant is null)
     {
-        <MudAlert Severity="Severity.Error">Tenant no encontrado</MudAlert>
+        <MudAlert Severity="Severity.Error" Class="mb-3">Tenant no encontrado</MudAlert>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ArrowBack" Href="/tenants">Atrás</MudButton>
     }
     else
     {
-        <MudTabs>
-            <MudTab Text="General" Icon="@Icons.Material.Filled.Info">
-                <MudContainer Class="mt-4">
-                    <MudGrid>
-                        <MudItem xs12 md6>
-                            <MudTextField @bind-Value="_tenant.Codigo" Label="Código" Variant="Variant.Outlined" Disabled="true" Class="mb-3" />
-                        </MudItem>
-                        <MudItem xs12 md6>
-                            <MudTextField @bind-Value="_tenant.Nombre" Label="Nombre" Variant="Variant.Outlined" Class="mb-3" />
-                        </MudItem>
-                    </MudGrid>
-                    <MudGrid>
-                        <MudItem xs12 md6>
-                            <MudSwitch @bind-Value="_tenant.Activo" Label="Activo" Color="Color.Primary" Class="mb-3" />
-                        </MudItem>
-                        <MudItem xs12 md6>
-                            <MudText Class="mb-1">Creado: @_tenant.FecCrea.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</MudText>
-                        </MudItem>
-                    </MudGrid>
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@GuardarTenant" Disabled="@_saving" Class="mt-4">
-                        Guardar Cambios
-                    </MudButton>
-                </MudContainer>
-            </MudTab>
+        <div class="page-header">
+            <div class="page-title-row">
+                <div style="display:flex;gap:12px;align-items:center;">
+                    <h1 class="page-title">@_tenant.Nombre</h1>
+                    @if (_tenant.Codigo == "SISTEMA")
+                    {
+                        <span class="badge badge-default"><span class="badge-dot"></span>SISTEMA</span>
+                    }
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.ArrowBack" Href="/tenants">Atrás</MudButton>
+                </div>
+            </div>
+        </div>
 
-            <MudTab Text="Dominios" Icon="@Icons.Material.Filled.Language">
-                <MudContainer Class="mt-4">
-                    <div class="d-flex justify-end mb-4">
+        <MudTabs Class="detail-tabs" TabPanelsClass="pt-3">
+            <MudTabPanel Text="General" Icon="@Icons.Material.Filled.Info">
+                <div class="detail-section">
+                    <div class="detail-section-title">Datos del tenant</div>
+                    <div class="readonly-grid">
+                        <div class="readonly-item"><div class="field-label">Código</div><div class="field-value">@_tenant.Codigo</div></div>
+                        <div class="readonly-item"><div class="field-label">Creado</div><div class="field-value">@_tenant.FecCrea.ToString("dd/MM/yyyy HH:mm")</div></div>
+                    </div>
+                    <div class="form-grid mt-3">
+                        <MudTextField @bind-Value="_tenant.Nombre" Label="Nombre" Variant="Variant.Outlined" />
+                        <div class="form-field-check">
+                            <MudSwitch @bind-Value="_tenant.Activo" Label="Activo" Color="Color.Primary" />
+                        </div>
+                    </div>
+                    <div class="form-savebar">
+                        <BotonGuardarDialogo Texto="Guardar" Guardando="@_saving" OnClick="@GuardarTenant" />
+                    </div>
+                </div>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Dominios" Icon="@Icons.Material.Filled.Language">
+                <div class="detail-section">
+                    <div class="d-flex align-center mb-2">
+                        <div class="detail-section-title flex-grow-1">Dominios</div>
                         <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AbrirDialogDominio">
                             Agregar Dominio
                         </MudButton>
@@ -81,9 +86,9 @@
                             <MudTd DataLabel="Dominio">@context.Dominio</MudTd>
                             <MudTd>
                                 <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary"
-                                    OnClick="@(() => EditarDominio(context))" />
+                                    OnClick="@(() => EditarDominio(context))" / aria-label="Editar" />
                                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
-                                    OnClick="@(() => EliminarDominio(context))" />
+                                    OnClick="@(() => EliminarDominio(context))" / aria-label="Eliminar" />
                             </MudTd>
                         </RowTemplate>
                         <NoRecordsContent>
@@ -93,42 +98,32 @@
                             </MudText>
                         </NoRecordsContent>
                     </MudTable>
-                </MudContainer>
-            </MudTab>
+                </div>
+            </MudTabPanel>
 
-            <MudTab Text="Config" Icon="@Icons.Material.Filled.Settings">
-                <MudContainer Class="mt-4">
+            <MudTabPanel Text="Config" Icon="@Icons.Material.Filled.Settings">
+                <div class="detail-section">
+                    <div class="detail-section-title">Configuración</div>
                     @if (_config is null)
                     {
                         <MudAlert Severity="Severity.Warning">No hay configuración para este tenant</MudAlert>
                     }
                     else
                     {
-                        <MudGrid>
-                            <MudItem xs12 md4>
-                                <MudTextField @bind-Value="_config.TimeoutSesionMin" Label="Timeout Sesión (min)" Variant="Variant.Outlined" Disabled="true" Class="mb-3" />
-                            </MudItem>
-                            <MudItem xs12 md4>
-                                <MudTextField @bind-Value="_config.MaxSesionesConc" Label="Max Sesiones Concurrentes" Variant="Variant.Outlined" Disabled="true" Class="mb-3" />
-                            </MudItem>
-                            <MudItem xs12 md4>
-                                <MudTextField @bind-Value="_config.DiasRetAuditoria" Label="Días Retención Auditoría" Variant="Variant.Outlined" Disabled="true" Class="mb-3" />
-                            </MudItem>
-                        </MudGrid>
-                        <MudGrid>
-                            <MudItem xs12 md4>
-                                <MudSwitch @bind-Value="_config.ReqMFA" Label="MFA Obligatorio" Color="Color.Primary" Disabled="true" Class="mb-3" />
-                            </MudItem>
-                            <MudItem xs12 md4>
-                                <MudTextField @bind-Value="_config.PepperVersionActual" Label="Pepper Version" Variant="Variant.Outlined" Disabled="true" Class="mb-3" />
-                            </MudItem>
-                        </MudGrid>
+                        <div class="readonly-grid">
+                            <div class="readonly-item"><div class="field-label">Timeout sesión (min)</div><div class="field-value">@_config.TimeoutSesionMin</div></div>
+                            <div class="readonly-item"><div class="field-label">Máx. sesiones concurrentes</div><div class="field-value">@_config.MaxSesionesConc</div></div>
+                            <div class="readonly-item"><div class="field-label">Días retención auditoría</div><div class="field-value">@_config.DiasRetAuditoria</div></div>
+                            <div class="readonly-item"><div class="field-label">MFA obligatorio</div><div class="field-value">@(_config.ReqMFA ? "Sí" : "No")</div></div>
+                            <div class="readonly-item"><div class="field-label">Versión de pepper</div><div class="field-value">@_config.PepperVersionActual</div></div>
+                        </div>
                     }
-                </MudContainer>
-            </MudTab>
+                </div>
+            </MudTabPanel>
         </MudTabs>
     }
-</MudContainer>
+</div>
+}
 
 @code {
     [Parameter] public int Id { get; set; }
@@ -141,6 +136,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (!Auth.TienePermiso("TENANTS_VER")) return;
         await CargarDatos();
     }
 
@@ -196,73 +192,19 @@
     private async Task AbrirDialogDominio()
     {
         if (_tenant is null) return;
-        var dialog = await Dialog.ShowAsync<DominioTenantDialog>("Agregar Dominio", _wideDialogOptions);
-        var result = await dialog.Result;
-        if (!result.Canceled)
-        {
-            var dominio = result.Data?.ToString();
-            if (!string.IsNullOrWhiteSpace(dominio))
-            {
-                await CrearDominioAsync(dominio.Trim().ToLowerInvariant());
-            }
-        }
-    }
-
-    private async Task CrearDominioAsync(string dominio)
-    {
-        try
-        {
-            var ok = await Api.PostAsync<DominioTenantDto>("api/DominiosTenant", new { idTenant = Id, dominio });
-            if (ok is not null)
-            {
-                Snackbar.Add("Dominio agregado", Severity.Success);
-                await CargarDatos();
-            }
-            else
-                Snackbar.Add(Api.LastError ?? "Error al agregar dominio", Severity.Error);
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
-        }
+        // S101 · D5 — diálogo único: tenant fijo, el diálogo guarda y aquí solo se recarga
+        var parameters = new DialogParameters { ["IdTenant"] = Id };
+        var dialog = await Dialog.ShowAsync<DominioTenantDialog>("Agregar Dominio", parameters, OpcionesDialogo.Dialogo(TamanoDialogo.Compacto));
+        if (await dialog.Result is { Canceled: false })
+            await CargarDatos();
     }
 
     private async Task EditarDominio(DominioTenantDto dominio)
     {
-        var parameters = new DialogParameters
-        {
-            ["Title"] = "Editar Dominio",
-            ["Dominio"] = dominio.Dominio
-        };
-        var dialog = await Dialog.ShowAsync<DominioTenantDialog>("Editar Dominio", parameters, _wideDialogOptions);
-        var result = await dialog.Result;
-        if (!result.Canceled)
-        {
-            var nuevoDominio = result.Data?.ToString();
-            if (!string.IsNullOrWhiteSpace(nuevoDominio))
-            {
-                await ActualizarDominioAsync(dominio.Id, nuevoDominio.Trim().ToLowerInvariant());
-            }
-        }
-    }
-
-    private async Task ActualizarDominioAsync(int id, string dominio)
-    {
-        try
-        {
-            var ok = await Api.PutAsync<DominioTenantDto>($"api/DominiosTenant/{id}", new { dominio });
-            if (ok is not null)
-            {
-                Snackbar.Add("Dominio actualizado", Severity.Success);
-                await CargarDatos();
-            }
-            else
-                Snackbar.Add(Api.LastError ?? "Error al actualizar dominio", Severity.Error);
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
-        }
+        var parameters = new DialogParameters { ["IdTenant"] = Id, ["Dominio"] = dominio };
+        var dialog = await Dialog.ShowAsync<DominioTenantDialog>("Editar Dominio", parameters, OpcionesDialogo.Dialogo(TamanoDialogo.Compacto));
+        if (await dialog.Result is { Canceled: false })
+            await CargarDatos();
     }
 
     private async Task EliminarDominio(DominioTenantDto dominio)
@@ -276,7 +218,7 @@
         };
         var dialog = await Dialog.ShowAsync<ConfirmDialog>("Confirmar", parameters);
         var result = await dialog.Result;
-        if (!result.Canceled)
+        if (result is { Canceled: false })
         {
             await EliminarDominioConfirmadoAsync(dominio.Id);
         }
@@ -300,6 +242,4 @@
             Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
         }
     }
-
-    private static readonly DialogOptions _wideDialogOptions = new() { FullWidth = true };
 }

@@ -1,5 +1,8 @@
 @inherits LayoutComponentBase
-<MudThemeProvider />
+@using PassPlat.Web.Styles
+
+@* S55 · D1 — el login usa el mismo tema que la app (antes abria sin tema y se veía distinto). *@
+<MudThemeProvider Theme="AppTheme.Theme" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />

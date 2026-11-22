@@ -224,7 +224,10 @@ public class PasswordExpirationBackgroundService : BackgroundService, IBackgroun
             var politicasResult = await politicasRepo.ObtenerPorTenantAsync(0, ct);
             if (politicasResult.IsFailure) return [];
 
-            var politicas = politicasResult.Value.Where(p => p.Activa && p.DiasVigencia > 0).ToList();
+            // S60 · D8 — las políticas SoloPorRol = 1 (exenciones, p. ej. SIN_VENCIMIENTO) no
+            // se eligen por alcance: se ignoran aquí. Quien tiene vigencia efectiva 0 tiene
+            // FecExpira NULL y por tanto no se avisa (se salta más abajo).
+            var politicas = politicasResult.Value.Where(p => p.Activa && p.DiasVigencia > 0 && !p.SoloPorRol).ToList();
             if (politicas.Count == 0) return [];
 
             var usuariosResult = await usuarioRepo.GetAllAsync(true, ct);
@@ -253,6 +256,7 @@ public class PasswordExpirationBackgroundService : BackgroundService, IBackgroun
                 if (historialResult.IsFailure || historialResult.Value.Count == 0) continue;
 
                 var passwordActual = historialResult.Value[0];
+                // S60 · D8 — sin FecExpira no hay vencimiento que avisar (vigencia efectiva 0).
                 if (passwordActual.FecExpira == null) continue;
 
                 var diasRestantes = (int)(passwordActual.FecExpira.Value - currentDate).TotalDays;

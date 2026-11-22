@@ -1,17 +1,23 @@
-﻿@implements IDisposable
+@implements IDisposable
+@implements IAsyncDisposable
 @inherits LayoutComponentBase
+@using System.Reflection
 @inject AuthService Auth
+@inject MenuService Menu
 @inject NavigationManager Nav
 @inject IJSRuntime JS
+@inject IWebAssemblyHostEnvironment HostEnv
+@using PassPlat.Web.Styles
+@using Microsoft.AspNetCore.Components.WebAssembly.Hosting
 
-<MudThemeProvider Theme="_theme" @ref="_themeProvider" IsDarkMode="_isDarkMode" />
+<MudThemeProvider Theme="AppTheme.Theme" @ref="_themeProvider" IsDarkMode="_isDarkMode" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
 <MudLayout>
     <MudAppBar Elevation="1" Class="appbar" Fixed="true">
-        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" OnClick="@((e) => DrawerToggle())" />
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" OnClick="@((e) => DrawerToggle())" aria-label="Abrir o cerrar el menu lateral" aria-expanded="@(_drawerOpen ? "true" : "false")" />
         <span class="appbar-brand">
             <span class="appbar-brand-dot"></span>
             <span class="appbar-brand-text d-none d-sm-inline">AccessPlat</span>
@@ -24,109 +30,22 @@
         <MudSpacer />
         @if (Auth.IsAuthenticated)
         {
-            <div class="appbar-clock d-none d-md-flex">
-                <MudText Typo="Typo.caption" Class="appbar-greeting">@_greeting</MudText>
-                <div class="appbar-clock-sep"></div>
-                <MudText Typo="Typo.caption" Class="appbar-time">@_currentTime</MudText>
-            </div>
+            <RelojBarra />
             <MudDivider Vertical="true" Class="appbar-divider mx-3 d-none d-md-flex" />
         }
         @if (Auth.IsAuthenticated)
         {
             <div class="d-flex align-center appbar-actions">
                 <MudTooltip Text="Buscar (Ctrl+K)">
-                    <MudIconButton Icon="@Icons.Material.Filled.Search" Color="Color.Inherit" OnClick="@ToggleSearch" Class="appbar-action-icon" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Search" Color="Color.Inherit" OnClick="@ToggleSearch" Class="appbar-action-icon" aria-label="Buscar" />
                 </MudTooltip>
                 <MudTooltip Text='@(_isDarkMode ? "Modo claro" : "Modo oscuro")'>
-                    <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Outlined.LightMode : Icons.Material.Outlined.DarkMode)" Color="Color.Inherit" OnClick="@ToggleDarkMode" Class="appbar-action-icon dark-mode-toggle" />
+                    <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Outlined.LightMode : Icons.Material.Outlined.DarkMode)" Color="Color.Inherit" OnClick="@ToggleDarkMode" Class="appbar-action-icon dark-mode-toggle" aria-label="@(_isDarkMode ? "Cambiar a modo claro" : "Cambiar a modo oscuro")" />
                 </MudTooltip>
                 <MudTooltip Text="Pantalla completa">
-                    <MudIconButton Icon="@Icons.Material.Filled.Fullscreen" Color="Color.Inherit" OnClick="@ToggleFullScreen" Class="appbar-action-icon" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Fullscreen" Color="Color.Inherit" OnClick="@ToggleFullScreen" Class="appbar-action-icon" aria-label="Pantalla completa" />
                 </MudTooltip>
-                <div class="appbar-notif-menu">
-                    <div class="d-flex align-center appbar-action-icon" @onclick="@ToggleNotifMenu" @onclick:stopPropagation="true">
-                        <MudBadge Content="_notifCount" Color="Color.Error" Class="appbar-badge" Max="99">
-                            <MudTooltip Text="Notificaciones">
-                                <MudIcon Icon="@Icons.Material.Filled.NotificationsNone" Color="Color.Inherit" />
-                            </MudTooltip>
-                        </MudBadge>
-                    </div>
-                    @if (_notifMenuOpen)
-                    {
-                        <div class="appbar-notif-dropdown">
-                            <div class="notif-header">
-                                <div class="d-flex align-center justify-space-between">
-                                    <MudText Typo="Typo.subtitle2" Class="notif-title">Notificaciones</MudText>
-                                    <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Filled" Class="notif-badge">
-                                        @_notifCount
-                                    </MudChip>
-                                </div>
-                                <MudText Typo="Typo.caption" Class="text-secondary">@_notifCount sin leer de 12</MudText>
-                            </div>
-                            <MudDivider Class="my-1" />
-                            <div class="notif-scroll">
-                                <div class="notif-item notif-unread">
-                                    <div class="d-flex align-start" style="gap:10px;">
-                                        <MudAvatar Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">
-                                            <MudIcon Icon="@Icons.Material.Filled.LockOpen" Size="Size.Small" />
-                                        </MudAvatar>
-                                        <div class="flex-grow-1">
-                                            <MudText Typo="Typo.body2" Class="font-weight-bold">Nuevo acceso detectado</MudText>
-                                            <MudText Typo="Typo.caption" Class="text-secondary">IP 192.168.1.1 - Chrome/Windows</MudText>
-                                            <MudText Typo="Typo.caption" Class="text-secondary notif-time-inline">Hace 2 min</MudText>
-                                        </div>
-                                        <span class="notif-dot-unread"></span>
-                                    </div>
-                                </div>
-                                <MudDivider Class="my-0" />
-                                <div class="notif-item notif-unread">
-                                    <div class="d-flex align-start" style="gap:10px;">
-                                        <MudAvatar Size="Size.Small" Color="Color.Error" Variant="Variant.Filled">
-                                            <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Small" />
-                                        </MudAvatar>
-                                        <div class="flex-grow-1">
-                                            <MudText Typo="Typo.body2" Class="font-weight-bold">Intento de acceso fallido</MudText>
-                                            <MudText Typo="Typo.caption" Class="text-secondary">Usuario: admin - 3 intentos</MudText>
-                                            <MudText Typo="Typo.caption" Class="text-secondary notif-time-inline">Hace 15 min</MudText>
-                                        </div>
-                                        <span class="notif-dot-unread"></span>
-                                    </div>
-                                </div>
-                                <MudDivider Class="my-0" />
-                                <div class="notif-item">
-                                    <div class="d-flex align-start" style="gap:10px;">
-                                        <MudAvatar Size="Size.Small" Color="Color.Warning" Variant="Variant.Filled">
-                                            <MudIcon Icon="@Icons.Material.Filled.Password" Size="Size.Small" />
-                                        </MudAvatar>
-                                        <div class="flex-grow-1">
-                                            <MudText Typo="Typo.body2">Contraseña expirará pronto</MudText>
-                                            <MudText Typo="Typo.caption" Class="text-secondary">Vence en 3 días</MudText>
-                                            <MudText Typo="Typo.caption" Class="text-secondary notif-time-inline">Hace 1 hora</MudText>
-                                        </div>
-                                    </div>
-                                </div>
-                                <MudDivider Class="my-0" />
-                                <div class="notif-item">
-                                    <div class="d-flex align-start" style="gap:10px;">
-                                        <MudAvatar Size="Size.Small" Color="Color.Info" Variant="Variant.Filled">
-                                            <MudIcon Icon="@Icons.Material.Filled.Fingerprint" Size="Size.Small" />
-                                        </MudAvatar>
-                                        <div class="flex-grow-1">
-                                            <MudText Typo="Typo.body2">MFA registrado exitosamente</MudText>
-                                            <MudText Typo="Typo.caption" Class="text-secondary">Dispositivo: iPhone 15</MudText>
-                                            <MudText Typo="Typo.caption" Class="text-secondary notif-time-inline">Hace 3 horas</MudText>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <MudDivider Class="my-1" />
-                            <button type="button" class="notif-view-all" @onclick="@(() => { CloseAllMenus(); GoToNotificaciones(); })">
-                                <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Class="mr-2" />
-                                <MudText Typo="Typo.button">Ver todas las notificaciones</MudText>
-                            </button>
-                        </div>
-                    }
-                </div>
+                <CampanaNotificaciones Abierto="_notifMenuOpen" OnAlternar="ToggleNotifMenu" OnVerTodas="@(() => { CloseAllMenus(); GoToNotificaciones(); })" />
                 <MudDivider Vertical="true" Class="appbar-divider mx-3" />
                 <div class="appbar-menu">
                     <div class="d-flex align-center appbar-user" @onclick="@ToggleUserMenu" @onclick:stopPropagation="true">
@@ -137,7 +56,8 @@
                             <span class="appbar-online-dot"></span>
                         </span>
                         <MudText Typo="Typo.body2" Class="ml-2 mr-1 d-none d-sm-flex appbar-username">@Auth.NomUsuario</MudText>
-                        <TenantSwitcher />
+                        @* S96 · D4 — el clic del selector no abre el menú de usuario *@
+                        <span class="d-flex align-center" @onclick:stopPropagation="true"><TenantSwitcher /></span>
                         <MudIcon Icon="@Icons.Material.Filled.ExpandMore" Size="Size.Small" Class="appbar-chevron d-none d-sm-flex" />
                     </div>
                     @if (_userMenuOpen)
@@ -151,7 +71,7 @@
                                     <div>
                                         <MudText Typo="Typo.subtitle2" Class="font-weight-bold">@Auth.NomUsuario</MudText>
                                         <MudText Typo="Typo.caption" Class="text-secondary">
-                                            @(Auth.EsPlatform ? "Plataforma" : Auth.NombreTenant ?? "Sin tenant")
+                                            @Ambito
                                         </MudText>
                                     </div>
                                 </div>
@@ -173,11 +93,6 @@
         }
     </MudAppBar>
 
-    @if (_isLoading)
-    {
-        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="page-loader" Size="Size.Small" />
-    }
-
     @if (_searchOpen)
     {
         <div class="search-overlay" @onclick="@CloseSearch">
@@ -186,7 +101,7 @@
                     <MudIcon Icon="@Icons.Material.Filled.Search" Class="search-overlay-icon" />
                     <input @ref="_searchInput" type="text" class="search-overlay-input" placeholder="Buscar en AccessPlat..." @bind="_searchQuery" @oninput="@OnSearchInput" @onkeydown="@HandleSearchKeydown" />
                     <MudTooltip Text="Cerrar (Esc)">
-                        <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" OnClick="@CloseSearch" Class="search-overlay-close" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" OnClick="@CloseSearch" Class="search-overlay-close" aria-label="Cerrar la busqueda" />
                     </MudTooltip>
                 </div>
                 @if (_searchResults.Count > 0)
@@ -234,21 +149,23 @@
             </MudAvatar>
             <div class="drawer-user-info">
                 <MudText Typo="Typo.subtitle2" Class="drawer-user-name">@Auth.NomUsuario</MudText>
-                <MudText Typo="Typo.caption" Class="drawer-user-role">Administrador</MudText>
+                <MudText Typo="Typo.caption" Class="drawer-user-role">@Ambito</MudText>
             </div>
         </div>
         <MudDivider Class="drawer-divider" />
         <NavMenu />
         <div class="drawer-footer">
             <MudDivider Class="drawer-divider" />
-            <MudText Typo="Typo.caption" Class="drawer-footer-text">AccessPlat v1.0.0</MudText>
+            <MudText Typo="Typo.caption" Class="drawer-footer-text">AccessPlat v@(_version)</MudText>
         </div>
     </MudDrawer>
 
     <MudMainContent Class="px-6 pb-4" Style="min-height: calc(100vh - 64px); display: flex; flex-direction: column; padding-top: 64px !important;">
-        <Microsoft.AspNetCore.Components.Web.ErrorBoundary>
+        <Microsoft.AspNetCore.Components.Web.ErrorBoundary @ref="_errorBoundary">
             <ChildContent>
-                <div @key="@_pageTitle" class="page-content" style="flex: 1;">
+                @* S58.2 · D1 — sin clave de recreacion: recrear la pagina duplicaba sus
+                   llamadas a la API. El reinicio del ErrorBoundary se hace con Recover(). *@
+                <div class="page-content" style="flex: 1;">
                     @Body
                 </div>
             </ChildContent>
@@ -286,19 +203,12 @@
                 </MudText>
                 <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined" Class="footer-env">
                     <MudIcon Icon="@Icons.Material.Filled.Circle" Size="Size.Small" Class="mr-1" />
-                    Producción
+                    @HostEnv.Environment
                 </MudChip>
             </div>
             <div class="d-flex align-center gap-2">
-                <MudTooltip Text="Documentación">
-                    <MudIconButton Icon="@Icons.Material.Filled.MenuBook" Size="Size.Small" Class="footer-action" />
-                </MudTooltip>
-                <MudTooltip Text="Soporte">
-                    <MudIconButton Icon="@Icons.Material.Filled.HelpOutline" Size="Size.Small" Class="footer-action" />
-                </MudTooltip>
-                <MudDivider Vertical="true" Class="footer-divider" />
                 <MudText Typo="Typo.caption" Class="footer-version">
-                    v1.0.0
+                    v@(_version)
                 </MudText>
             </div>
         </div>
@@ -312,8 +222,11 @@
 
 @code {
     private MudThemeProvider _themeProvider = null!;
+    // S58.2 · D1 — referencia al ErrorBoundary para reiniciarlo al navegar (sin clave).
+    private Microsoft.AspNetCore.Components.Web.ErrorBoundary? _errorBoundary;
     private bool _drawerOpen = true;
     private bool _isDarkMode;
+    private bool _seguirSistema;
     private string _pageTitle = "";
     private string _pageSubtitle = "";
     private string _pageIcon = Icons.Material.Filled.Circle;
@@ -323,68 +236,28 @@
     private List<SearchResult> _searchResults = [];
     private int _searchSelectedIndex = -1;
     private ElementReference _searchInput;
-    private bool _isLoading;
     private bool _focusPending;
     private bool _userMenuOpen;
     private bool _notifMenuOpen;
-    private readonly int _notifCount = 5;
 
-    private static readonly List<SearchResult> _allRoutes =
-    [
-        new("/","Dashboard","Panel Principal",Icons.Material.Filled.Dashboard),
-        new("/tenants","Tenants","Gestión de inquilinos",Icons.Material.Filled.Business),
-        new("/apps","Apps","Aplicaciones del sistema",Icons.Material.Filled.Apps),
-        new("/admin/roles","Roles y Permisos","Administración de roles",Icons.Material.Filled.AdminPanelSettings),
-        new("/admin/permisos","Permisos","Gestión de permisos",Icons.Material.Filled.Security),
-        new("/admin/roles-permisos","Permisos Directos","Asignación directa de permisos",Icons.Material.Filled.ManageAccounts),
-        new("/admin/grupos","Grupos","Gestión de grupos",Icons.Material.Filled.Group),
-        new("/admin/matriz-permisos","Matriz de Permisos","Visualización de permisos por rol",Icons.Material.Filled.TableChart),
-        new("/politicas-pwd","Políticas Pwd","Reglas de contraseñas",Icons.Material.Filled.Security),
-        new("/usuarios","Usuarios","Gestión de usuarios",Icons.Material.Filled.People),
-        new("/accesos","Accesos","Control de accesos",Icons.Material.Filled.Key),
-        new("/auditoria","Auditoría","Registro de eventos",Icons.Material.Filled.History),
-        new("/notificaciones","Notificaciones","Centro de notificaciones",Icons.Material.Filled.Notifications),
-        new("/mantenimiento","Mantenimiento","Limpieza de datos",Icons.Material.Filled.CleaningServices),
-        new("/federacion/providen","Proveedores ID","Proveedores de identidad externa",Icons.Material.Filled.Dns),
-        new("/federacion/confproviden","Config Proveedores","Configuración de proveedores externos",Icons.Material.Filled.Settings),
-        new("/federacion/iden-ext","Identidades Externas","Vinculación con proveedores externos",Icons.Material.Filled.Link),
-    ];
-    private string _currentTime = DateTime.Now.ToString("HH:mm:ss");
-    private string _greeting = "";
-    private Timer? _clockTimer;
+    // S84 · D3 — ambito de la sesion (el token no trae roles); lo usan el cajon y el menu de usuario.
+    private string Ambito => Auth.EsPlatform ? "Plataforma" : Auth.NombreTenant ?? "Sin tenant";
 
-    private static readonly MudTheme _theme = new()
+    // S84 · D4 — la version sale del ensamblado de la Web, no de un literal.
+    private static readonly string _version = LeerVersion();
+
+    private static string LeerVersion()
     {
-        PaletteLight = new PaletteLight
-        {
-            Primary = "#1e88e5",
-            Secondary = "#26a69a",
-            Error = "#ef5350",
-            Success = "#66bb6a",
-            Warning = "#ffa726",
-            Info = "#42a5f5",
-            AppbarBackground = "#1e293b",
-            DrawerBackground = "#ffffff",
-        },
-        PaletteDark = new PaletteDark
-        {
-            Primary = "#64b5f6",
-            Secondary = "#80cbc4",
-            Error = "#ef9a9a",
-            Success = "#a5d6a7",
-            Warning = "#ffcc80",
-            Info = "#90caf9",
-            AppbarBackground = "#0f172a",
-            DrawerBackground = "#1e293b",
-            Surface = "#1e293b",
-            Background = "#0f172a",
-            Dark = "#0b1121",
-            DrawerText = "#cbd5e1",
-            AppbarText = "#ffffff",
-            TextPrimary = "#f1f5f9",
-            TextSecondary = "#94a3b8",
-        }
-    };
+        var ensamblado = typeof(MainLayout).Assembly;
+        var informativa = ensamblado.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+        return informativa is not null
+            ? informativa.Split('+')[0]
+            : ensamblado.GetName().Version?.ToString(3) ?? "0.0.0";
+    }
+
+    // S83 · D8 / S89 · D3 — modulo JS perezoso del layout (Ctrl+K, ancho, pantalla completa); se importa una sola vez.
+    private Task<IJSObjectReference?>? _layoutJs;
+    private DotNetObjectReference<MainLayout>? _dotNetRef;
 
     protected override async Task OnInitializedAsync()
     {
@@ -394,91 +267,56 @@
             return;
         }
 
+        // S58 · D4 — el titulo y la ruta se fijan ANTES del primer render: si el titulo
+        // llegara despues, la clave de la pagina cambiaria y Blazor recrearia el
+        // componente de la pagina, con lo que sus llamadas se duplicaban.
+        UpdatePageInfo(Nav.Uri);
+        Nav.LocationChanged += OnLocationChanged;
+
+        // S83 · D7 — el titulo y el buscador salen del menu de la app; la carga no bloquea el primer render.
+        Menu.Cambio += OnMenuChanged;
+        _ = Menu.AsegurarCargaAsync();
+
+        // S89 · D3 — localStorage por interop directo, sin eval (como NavMenu, S88).
         try
         {
-            _isDarkMode = await JS.InvokeAsync<bool>("eval", "localStorage.getItem('dark_mode') === 'true'");
+            var guardado = await JS.InvokeAsync<string?>("localStorage.getItem", "dark_mode");
+            _isDarkMode = guardado == "true";
+            // S118 · D6 (P54) — sin preferencia guardada, el render siguiente toma el modo del sistema operativo.
+            _seguirSistema = guardado is null;
         }
         catch { _isDarkMode = false; }
 
-        Nav.LocationChanged += OnLocationChanged;
-        UpdatePageInfo(Nav.Uri);
         UpdateUserInitials();
-        UpdateClock();
-        _clockTimer = new Timer(_ =>
-        {
-            InvokeAsync(() =>
-            {
-                UpdateClock();
-                StateHasChanged();
-            });
-        }, null, 1000, 1000);
     }
 
-    private void UpdateClock()
-    {
-        var now = DateTime.Now;
-        _currentTime = now.ToString("HH:mm:ss");
-        _greeting = now.Hour switch
-        {
-            < 12 => "Buenos días",
-            < 18 => "Buenas tardes",
-            _ => "Buenas noches"
-        };
-    }
+    // S89 · D2 — sin async void ni espera fija: el manejador lanza una tarea en el dispatcher.
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) => _ = AlNavegarAsync(e.Location);
 
-    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    private Task AlNavegarAsync(string ubicacion) => InvokeAsync(async () =>
     {
-        _isLoading = true;
-        UpdatePageInfo(e.Location);
+        UpdatePageInfo(ubicacion);
 
-        // Auto-close drawer on mobile
-        var isMobile = await JS.InvokeAsync<bool>("eval", "window.innerWidth < 960");
-        if (isMobile && _drawerOpen)
+        // S58.2 · D1 — la clave de recreacion que reiniciaba la pagina tambien reiniciaba
+        // el ErrorBoundary. Sin recrear la pagina, el reinicio se pide explicitamente.
+        _errorBoundary?.Recover();
+
+        // En celular, navegar cierra el menu lateral.
+        if (_drawerOpen && await EsMovilAsync())
             _drawerOpen = false;
 
-        await InvokeAsync(StateHasChanged);
-        await Task.Delay(200);
-        _isLoading = false;
-        await InvokeAsync(StateHasChanged);
-    }
+        StateHasChanged();
+    });
 
-    private void UpdatePageInfo(string uri)
+    // S83 · D7 — titulo, subtitulo e icono desde el catalogo de la app; nunca la ruta cruda (S58 · D3).
+    private void UpdatePageInfo(string uri) =>
+        (_pageTitle, _pageSubtitle, _pageIcon) = Menu.Catalogo.TituloDe(uri);
+
+    private void OnMenuChanged() => InvokeAsync(() =>
     {
-        var path = new Uri(uri).AbsolutePath.Trim('/');
-        (_pageTitle, _pageIcon, _pageSubtitle) = path switch
-        {
-            "" => ("Dashboard", Icons.Material.Filled.Dashboard, "Resumen del sistema"),
-            "tenants" => ("Tenants", Icons.Material.Filled.Business, "Gestión de inquilinos"),
-            "apps" => ("Apps", Icons.Material.Filled.Apps, "Aplicaciones del sistema"),
-            "dominios-tenant" => ("Dominios Tenant", Icons.Material.Filled.Language, "Dominios por inquilino"),
-            "config-tenants" => ("Config Tenants", Icons.Material.Filled.Settings, "Configuración de inquilinos"),
-            "roles" => ("Roles", Icons.Material.Filled.Badge, "Roles de acceso"),
-            "politicas-pwd" => ("Políticas Pwd", Icons.Material.Filled.Security, "Reglas de contraseñas"),
-            "roles-politicas" => ("Roles Políticas", Icons.Material.Filled.Rule, "Asignación de políticas"),
-            "usuarios" => ("Usuarios", Icons.Material.Filled.People, "Gestión de usuarios"),
-            "accesos" => ("Accesos", Icons.Material.Filled.Key, "Control de accesos"),
-            "sesiones" => ("Sesiones", Icons.Material.Filled.DevicesOther, "Sesiones activas"),
-            "bloqueos" => ("Bloqueos", Icons.Material.Filled.Block, "Cuentas bloqueadas"),
-            "mfa" => ("MFA", Icons.Material.Filled.Fingerprint, "Autenticación multifactor"),
-            "auditoria" => ("Auditoría", Icons.Material.Filled.History, "Registro de eventos"),
-            "historial-pwd" => ("Historial Pwd", Icons.Material.Filled.Password, "Cambios de contraseña"),
-            "intentos-acceso" => ("Intentos Acceso", Icons.Material.Filled.Warning, "Intentos fallidos"),
-            "notificaciones" => ("Notificaciones", Icons.Material.Filled.Notifications, "Centro de notificaciones"),
-            "password" => ("Cambiar Password", Icons.Material.Filled.Password, "Actualizar contraseña"),
-            "password-seguridad" => ("Validar Password", Icons.Material.Filled.Security, "Evaluar seguridad"),
-            "tokens-rest" => ("Tokens Rest", Icons.Material.Filled.Token, "Tokens de recuperación"),
-            "dispositivos" => ("Dispositivos", Icons.Material.Filled.DevicesOther, "Gestión completa de dispositivos"),
-            "disp-confiables" => ("Disp. Confiables", Icons.Material.Filled.Devices, "Dispositivos autorizados"),
-            "mantenimiento" => ("Mantenimiento", Icons.Material.Filled.CleaningServices, "Limpieza de datos"),
-            "admin/roles" => ("Roles y Permisos", Icons.Material.Filled.AdminPanelSettings, "Administración de roles"),
-            "admin/permisos" => ("Permisos", Icons.Material.Filled.Security, "Gestión de permisos"),
-            "admin/roles-permisos" => ("Permisos Directos", Icons.Material.Filled.ManageAccounts, "Asignación directa de permisos"),
-            "admin/grupos" => ("Grupos", Icons.Material.Filled.Group, "Gestión de grupos"),
-            "admin/matriz-permisos" => ("Matriz de Permisos", Icons.Material.Filled.TableChart, "Visualización de permisos por rol"),
-            _ => (string.Join(" ", path.Split('-').Select(p => char.ToUpper(p[0]) + p[1..])),
-                  Icons.Material.Filled.Description, "")
-        };
-    }
+        UpdatePageInfo(Nav.Uri);
+        StateHasChanged();
+    });
 
     private void UpdateUserInitials()
     {
@@ -497,11 +335,54 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (firstRender)
+            await RegistrarAtajoBuscarAsync();
+
+        // S118 · D6 — prefers-color-scheme solo si el usuario nunca eligió con el botón (que guarda dark_mode).
+        // No va atado a firstRender: la lectura de localStorage de OnInitializedAsync puede terminar después del primer render.
+        if (_seguirSistema)
+        {
+            _seguirSistema = false;
+            try
+            {
+                var oscuro = await _themeProvider.GetSystemDarkModeAsync();
+                if (oscuro != _isDarkMode) { _isDarkMode = oscuro; StateHasChanged(); }
+            }
+            catch { /* sin JS del tema: queda el modo claro */ }
+        }
+
         if (_focusPending)
         {
             _focusPending = false;
             await _searchInput.FocusAsync();
         }
+
+        // S55.1 · K4 (D4) — en el primer render el menu lateral arranca cerrado en celular.
+        if (firstRender && await EsMovilAsync() && _drawerOpen)
+        {
+            _drawerOpen = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    /// <summary>
+    /// S55.1 · K4 (D4) — una sola comprobacion de ancho para el menu lateral.
+    /// S89 · D3 — la hace el modulo del layout, sin eval.
+    /// </summary>
+    private async Task<bool> EsMovilAsync()
+    {
+        var modulo = await ModuloLayoutAsync();
+        if (modulo is null) return false;
+        try { return await modulo.InvokeAsync<bool>("esMovil"); }
+        catch (JSException) { return false; }
+    }
+
+    private Task<IJSObjectReference?> ModuloLayoutAsync() => _layoutJs ??= ImportarModuloLayoutAsync();
+
+    private async Task<IJSObjectReference?> ImportarModuloLayoutAsync()
+    {
+        try { return await JS.InvokeAsync<IJSObjectReference?>("import", "./js/layout.js"); }
+        catch (JSException) { return null; }
     }
 
     private void ToggleSearch()
@@ -516,6 +397,27 @@
         }
     }
 
+    /// <summary>S83 · D8 — Ctrl+K (o Cmd+K) fuera del editor Monaco abre el buscador con el foco puesto.</summary>
+    [JSInvokable]
+    public void AbrirBuscador()
+    {
+        if (_searchOpen) return;
+        ToggleSearch();
+        StateHasChanged();
+    }
+
+    private async Task RegistrarAtajoBuscarAsync()
+    {
+        var modulo = await ModuloLayoutAsync();
+        if (modulo is null) return;
+        try
+        {
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await modulo.InvokeVoidAsync("registrarAtajoBuscar", _dotNetRef);
+        }
+        catch (JSException) { }
+    }
+
     private void CloseSearch()
     {
         _searchOpen = false;
@@ -528,16 +430,10 @@
     {
         _searchQuery = e.Value?.ToString() ?? "";
         _searchSelectedIndex = -1;
-        if (_searchQuery.Length >= 2)
-        {
-            _searchResults = _allRoutes
-                .Where(r => r.Title.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase) ||
-                           r.Subtitle.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase))
-                .Take(8)
-                .ToList();
-        }
-        else
-            _searchResults = [];
+        // S83 · D4 — solo lo que el usuario puede ver: el catalogo ya viene filtrado por el servidor.
+        _searchResults = Menu.Catalogo.Buscar(_searchQuery)
+            .Select(m => new SearchResult(m.Ruta!, m.Nombre, m.Descripcion ?? "", CBP.Blazor.Mud.IconosMud.PorNombre(m.Icono)))
+            .ToList();
     }
 
     private void HandleSearchKeydown(KeyboardEventArgs e)
@@ -572,8 +468,10 @@
 
     private async Task ToggleFullScreen()
     {
-        try { await JS.InvokeVoidAsync("eval", "if(document.fullscreenElement){document.exitFullscreen()}else{document.documentElement.requestFullscreen()}"); }
-        catch { }
+        var modulo = await ModuloLayoutAsync();
+        if (modulo is null) return;
+        try { await modulo.InvokeVoidAsync("alternarPantallaCompleta"); }
+        catch (JSException) { }
     }
 
     private void DrawerToggle() => _drawerOpen = !_drawerOpen;
@@ -602,7 +500,25 @@
 
     public void Dispose()
     {
-        _clockTimer?.Dispose();
         Nav.LocationChanged -= OnLocationChanged;
+        Menu.Cambio -= OnMenuChanged;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Dispose();
+        if (_layoutJs is not null && await _layoutJs is { } modulo)
+        {
+            try
+            {
+                await modulo.InvokeVoidAsync("quitarAtajoBuscar");
+                await modulo.DisposeAsync();
+            }
+            catch (JSDisconnectedException) { }
+            catch (JSException) { }
+            _layoutJs = null;
+        }
+        _dotNetRef?.Dispose();
+        _dotNetRef = null;
     }
 }

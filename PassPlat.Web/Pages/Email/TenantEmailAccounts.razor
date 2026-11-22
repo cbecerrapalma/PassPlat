@@ -2,132 +2,227 @@
 @inject ApiClient Api
 @inject ISnackbar Snackbar
 @inject IDialogService Dialog
-@inject NavigationManager Navigation
 @inject AuthService Auth
-@using PassPlat.Web.Models
 @using PassPlat.Web.Shared
+@using PassPlat.Aplicacion.Dtos.Core
+@using PassPlat.Aplicacion.Dtos.Catalogos
 
-<MudContainer>
-    <MudBreadcrumbs Class="mb-3">
-        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
-        <MudBreadcrumbItem>Comunicaciones</MudBreadcrumbItem>
-        <MudBreadcrumbItem>Email</MudBreadcrumbItem>
-        <MudBreadcrumbItem>Cuentas por Tenant</MudBreadcrumbItem>
-    </MudBreadcrumbs>
+<div class="iam-page">
+<MigasDePan />
 
-    <MudPaper Class="pa-4 mb-4 d-flex flex-wrap align-center gap-4" Elevation="0" Outlined="true">
-        <MudText Typo="Typo.h5" Class="flex-grow-1 mb-0">Cuentas por Tenant</MudText>
-        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium" Class="mr-2" />
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Size="Size.Medium"
-            OnClick="@OpenAssignDialog">
-            Asignar Cuenta
-        </MudButton>
-    </MudPaper>
+    <div class="page-header">
+        <div class="page-title-row">
+            <div>
+                <h1 class="page-title">Cuentas por Tenant</h1>
+                <p class="page-subtitle">Cuentas de correo asignadas a cada tenant.</p>
+            </div>
+            @if (PuedeEscribir)
+            {
+                <div class="page-actions">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Size="Size.Medium"
+                        Disabled="@(_idTenant is null)" OnClick="@AbrirAsignar">
+                        Asignar Cuenta
+                    </MudButton>
+                </div>
+            }
+        </div>
+    </div>
 
-    <MudGrid Class="mb-4">
-        <MudItem xs="12" sm="6" md="4">
-            <MudTextField Value="@_searchString" ValueChanged="@(EventCallback.Factory.Create<string>(this, (v) => { _searchString = v; }))"
-                Label="Buscar..." Variant="Variant.Outlined" Immediate="true" Clearable="true" FullWidth="true" />
-        </MudItem>
-        <MudItem xs="12" sm="6" md="4">
-            <MudSelect T="string" Value="@_filterTenant" ValueChanged="@(EventCallback.Factory.Create<string>(this, (v) => _filterTenant = v))"
-                Label="Tenant" Variant="Variant.Outlined" Clearable="true" FullWidth="true">
-                <MudSelectItem Value="@("Plataforma")">Plataforma</MudSelectItem>
-                <MudSelectItem Value="@("Corp")">Corp</MudSelectItem>
-                <MudSelectItem Value="@("Dev")">Dev</MudSelectItem>
-            </MudSelect>
-        </MudItem>
-        <MudItem xs="12" sm="6" md="4">
-            <MudSelect T="string" Value="@_filterEstado" ValueChanged="@(EventCallback.Factory.Create<string>(this, (v) => _filterEstado = v))"
-                Label="Estado" Variant="Variant.Outlined" Clearable="true" FullWidth="true">
-                <MudSelectItem Value="@("activo")">Activo</MudSelectItem>
-                <MudSelectItem Value="@("inactivo")">Inactivo</MudSelectItem>
-            </MudSelect>
-        </MudItem>
-    </MudGrid>
-
-    <MudTable T="TenantEmailRow" Items="@_items" Hover="true" Breakpoint="Breakpoint.Sm">
-        <ColGroup>
-            <col />
-            <col />
-            <col style="width: 100px;" />
-            <col style="width: 100px;" />
-            <col style="width: 100px;" />
-            <col style="width: 80px;" />
-        </ColGroup>
-        <HeaderContent>
-            <MudTh>Tenant</MudTh>
-            <MudTh>Cuenta de Correo</MudTh>
-            <MudTh>Proveedor</MudTh>
-            <MudTh>Predeterminada</MudTh>
-            <MudTh>Estado</MudTh>
-            <MudTh></MudTh>
-        </HeaderContent>
-        <RowTemplate>
-            <MudTd DataLabel="Tenant"><MudText Typo="Typo.body2" Class="font-weight-medium">@context.TenantNombre</MudText></MudTd>
-            <MudTd DataLabel="Cuenta"><MudText Typo="Typo.body2">@context.EmailAccountNombre</MudText></MudTd>
-            <MudTd DataLabel="Proveedor"><MudChip T="string" Size="Size.Small" Color="Color.Info">@context.ProviderNombre</MudChip></MudTd>
-            <MudTd DataLabel="Predeterminada">
-                <MudIcon Icon="@(context.EsPredeterminada ? Icons.Material.Filled.Star : Icons.Material.Outlined.StarBorder)"
-                    Color="@(context.EsPredeterminada ? Color.Warning : Color.Default)" Size="Size.Small" />
-            </MudTd>
-            <MudTd DataLabel="Estado">
-                <MudChip T="string" Size="Size.Small" Color="@(context.Activo ? Color.Success : Color.Default)">
-                    @(context.Activo ? "Activo" : "Inactivo")
-                </MudChip>
-            </MudTd>
-            <MudTd DataLabel="">
-                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" />
-            </MudTd>
-        </RowTemplate>
-        <PagerContent>
-            <MudTablePager PageSizeOptions="new int[]{10, 25, 50}" />
-        </PagerContent>
-        <NoRecordsContent>
-            <MudText Align="Align.Center" Class="py-6">
-                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Class="mr-2" />
-                No hay asignaciones tenant-cuenta
-            </MudText>
-        </NoRecordsContent>
-    </MudTable>
-</MudContainer>
+    <div class="content-body">
+        <div class="table-panel">
+            <div class="table-toolbar filter-row">
+                @* S101 · D4 — el sistema elige el tenant; un admin de tenant ve solo el suyo (la API responde 404 fuera) *@
+                @if (Auth.EsSistema)
+                {
+                    <MudSelect T="int?" Value="@_idTenant" ValueChanged="@OnTenantChanged" Label="Tenant *" Variant="Variant.Outlined"
+                        Class="lista-filtro" FullWidth="true" data-testid="tenant-accounts-tenant">
+                        @foreach (var t in _tenants)
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)t.Id)">@t.Nombre</MudSelectItem>
+                        }
+                    </MudSelect>
+                }
+                <MudTextField @bind-Value="_search" Class="lista-filtro" Label="Buscar..." Variant="Variant.Outlined" Immediate="true" Clearable="true" FullWidth="true" />
+                <MudSelect T="bool?" @bind-Value="_activoFiltro" Class="lista-filtro" Label="Estado" Variant="Variant.Outlined" Clearable="true" FullWidth="true">
+                    <MudSelectItem T="bool?" Value="@((bool?)true)">Activo</MudSelectItem>
+                    <MudSelectItem T="bool?" Value="@((bool?)false)">Inactivo</MudSelectItem>
+                </MudSelect>
+                <div class="toolbar-spacer"></div>
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium" Class="mr-2" OnClick="@ReCargar" aria-label="Refrescar" />
+            </div>
+            <div class="table-wrap">
+    @if (_idTenant is null)
+    {
+        <MudText Align="Align.Center" Class="py-6 mud-text-secondary">Selecciona un tenant para ver sus cuentas.</MudText>
+    }
+    else
+    {
+        <MudTable T="TenantEmailAccountDto" Items="@_itemsFiltrados" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@_cargando">
+            <ColGroup>
+                <col />
+                <col style="width: 140px;" />
+                <col style="width: 110px;" />
+                <col style="width: 100px;" />
+                <col style="width: 80px;" />
+            </ColGroup>
+            <HeaderContent>
+                <MudTh>Cuenta de Correo</MudTh>
+                <MudTh>Proveedor</MudTh>
+                <MudTh>Predeterminada</MudTh>
+                <MudTh>Estado</MudTh>
+                <MudTh></MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Cuenta"><MudText Typo="Typo.body2" Class="font-weight-medium">@NombreCuenta(context)</MudText></MudTd>
+                <MudTd DataLabel="Proveedor"><MudChip T="string" Size="Size.Small" Color="Color.Info">@ProveedorDe(context.IdEmailAccount)</MudChip></MudTd>
+                <MudTd DataLabel="Predeterminada">
+                    <MudIcon Icon="@(context.EsPredeterminada ? Icons.Material.Filled.Star : Icons.Material.Outlined.StarBorder)"
+                        Color="@(context.EsPredeterminada ? Color.Warning : Color.Default)" Size="Size.Small" />
+                </MudTd>
+                <MudTd DataLabel="Estado">
+                    <MudChip T="string" Size="Size.Small" Color="@(context.Activo ? Color.Success : Color.Default)">
+                        @(context.Activo ? "Activo" : "Inactivo")
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="">
+                    @if (PuedeEscribir)
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" aria-label="Quitar"
+                            OnClick="@(() => Quitar(context))" />
+                    }
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager PageSizeOptions="new int[]{10, 25, 50}" />
+            </PagerContent>
+            <NoRecordsContent>
+                <MudText Align="Align.Center" Class="py-6">
+                    <MudIcon Icon="@Icons.Material.Filled.SearchOff" Class="mr-2" />
+                    El tenant no tiene cuentas asignadas
+                </MudText>
+            </NoRecordsContent>
+        </MudTable>
+    }
+            </div>
+        </div>
+    </div>
+</div>
 
 @code {
-    private List<TenantEmailRow> _items = [];
-    private string _searchString = "";
-    private string? _filterTenant;
-    private string? _filterEstado;
+    private List<TenantDto> _tenants = [];
+    private List<EmailAccountDto> _cuentas = [];
+    private List<EmailProviderDto> _providers = [];
+    private List<TenantEmailAccountDto> _items = [];
+    private int? _idTenant;
+    private string _search = "";
+    private bool? _activoFiltro;
+    private bool _cargando;
 
-    protected override void OnInitialized()
+    private bool PuedeEscribir => Auth.TienePermiso("EMAIL_TENANT_ACCTS_VER");
+
+    protected override async Task OnInitializedAsync()
     {
-        _items = GetMockData();
+        try
+        {
+            if (Auth.EsSistema)
+                _tenants = await Api.GetAsync<List<TenantDto>>("api/tenants") ?? [];
+            if (Auth.TienePermiso("EMAIL_ACCOUNTS_VER"))
+                _cuentas = await Api.GetAsync<List<EmailAccountDto>>("api/emailaccounts") ?? [];
+            if (Auth.TienePermiso("EMAIL_PROVIDERS_VER"))
+                _providers = await Api.GetAsync<List<EmailProviderDto>>("api/emailproviders") ?? [];
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar catálogos: {ex.Message}", Severity.Error);
+        }
+
+        if (!Auth.EsSistema && Auth.IdTenant is int propio)
+        {
+            _idTenant = propio;
+            await CargarDatos();
+        }
     }
 
-    private async Task OpenAssignDialog()
+    private string NombreCuenta(TenantEmailAccountDto fila) =>
+        fila.EmailAccountNombre ?? _cuentas.FirstOrDefault(c => c.Id == fila.IdEmailAccount)?.Nombre ?? $"Cuenta {fila.IdEmailAccount}";
+
+    // la lista de cuentas no trae ProviderNombre: se cruza por IdProvider con el catálogo de providers
+    private string ProveedorDe(int idEmailAccount) =>
+        _cuentas.FirstOrDefault(c => c.Id == idEmailAccount) is { } cuenta
+            ? cuenta.ProviderNombre ?? _providers.FirstOrDefault(p => p.Id == cuenta.IdProvider)?.Nombre ?? "—"
+            : "—";
+
+    private List<TenantEmailAccountDto> _itemsFiltrados
     {
-        var dialog = await Dialog.ShowAsync<AssignTenantDialog>("Asignar Cuenta a Tenant", new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true });
-        await dialog.Result;
+        get
+        {
+            IEnumerable<TenantEmailAccountDto> filtrados = _items;
+            if (!string.IsNullOrWhiteSpace(_search))
+            {
+                var s = _search.Trim();
+                filtrados = filtrados.Where(a => NombreCuenta(a).Contains(s, StringComparison.OrdinalIgnoreCase)
+                    || ProveedorDe(a.IdEmailAccount).Contains(s, StringComparison.OrdinalIgnoreCase));
+            }
+            if (_activoFiltro is bool activo)
+                filtrados = filtrados.Where(a => a.Activo == activo);
+            return filtrados.ToList();
+        }
     }
 
-    private static List<TenantEmailRow> GetMockData()
+    private async Task OnTenantChanged(int? idTenant)
     {
-        return
-        [
-            new() { TenantNombre = "Plataforma", EmailAccountNombre = "SMTP Global", ProviderNombre = "SMTP", EsPredeterminada = true, Activo = true },
-            new() { TenantNombre = "Corp", EmailAccountNombre = "SMTP Global", ProviderNombre = "SMTP", EsPredeterminada = false, Activo = true },
-            new() { TenantNombre = "Dev", EmailAccountNombre = "SendGrid Transaccional", ProviderNombre = "SendGrid", EsPredeterminada = true, Activo = true },
-            new() { TenantNombre = "Plataforma", EmailAccountNombre = "SendGrid Transaccional", ProviderNombre = "SendGrid", EsPredeterminada = false, Activo = true },
-            new() { TenantNombre = "Corp", EmailAccountNombre = "Amazon SES Prod", ProviderNombre = "Amazon SES", EsPredeterminada = true, Activo = true },
-            new() { TenantNombre = "Corp", EmailAccountNombre = "SMTP Outlook Corp", ProviderNombre = "SMTP", EsPredeterminada = false, Activo = true }
-        ];
+        _idTenant = idTenant;
+        await CargarDatos();
     }
 
-    private class TenantEmailRow
+    private async Task CargarDatos()
     {
-        public string TenantNombre { get; set; } = "";
-        public string EmailAccountNombre { get; set; } = "";
-        public string ProviderNombre { get; set; } = "";
-        public bool EsPredeterminada { get; set; }
-        public bool Activo { get; set; }
+        _items = [];
+        if (_idTenant is null) return;
+        _cargando = true;
+        try
+        {
+            _items = await Api.GetAsync<List<TenantEmailAccountDto>>($"api/tenantemailaccounts/tenant/{_idTenant}") ?? [];
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar asignaciones: {ex.Message}", Severity.Error);
+        }
+        finally { _cargando = false; }
+    }
+
+    private async Task ReCargar()
+    {
+        await CargarDatos();
+        Snackbar.Add("Asignaciones recargadas", Severity.Info);
+    }
+
+    private async Task AbrirAsignar()
+    {
+        if (_idTenant is not int idTenant) return;
+        var parameters = new DialogParameters { ["IdTenant"] = idTenant };
+        var dialog = await Dialog.ShowAsync<AssignTenantDialog>("Asignar Cuenta a Tenant", parameters, OpcionesDialogo.Dialogo(TamanoDialogo.Compacto));
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+            await CargarDatos();
+    }
+
+    private async Task Quitar(TenantEmailAccountDto fila)
+    {
+        var confirmar = await Dialog.ShowAsync<ConfirmDialog>("Quitar cuenta", new DialogParameters
+        {
+            ["Title"] = "Quitar cuenta",
+            ["Message"] = $"¿Quitar la cuenta «{NombreCuenta(fila)}» del tenant?",
+            ["ConfirmText"] = "Quitar",
+            ["CancelText"] = "Cancelar"
+        });
+        if (await confirmar.Result is not { Canceled: false }) return;
+        if (await Api.DeleteAsync($"api/tenantemailaccounts/{fila.Id}"))
+        {
+            Snackbar.Add("Cuenta quitada", Severity.Success);
+            await CargarDatos();
+        }
+        else
+            Snackbar.Add(Api.LastError ?? "Error al quitar la cuenta", Severity.Error);
     }
 }

@@ -5,7 +5,7 @@ using PassPlat.Aplicacion.Services;
 
 namespace PassPlat.WebAPI.Controllers;
 
-[Authorize(Policy = "ESTADOS_USR_VER")]
+[Authorize(Policy = "USUARIOS_VER")]
 public class EstadosUsrController : BaseApiController
 {
     private readonly IEstadoUsrService _service;

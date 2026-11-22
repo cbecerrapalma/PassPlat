@@ -13,23 +13,38 @@
 }
 else
 {
-<MudContainer>
-    <MudBreadcrumbs Class="mb-3">
-        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
-        <MudBreadcrumbItem>Catálogos</MudBreadcrumbItem>
-        <MudBreadcrumbItem>Dominios por Tenant</MudBreadcrumbItem>
-    </MudBreadcrumbs>
-    <MudPaper Class="pa-4 mb-4 d-flex flex-wrap align-center gap-4" Elevation="0" Outlined="true">
-        <MudText Typo="Typo.h5" Class="flex-grow-1 mb-0">Dominios por Tenant</MudText>
-        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium"
-            OnClick="@LoadData" Class="mr-2" />
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@OpenCreateDialog"
-            StartIcon="@Icons.Material.Filled.Add" Size="Size.Medium">
-            Agregar Dominio
-        </MudButton>
-    </MudPaper>
+<div class="iam-page">
+    @if (!Auth.EsTenant)
+    {
+        <AvisoSinTenant Que="sus dominios" />
+    }
+<MigasDePan />
 
-    <MudTable T="DominioTenantDto" Items="@_items" Hover="true" Breakpoint="Breakpoint.Sm" Class="mt-2">
+    <div class="page-header">
+        <div class="page-title-row">
+            <div>
+                <h1 class="page-title">Dominios por Tenant</h1>
+                <p class="page-subtitle">Dominios de correo asociados a cada tenant.</p>
+            </div>
+            <div class="page-actions">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@OpenCreateDialog"
+                    StartIcon="@Icons.Material.Filled.Add" Size="Size.Medium">
+                    Agregar Dominio
+                </MudButton>
+            </div>
+        </div>
+    </div>
+
+    <div class="content-body">
+        <div class="table-panel">
+            <div class="table-toolbar filter-row">
+                <MudTextField @bind-Value="_search" Label="Buscar dominio..." Variant="Variant.Outlined" Immediate="true" Clearable="true" Class="lista-filtro" />
+                <div class="toolbar-spacer"></div>
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium"
+                    OnClick="@LoadData" Class="mr-2" aria-label="Refrescar" />
+            </div>
+            <div class="table-wrap">
+    <MudTable T="DominioTenantDto" Items="@_itemsFiltrados" Hover="true" Breakpoint="Breakpoint.Sm" Class="mt-2">
         <ColGroup>
             <col style="width: 80px;" />
             <col style="width: 120px;" />
@@ -55,18 +70,22 @@ else
             </MudText>
         </NoRecordsContent>
     </MudTable>
+            </div>
+        </div>
+    </div>
 
     <MudOverlay Visible="@_loading" />
     @if (_loading)
     {
         <MudProgressCircular Indeterminate="true" Class="mt-4" />
     }
-</MudContainer>
+</div>
 }
 
 @code {
     private List<DominioTenantDto> _items = [];
     private bool _loading;
+    private string _search = "";
 
     protected override async Task OnInitializedAsync()
     {
@@ -74,12 +93,30 @@ else
         await LoadData();
     }
 
+    // S85 · D4 — buscador (Dominio / TenantNombre) se aplica en memoria sobre la lista cargada
+    private List<DominioTenantDto> _itemsFiltrados
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(_search)) return _items;
+            var s = _search.Trim();
+            return _items.Where(d =>
+                (d.Dominio ?? string.Empty).Contains(s, StringComparison.OrdinalIgnoreCase) ||
+                (d.TenantNombre ?? string.Empty).Contains(s, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+    }
+
     private async Task LoadData()
     {
+        if (Auth.IdTenant is not int tenantId || tenantId <= 0)
+        {
+            _items = [];
+            return;
+        }
+
         _loading = true;
         try
         {
-            var tenantId = Auth.IdTenant ?? 1;
             var data = await Api.GetAsync<List<DominioTenantDto>>($"api/DominiosTenant/tenant/{tenantId}");
             _items = data ?? [];
         }
@@ -95,9 +132,9 @@ else
 
     private async Task OpenCreateDialog()
     {
-        var dialog = await Dialog.ShowAsync<DominioTenantDialog>("Agregar Dominio");
+        var dialog = await Dialog.ShowAsync<DominioTenantDialog>("Agregar Dominio", OpcionesDialogo.Dialogo(TamanoDialogo.Compacto));
         var result = await dialog.Result;
-        if (!result.Canceled)
+        if (result is { Canceled: false })
             await LoadData();
     }
 }

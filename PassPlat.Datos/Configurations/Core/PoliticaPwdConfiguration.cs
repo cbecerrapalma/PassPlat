@@ -35,12 +35,13 @@ public class PoliticaPwdConfiguration : IEntityTypeConfiguration<PoliticaPwd>
         builder.Property(p => p.VerificarBrechas).HasDefaultValue(true).IsRequired();
         builder.Property(p => p.PermitirEspacios).HasDefaultValue(true).IsRequired();
         builder.Property(p => p.DiasVigencia).HasDefaultValue((short)0).IsRequired();
+        builder.Property(p => p.SoloPorRol).HasDefaultValue(false).IsRequired();
         builder.Property(p => p.PwdRecordadas).HasDefaultValue((byte)24).IsRequired();
         builder.Property(p => p.MaxIntentos).HasDefaultValue((byte)5).IsRequired();
         builder.Property(p => p.DurBloqueoMin).HasDefaultValue(30).IsRequired();
         builder.Property(p => p.Activa).HasDefaultValue(true).IsRequired();
-        builder.Property(p => p.FecCrea).HasDefaultValueSql("sysutcdatetime()").IsRequired();
-        builder.Property(p => p.FecMod).HasDefaultValueSql("sysutcdatetime()").IsRequired();
+        builder.Property(p => p.FecCrea).HasDefaultValueSql("sysdatetime()").IsRequired();
+        builder.Property(p => p.FecMod).HasDefaultValueSql("sysdatetime()").IsRequired();
         builder.Property(p => p.IdUsrMod);
 
         builder.HasOne(p => p.Tenant)
@@ -58,9 +59,11 @@ public class PoliticaPwdConfiguration : IEntityTypeConfiguration<PoliticaPwd>
             .HasForeignKey(p => p.IdUsrMod)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasIndex(p => p.Id).HasFilter("IdTenant IS NULL AND IdApp IS NULL AND Activa = 1").IsUnique().HasDatabaseName("UX_Politicas_Global");
-        builder.HasIndex(p => p.IdTenant).HasFilter("IdApp IS NULL AND Activa = 1").IsUnique().HasDatabaseName("UX_Politicas_Tenant");
-        builder.HasIndex(p => new { p.IdTenant, p.IdApp }).HasFilter("Activa = 1").IsUnique().HasDatabaseName("UX_Politicas_TenantApp");
+        // S60 · D1 — los indices unicos por alcance ignoran las politicas SoloPorRol = 1:
+        // esas nunca se eligen por alcance y pueden convivir con la politica del alcance.
+        builder.HasIndex(p => p.Id).HasFilter("IdTenant IS NULL AND IdApp IS NULL AND Activa = 1 AND SoloPorRol = 0").IsUnique().HasDatabaseName("UX_Politicas_Global");
+        builder.HasIndex(p => p.IdTenant).HasFilter("IdApp IS NULL AND Activa = 1 AND SoloPorRol = 0").IsUnique().HasDatabaseName("UX_Politicas_Tenant");
+        builder.HasIndex(p => new { p.IdTenant, p.IdApp }).HasFilter("Activa = 1 AND SoloPorRol = 0").IsUnique().HasDatabaseName("UX_Politicas_TenantApp");
 
     }
 }

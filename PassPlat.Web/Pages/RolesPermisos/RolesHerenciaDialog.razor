@@ -2,49 +2,46 @@
 @inject ISnackbar Snackbar
 @implements IAsyncDisposable
 
-<MudDialog>
+<MudDialog Class="dialogo-formulario">
     <TitleContent>
-        <MudText Typo="Typo.h6">
-            <MudIcon Icon="@Icons.Material.Filled.AccountTree" Class="mr-1" Color="Color.Primary" />
-            @(Tipo == "Padre" ? "Agregar Rol Padre" : "Agregar Rol Hijo")
-        </MudText>
+        <TituloDialogo Icono="@Icons.Material.Filled.AccountTree" Texto="@(Tipo == "Padre" ? "Agregar Rol Padre" : "Agregar Rol Hijo")" />
     </TitleContent>
     <DialogContent>
-        <MudText Typo="Typo.body2" Class="mb-4">
-            Seleccione un rol @(Tipo == "Padre" ? "del cual" : "que") <strong>@RolActualNombre</strong>
-            @(Tipo == "Padre" ? " herede permisos" : " herede sus permisos").
-        </MudText>
-        <MudSelect T="RolDto?" Label="@(Tipo == "Padre" ? "Rol Padre" : "Rol Hijo")"
-            Variant="Variant.Outlined" FullWidth="true" AnchorOrigin="Origin.BottomCenter"
-            @bind-Value="_rolSeleccionado" Required="true" ErrorId="@("rol-select")"
-            ResetValueOnEmptyText="true" ToStringFunc="@(r => r?.Nombre ?? "")">
-            @foreach (var rol in RolesDisponibles)
-            {
-                <MudSelectItem @key="rol.Id" Value="rol" Disabled="@EstaDeshabilitado(rol)">
-                    <div class="d-flex align-center" style="gap:8px;">
-                        <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">
-                            @rol.Codigo
-                        </MudChip>
-                        <MudText Typo="Typo.body2">@rol.Nombre</MudText>
-                    </div>
-                </MudSelectItem>
-            }
-        </MudSelect>
+        <AlertaErrorDialogo Mensaje="@_errorServidor" />
+        <MudForm @ref="_form">
+        <div class="dialogo-campos">
+            <MudText Typo="Typo.body2">
+                Selecciona un rol @(Tipo == "Padre" ? "del cual" : "que") <strong>@RolActualNombre</strong>
+                @(Tipo == "Padre" ? " herede permisos" : " herede sus permisos").
+            </MudText>
+            <MudSelect T="RolDto" Label="@(Tipo == "Padre" ? "Rol Padre" : "Rol Hijo")"
+                Variant="Variant.Outlined" FullWidth="true" AnchorOrigin="Origin.BottomCenter"
+                @bind-Value="_rolSeleccionado" Required="true" ErrorId="@("rol-select")"
+                ToStringFunc="@(r => r?.Nombre ?? "")">
+                @foreach (var rol in RolesDisponibles)
+                {
+                    <MudSelectItem @key="rol.Id" Value="rol" Disabled="@EstaDeshabilitado(rol)">
+                        <div class="d-flex align-center" style="gap:8px;">
+                            <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">
+                                @rol.Codigo
+                            </MudChip>
+                            <MudText Typo="Typo.body2">@rol.Nombre</MudText>
+                        </div>
+                    </MudSelectItem>
+                }
+            </MudSelect>
+        </div>
+        </MudForm>
     </DialogContent>
     <DialogActions>
-        <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Cancelar" Disabled="@_guardando">
-            Cancelar
-        </MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary"
-            OnClick="Guardar" Disabled="@(_rolSeleccionado is null || _guardando)"
-            StartIcon="@Icons.Material.Filled.Save">
-            @(_guardando ? "Guardando..." : "Guardar")
-        </MudButton>
+        <MudButton OnClick="Cancelar" Disabled="@_guardando">Cancelar</MudButton>
+        <BotonGuardarDialogo Texto="Agregar" Guardando="@_guardando" OnClick="Guardar" />
     </DialogActions>
 </MudDialog>
 
 @code {
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    private string? _errorServidor;
     [Parameter] public int IdTenant { get; set; }
     [Parameter] public int IdRolActual { get; set; }
     [Parameter] public string RolActualNombre { get; set; } = string.Empty;
@@ -53,6 +50,7 @@
 
     private RolDto? _rolSeleccionado;
     private bool _guardando;
+    private MudForm _form = null!;
 
     private bool EstaDeshabilitado(RolDto rol) => false;
 
@@ -60,7 +58,8 @@
 
     private async Task Guardar()
     {
-        if (_rolSeleccionado is null) return;
+        await _form.ValidateAsync();
+        if (!_form.IsValid || _rolSeleccionado is null) return;
         _guardando = true;
         try
         {
@@ -74,11 +73,11 @@
             if (result is not null)
                 MudDialog.Close(DialogResult.Ok(true));
             else
-                Snackbar.Add(Api.LastError ?? "Error al crear herencia", Severity.Error);
+                _errorServidor = Api.LastError ?? "Error al crear herencia";
         }
         catch (Exception ex)
         {
-            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+            _errorServidor = Api.LastError ?? $"Error: {ex.Message}";
         }
         finally { _guardando = false; }
     }

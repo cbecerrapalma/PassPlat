@@ -1,0 +1,77 @@
+@page "/dispositivos/{id:int}"
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<div class="iam-page">
+<MigasDePan Padre="@ListaUrl" Actual="@(_disp?.DispModelo ?? $"#{Id}")" />
+
+    @if (_cargando && _disp is null)
+    {
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="100%" Height="300px" Style="border-radius:10px;" />
+    }
+    else if (_disp is null)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-3">Dispositivo no encontrado</MudAlert>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="@VolverALista">Atrás</MudButton>
+    }
+    else
+    {
+        <div class="page-header">
+            <div class="page-title-row">
+                <div style="display:flex;gap:12px;align-items:center;">
+                    <h1 class="page-title">@(_disp.DispModelo ?? $"#{Id}")</h1>
+                    <MudChip T="string" Size="Size.Small" Color="@(_disp.Confiable ? Color.Success : Color.Error)">
+                        @(_disp.Confiable ? "Confiable" : "No confiable")
+                    </MudChip>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <MudButton Variant="Variant.Outlined" OnClick="@VolverALista" StartIcon="@Icons.Material.Filled.ArrowBack">Atrás</MudButton>
+                </div>
+            </div>
+        </div>
+
+        <div class="detail-section">
+            <div class="detail-section-title">Dispositivo</div>
+            <div class="field-row"><div class="field-label">Dispositivo</div><div class="field-value">@(_disp.DispModelo ?? "—")</div></div>
+            <div class="field-row"><div class="field-label">Fabricante</div><div class="field-value">@(_disp.DispFabricante ?? "—")</div></div>
+            <div class="field-row"><div class="field-label">Tipo</div><div class="field-value">@(_disp.DispTipo ?? "—")</div></div>
+            <div class="field-row"><div class="field-label">Nombre</div><div class="field-value">@(_disp.Nombre ?? "—")</div></div>
+            <div class="field-row"><div class="field-label">Usuario</div><div class="field-value">@(_disp.UsuarioNombre ?? $"#{_disp.IdUsuario}")</div></div>
+        </div>
+        <div class="detail-section">
+            <div class="detail-section-title">Uso</div>
+            <div class="field-row"><div class="field-label">IP</div><div class="field-value mono">@(_disp.IP ?? "—")</div></div>
+            <div class="field-row"><div class="field-label">País</div><div class="field-value">@(_disp.Pais ?? "—")</div></div>
+            <div class="field-row"><div class="field-label">Navegador</div><div class="field-value">@(_disp.Navegador ?? "—")</div></div>
+            <div class="field-row"><div class="field-label">Sistema Operativo</div><div class="field-value">@(_disp.SO ?? "—")</div></div>
+            <div class="field-row"><div class="field-label">Proveedor Auth</div><div class="field-value">@(_disp.ProveedorAuth ?? "Local")</div></div>
+            <div class="field-row"><div class="field-label">Logins</div><div class="field-value">@_disp.CantidadLogins</div></div>
+            <div class="field-row"><div class="field-label">Último Uso</div><div class="field-value">@(_disp.UltUso?.ToString("dd MMM yyyy HH:mm") ?? "—")</div></div>
+            <div class="field-row"><div class="field-label">Fec. Alta</div><div class="field-value">@_disp.FecAlta.ToString("dd MMM yyyy HH:mm")</div></div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private DispConfiableDto? _disp;
+    private bool _cargando = true;
+
+    private const string ListaUrl = "/dispositivos";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _cargando = true;
+        try
+        {
+            var dispositivos = await Api.GetAsync<List<DispConfiableDto>>("api/DispConfiables") ?? [];
+            _disp = dispositivos.FirstOrDefault(d => d.Id == Id);
+        }
+        catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error al cargar: {ex.Message}", Severity.Error); }
+        finally { _cargando = false; }
+    }
+
+    private void VolverALista() => Navigation.NavigateTo(ListaUrl);
+}

@@ -3,11 +3,12 @@
 @inject ApiClient Api
 @inject ISnackbar Snackbar
 
-<MudDialog>
+<MudDialog Class="dialogo-formulario">
     <TitleContent>
         <MudText Typo="Typo.h6">Agregar proveedor externo</MudText>
     </TitleContent>
     <DialogContent>
+        <AlertaErrorDialogo Mensaje="@_errorServidor" />
         @if (Proveedores is null || Proveedores.Count == 0)
         {
             <MudAlert Severity="Severity.Info">No hay proveedores configurados disponibles</MudAlert>
@@ -38,6 +39,7 @@
 
 @code {
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    private string? _errorServidor;
 
     [Parameter] public int UserId { get; set; }
     [Parameter] public List<ConfProvIdenDto> Proveedores { get; set; } = [];
@@ -71,11 +73,11 @@
                 MudDialog.Close(DialogResult.Ok(true));
             }
             else
-                Snackbar.Add(Api.LastError ?? "Error al vincular", Severity.Error);
+                _errorServidor = Api.LastError ?? "Error al vincular";
         }
         catch (Exception ex)
         {
-            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+            _errorServidor = Api.LastError ?? $"Error: {ex.Message}";
         }
         finally
         {

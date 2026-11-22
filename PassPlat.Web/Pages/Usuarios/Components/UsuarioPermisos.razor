@@ -1,0 +1,251 @@
+@* S103 · D8 — pestaña «Permisos» de un usuario: editor único por (tenant, app).
+   Casilla marcada = el usuario tiene el permiso (por rol o por excepción); los cambios se acumulan y se guardan en una petición.
+   S106 · D5 — la grilla es el componente compartido EditorPermisos; aquí quedan contexto, carga y guardado. *@
+@inject ApiClient Api
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@inject AuthService Auth
+@using PassPlat.Web.Shared.Permisos
+
+@if (!IsActive && !_iniciado)
+{
+    return;
+}
+
+@if (_cargandoContextos)
+{
+    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="100%" Height="200px" />
+}
+else if (_contextos.Count == 0)
+{
+    <div class="permisos-sin-contexto d-flex flex-column align-center pa-6">
+        <MudIcon Icon="@Icons.Material.Filled.Block" Size="Size.Large" Class="mud-text-secondary mb-2" />
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">Este usuario no tiene acceso activo a ninguna aplicación. Asígnelo en la pestaña Accesos.</MudText>
+    </div>
+}
+else
+{
+    @* S104 · D5 — con un solo tenant o una sola app el contexto es texto; los selectores solo existen si hay algo que elegir *@
+    <div class="permisos-selectores d-flex flex-wrap align-center gap-3 mb-3">
+        @if (_tenants.Count <= 1)
+        {
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Class="permiso-contexto">Tenant: @_tenants[0].Nombre</MudChip>
+        }
+        else
+        {
+            <MudSelect T="int" @key="@("tenant" + _versionSelectores)" Label="Tenant" Variant="Variant.Outlined" Dense="true"
+                Value="_idTenant" ValueChanged="CambiarTenantAsync" Style="min-width:220px">
+                @foreach (var t in _tenants)
+                {
+                    <MudSelectItem @key="t.Id" T="int" Value="@t.Id">@t.Nombre</MudSelectItem>
+                }
+            </MudSelect>
+        }
+        @if (_appsDelTenant.Count <= 1)
+        {
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Class="permiso-contexto">Aplicación: @_appsDelTenant[0].AppNombre</MudChip>
+        }
+        else
+        {
+            <MudSelect T="int" @key="@("app" + _versionSelectores)" Label="Aplicación" Variant="Variant.Outlined" Dense="true"
+                Value="_idApp" ValueChanged="CambiarAppAsync" Style="min-width:220px">
+                @foreach (var a in _appsDelTenant)
+                {
+                    <MudSelectItem @key="a.IdApp" T="int" Value="@a.IdApp">@a.AppNombre</MudSelectItem>
+                }
+            </MudSelect>
+        }
+    </div>
+
+    @if (_editor is null)
+    {
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="100%" Height="260px" />
+    }
+    else
+    {
+        <div class="d-flex flex-wrap align-center gap-3 mb-3">
+            <MudText Typo="Typo.body2" Class="resumen-permisos">@Resumen</MudText>
+            @if (!_editor.EsSistema && Auth.TienePermiso("ROLES_VER"))
+            {
+                @foreach (var rol in _editor.Roles)
+                {
+                    <MudLink Href="@($"/rol/{rol.IdRol}")" Typo="Typo.body2" Class="editar-rol">
+                        @(_editor.Roles.Count == 1 ? "Editar rol" : $"Editar rol {rol.Nombre}")
+                    </MudLink>
+                }
+            }
+        </div>
+
+        @if (EsPropio)
+        {
+            <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3 autoedicion">No puede cambiar sus propios permisos: pídaselo a otro administrador</MudAlert>
+        }
+
+        <EditorPermisos @key="@($"{_idTenant}-{_idApp}")" Permisos="_editor.Permisos" Cambios="_cambios" Bloqueado="@Bloqueado" Guardando="@_guardando" ConOrigen="true"
+            OnGuardar="GuardarAsync" OnCambio="@(() => Task.CompletedTask)" />
+    }
+}
+
+@code {
+    [Parameter] public int UserId { get; set; }
+    [Parameter] public bool IsActive { get; set; }
+    /// <summary>Cantidad de permisos que el usuario tiene en el contexto mostrado.</summary>
+    [Parameter] public EventCallback<int> CountChanged { get; set; }
+    [Parameter] public string? UsuarioNombre { get; set; }
+
+    private sealed record TenantOpcion(int Id, string Nombre);
+
+    private List<ContextoPermisoDto> _contextos = [];
+    private EditorPermisosDto? _editor;
+    // permiso → valor deseado; solo los que difieren de lo que el usuario tiene hoy
+    private readonly Dictionary<int, bool> _cambios = [];
+    private int _idTenant;
+    private int _idApp;
+    private int _versionSelectores;
+    private bool _iniciado;
+    private bool _cargandoContextos;
+    private bool _guardando;
+
+    private bool _puedeEditar => Auth.TienePermiso("PERMISOS_EDITAR");
+    // S107 · D4 — la propia ficha se ve en solo lectura (salvo el usuario de sistema); la API también la rechaza (AUTOEDICION)
+    private bool EsPropio => !Auth.EsSistema && Auth.IdUsuario == UserId;
+    private bool Bloqueado => !_puedeEditar || _editor is null || _editor.EsSistema || _guardando || EsPropio;
+    private List<TenantOpcion> _tenants => [.. _contextos.GroupBy(c => c.IdTenant).Select(g => new TenantOpcion(g.Key, g.First().TenantNombre))];
+    private List<ContextoPermisoDto> _appsDelTenant => [.. _contextos.Where(c => c.IdTenant == _idTenant)];
+
+    private string Resumen
+    {
+        get
+        {
+            if (_editor is null) return "";
+            if (_editor.EsSistema) return "Usuario de sistema: tiene todos los permisos";
+            var roles = _editor.Roles.Count == 0 ? "sin rol en esta aplicación" : "rol " + string.Join(", ", _editor.Roles.Select(r => r.Nombre));
+            return $"Tiene {_editor.Permisos.Count(p => p.Tiene)} de {_editor.Permisos.Count} · {roles}";
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // el indicador se levanta antes del primer await: un segundo SetParameters durante la carga no repite las peticiones
+        if (!IsActive || _iniciado) return;
+        _iniciado = true;
+        await CargarContextosAsync();
+    }
+
+    private async Task CargarContextosAsync()
+    {
+        _cargandoContextos = true;
+        try
+        {
+            _contextos = await Api.GetAsync<List<ContextoPermisoDto>>($"api/UsuariosPermisos/contextos/{UserId}") ?? [];
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar las aplicaciones del usuario: {ex.Message}", Severity.Error);
+        }
+        finally { _cargandoContextos = false; }
+
+        if (_contextos.Count == 0)
+        {
+            await CountChanged.InvokeAsync(0);
+            return;
+        }
+        _idTenant = _contextos.Any(c => c.IdTenant == Auth.IdTenant) ? Auth.IdTenant!.Value : _contextos[0].IdTenant;
+        _idApp = _appsDelTenant[0].IdApp;
+        await CargarEditorAsync();
+    }
+
+    private async Task CargarEditorAsync()
+    {
+        _editor = null;
+        _cambios.Clear();
+        try
+        {
+            _editor = await Api.GetAsync<EditorPermisosDto>($"api/UsuariosPermisos/editor/{UserId}?idTenant={_idTenant}&idApp={_idApp}");
+            if (_editor is null) Snackbar.Add(Api.LastError ?? "No se pudieron cargar los permisos", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar los permisos: {ex.Message}", Severity.Error);
+        }
+        if (_editor is not null) await CountChanged.InvokeAsync(_editor.Permisos.Count(p => p.Tiene));
+    }
+
+    private async Task<bool> ConfirmarDescarteAsync()
+    {
+        if (_cambios.Count == 0) return true;
+        var parameters = new DialogParameters
+        {
+            ["Title"] = "Descartar cambios",
+            ["Message"] = $"Hay {_cambios.Count} cambios sin guardar. ¿Descartarlos?",
+            ["ConfirmText"] = "Descartar", ["CancelText"] = "Seguir editando", ["ConfirmColor"] = Color.Warning
+        };
+        var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parameters);
+        var result = await dialog.Result;
+        return result is { Canceled: false };
+    }
+
+    private async Task CambiarTenantAsync(int idTenant)
+    {
+        if (idTenant == _idTenant) return;
+        if (!await ConfirmarDescarteAsync()) { _versionSelectores++; return; }
+        _idTenant = idTenant;
+        _idApp = _appsDelTenant[0].IdApp;
+        _versionSelectores++;
+        await CargarEditorAsync();
+    }
+
+    private async Task CambiarAppAsync(int idApp)
+    {
+        if (idApp == _idApp) return;
+        if (!await ConfirmarDescarteAsync()) { _versionSelectores++; return; }
+        _idApp = idApp;
+        await CargarEditorAsync();
+    }
+
+    private async Task GuardarAsync()
+    {
+        if (_editor is null || _cambios.Count == 0 || _guardando || !_puedeEditar) return;
+
+        var nombres = _editor.Permisos.ToDictionary(p => p.IdPermiso, p => p.Nombre);
+        var parameters = new DialogParameters
+        {
+            ["Agregar"] = _cambios.Where(c => c.Value).Select(c => nombres[c.Key]).ToList(),
+            ["Quitar"] = _cambios.Where(c => !c.Value).Select(c => nombres[c.Key]).ToList()
+        };
+        var dialog = await Dialog.ShowAsync<PermisoDirectoDialog>("", parameters, OpcionesDialogo.Dialogo(TamanoDialogo.Estandar));
+        var result = await dialog.Result;
+        if (result is null || result.Canceled || result.Data is not ValueTuple<string?, DateTime?, DateTime?> vigencia) return;
+
+        var dto = new AplicarPermisosUsuarioDto
+        {
+            IdUsuario = UserId,
+            IdTenant = _idTenant,
+            IdApp = _idApp,
+            Cambios = [.. _cambios.Select(c => new CambioPermisoDto { IdPermiso = c.Key, Tiene = c.Value })],
+            Motivo = vigencia.Item1,
+            FecInicio = vigencia.Item2,
+            FecFin = vigencia.Item3
+        };
+
+        _guardando = true;
+        try
+        {
+            var (resultado, error) = await Api.PostWithErrorAsync<ResultadoAplicarPermisosDto>("api/UsuariosPermisos/aplicar", dto);
+            if (resultado is null)
+            {
+                Snackbar.Add(error ?? "No se pudieron guardar los cambios", Severity.Error);
+                return;
+            }
+            Snackbar.Add($"{resultado.Concedidos} agregados, {resultado.Denegados} quitados, {resultado.Revocados} excepciones retiradas", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+            return;
+        }
+        finally { _guardando = false; }
+
+        await CargarEditorAsync();
+    }
+}

@@ -26,7 +26,7 @@ public class RolPoliticaPwdRepository : RepositoryAsync<RolPoliticaPwd>, IRolPol
                 .ToListAsync(ct);
             return Result<IReadOnlyList<RolPoliticaPwd>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<RolPoliticaPwd>>.Failure("DB_ERROR", ex.Message);
         }

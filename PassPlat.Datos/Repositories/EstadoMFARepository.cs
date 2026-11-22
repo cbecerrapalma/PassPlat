@@ -24,7 +24,7 @@ public class EstadoMFARepository : RepositoryAsync<EstadoMFA>, IEstadoMFAReposit
             var entity = await DbSet.FirstOrDefaultAsync(e => e.Codigo == codigo, ct);
             return Result<EstadoMFA?>.Success(entity, allowNull: true);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<EstadoMFA?>.Failure("DB_ERROR", ex.Message);
         }

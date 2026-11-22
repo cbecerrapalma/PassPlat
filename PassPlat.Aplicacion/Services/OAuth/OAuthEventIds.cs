@@ -30,11 +30,7 @@ public static class OAuthEventIds
     public static readonly EventId TokenRequest          = new(301, "OAuth_Token_Request");
     public static readonly EventId TokenResponse         = new(302, "OAuth_Token_Response");
     public static readonly EventId TokenResponseBody     = new(303, "OAuth_Token_ResponseBody");
-    public static readonly EventId TokenJwksFetch        = new(304, "OAuth_Token_JwksFetch");
-    public static readonly EventId TokenJwksResult       = new(305, "OAuth_Token_JwksResult");
-    public static readonly EventId TokenValidation       = new(306, "OAuth_Token_Validation");
     public static readonly EventId TokenClaims           = new(307, "OAuth_Token_Claims");
-    public static readonly EventId TokenNonceCheck       = new(308, "OAuth_Token_NonceCheck");
 
     // Timing (900-999)
     public static readonly EventId TimingStep            = new(901, "OAuth_Timing_Step");

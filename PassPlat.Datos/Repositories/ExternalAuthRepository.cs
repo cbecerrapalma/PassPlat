@@ -16,7 +16,7 @@ public class ExternalAuthRepository : IExternalAuthRepository
         _rawQuery = uow.RawQuery;
     }
 
-    public async Task<Result<LoginExternoResult>> LoginExternoAsync(int idTenant, int idApp, int idProvIden, string subExterno, string? emailExterno = null, string? nombreExterno = null, string? avatar = null, string? metadataJson = null, string? ip = null, string? userAgent = null, int? idDisp = null, int? idAgente = null, CancellationToken ct = default)
+    public async Task<Result<LoginExternoResult>> LoginExternoAsync(int idTenant, int idApp, int idProvIden, string subExterno, string? emailExterno = null, string? nombreExterno = null, string? avatar = null, string? metadataJson = null, string? ip = null, string? userAgent = null, int? idDisp = null, int? idAgente = null, int? idConfProvIden = null, CancellationToken ct = default)
     {
         var parameters = new[]
         {
@@ -31,7 +31,8 @@ public class ExternalAuthRepository : IExternalAuthRepository
             RawParameter.NVarChar("@IP", ip, 45),
             RawParameter.NVarChar("@UserAgent", userAgent, 500),
             RawParameter.Int("@IdDisp", idDisp),
-            RawParameter.Int("@IdAgente", idAgente)
+            RawParameter.Int("@IdAgente", idAgente),
+            RawParameter.Int("@IdConfProvIden", idConfProvIden)   // S126 · D9
         };
 
         return await SpHelper.ExecuteSPAsync<LoginExternoResult>(_rawQuery, "SP_Auth_LoginExterno", parameters, "Sin resultado del login externo", ct);
@@ -84,47 +85,6 @@ public class ExternalAuthRepository : IExternalAuthRepository
             : Result.Success();
     }
 
-    public async Task<Result<long>> VincularUsuarioAsync(int idUsuario, int idProvIden, int idTenant, string subExterno, string? emailExterno = null, string? nombreExterno = null, string? avatar = null, bool guardarTokens = false, string? metadataJson = null, CancellationToken ct = default)
-    {
-        var parameters = new[]
-        {
-            RawParameter.Int("@IdUsuario", idUsuario),
-            RawParameter.Int("@IdProvIden", idProvIden),
-            RawParameter.Int("@IdTenant", idTenant),
-            RawParameter.NVarChar("@SubExterno", subExterno, 255),
-            RawParameter.NVarChar("@EmailExterno", emailExterno, 255),
-            RawParameter.NVarChar("@NombreExterno", nombreExterno, 255),
-            RawParameter.NVarChar("@Avatar", avatar, 500),
-            RawParameter.Bit("@GuardarTokens", guardarTokens),
-            RawParameter.NVarChar("@MetadataJson", metadataJson, -1)
-        };
-
-        var result = await _rawQuery.QuerySPAsync<IdResult>("SP_ProvIden_VincularUsuario", parameters, ct);
-        if (result.IsFailure)
-            return Result<long>.Failure(result.Error!);
-
-        var idResult = result.Value.FirstOrDefault();
-        return idResult != null
-            ? Result<long>.Success(idResult.Id)
-            : Result<long>.Failure("SP_NO_RESULT", "Sin resultado del SP de vinculación");
-    }
-
-    public async Task<Result> ActualizarPerfilAsync(long idIdentidad, string? emailExterno = null, string? nombreExterno = null, string? avatar = null, string? metadataJson = null, bool guardarTokens = false, CancellationToken ct = default)
-    {
-        var parameters = new[]
-        {
-            RawParameter.BigInt("@IdIdentidad", idIdentidad),
-            RawParameter.NVarChar("@EmailExterno", emailExterno, 255),
-            RawParameter.NVarChar("@NombreExterno", nombreExterno, 255),
-            RawParameter.NVarChar("@Avatar", avatar, 500),
-            RawParameter.NVarChar("@MetadataJson", metadataJson, -1),
-            RawParameter.Bit("@GuardarTokens", guardarTokens)
-        };
-
-        var result = await _rawQuery.QuerySPAsync<FilasAfectadasResult>("SP_ProvIden_ActualizarPerfil", parameters, ct);
-        return result.IsFailure ? Result.Failure(result.Error!) : Result.Success();
-    }
-
     public async Task<Result> DesvincularIdentidadAsync(long idIdentidad, int idUsuarioElimina, bool revocarSesiones = true, CancellationToken ct = default)
     {
         var parameters = new[]
@@ -140,11 +100,6 @@ public class ExternalAuthRepository : IExternalAuthRepository
 }
 
 internal class AuditoriaRegistradaResult
-{
-    public long Id { get; set; }
-}
-
-internal class IdResult
 {
     public long Id { get; set; }
 }

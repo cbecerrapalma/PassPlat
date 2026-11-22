@@ -26,7 +26,7 @@ public interface IExternalIdentityProvider
     string ProviderCode { get; }
     bool SupportsRefreshToken { get; }
     OAuthProviderDescriptor Descriptor { get; }
-    Task<Result<ExternalIdentityClaims>> ValidateAndExtractClaimsAsync(string authorizationCode, string redirectUri, string clientId, string clientSecret, string? scopes, string? codeVerifier = null, string? nonce = null, CancellationToken ct = default);
-    Task<Result<string>> GenerateAuthorizationUrlAsync(string redirectUri, string clientId, string? scopes, string? state = null, string? codeChallenge = null, string? nonce = null, CancellationToken ct = default);
+    Task<Result<ExternalIdentityClaims>> ValidateAndExtractClaimsAsync(string authorizationCode, string redirectUri, string clientId, string clientSecret, string? scopes, string? codeVerifier = null, CancellationToken ct = default);
+    Task<Result<string>> GenerateAuthorizationUrlAsync(string redirectUri, string clientId, string? scopes, string? state = null, string? codeChallenge = null, CancellationToken ct = default);
     Task<Result<TokenRefreshResult>> RefreshTokenAsync(string refreshToken, string clientId, string clientSecret, string? scopes = null, CancellationToken ct = default);
 }

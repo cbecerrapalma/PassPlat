@@ -14,8 +14,6 @@ public class GitHubIdentityProvider : IExternalIdentityProvider
         Code: "GITHUB",
         Capabilities: OAuthProviderCapabilities.Pkce | OAuthProviderCapabilities.RefreshToken
                     | OAuthProviderCapabilities.UserInfo,
-        SupportsJwksRotation: false,
-        SupportsNonce: false,
         RequiresPkce: true,
         RequiresOfflineAccess: false,
         SupportsRefreshTokenRotation: false);
@@ -30,7 +28,7 @@ public class GitHubIdentityProvider : IExternalIdentityProvider
     public OAuthProviderDescriptor Descriptor => DescriptorInstance;
 
     public async Task<Result<ExternalIdentityClaims>> ValidateAndExtractClaimsAsync(
-        string authorizationCode, string redirectUri, string clientId, string clientSecret, string? scopes, string? codeVerifier = null, string? nonce = null, CancellationToken ct = default)
+        string authorizationCode, string redirectUri, string clientId, string clientSecret, string? scopes, string? codeVerifier = null, CancellationToken ct = default)
     {
         try
         {
@@ -117,7 +115,7 @@ public class GitHubIdentityProvider : IExternalIdentityProvider
     public Task<Result<TokenRefreshResult>> RefreshTokenAsync(string refreshToken, string clientId, string clientSecret, string? scopes = null, CancellationToken ct = default)
         => Task.FromResult(Result<TokenRefreshResult>.Failure("NOT_SUPPORTED", "GitHub no soporta renovación de tokens"));
 
-    public Task<Result<string>> GenerateAuthorizationUrlAsync(string redirectUri, string clientId, string? scopes, string? state = null, string? codeChallenge = null, string? nonce = null, CancellationToken ct = default)
+    public Task<Result<string>> GenerateAuthorizationUrlAsync(string redirectUri, string clientId, string? scopes, string? state = null, string? codeChallenge = null, CancellationToken ct = default)
     {
         var scope = Uri.EscapeDataString(scopes ?? "read:user user:email");
         var redirect = Uri.EscapeDataString(redirectUri);

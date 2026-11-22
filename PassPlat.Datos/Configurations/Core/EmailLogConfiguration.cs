@@ -28,7 +28,7 @@ public class EmailLogConfiguration : IEntityTypeConfiguration<EmailLog>
         builder.Property(el => el.ErrorDetalle).HasMaxLength(500);
         builder.Property(el => el.CorrelationId).HasMaxLength(64).IsUnicode(false);
         builder.Property(el => el.ExtraJson);
-        builder.Property(el => el.FecCrea).HasDefaultValueSql("sysutcdatetime()").IsRequired();
+        builder.Property(el => el.FecCrea).HasDefaultValueSql("sysdatetime()").IsRequired();
 
         builder.HasOne(el => el.Tenant)
             .WithMany()

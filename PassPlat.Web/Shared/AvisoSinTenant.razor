@@ -1,0 +1,5 @@
+<MudAlert Severity="Severity.Info" Dense="true" Class="mb-4" data-testid="aviso-sin-tenant">Estás en modo Plataforma: selecciona un tenant en el selector superior para ver @Que.</MudAlert>
+
+@code {
+    [Parameter, EditorRequired] public string Que { get; set; } = "";
+}

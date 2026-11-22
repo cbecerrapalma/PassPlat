@@ -1,0 +1,172 @@
+@page "/federacion/confproviden/{idTenant:int}/{id:int}"
+@inject ApiClient Api
+@inject AuthService Auth
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@inject NavigationManager Navigation
+@using PassPlat.Web.Models
+@using PassPlat.Web.Shared
+
+@if (!Auth.TienePermiso("FED_CONFPROVIDEN_VER"))
+{
+    <SinPermiso PermisoRequerido="FED_CONFPROVIDEN_VER" />
+}
+else
+{
+<div class="iam-page">
+<MigasDePan Padre="@ListaUrl" Actual="@(_conf is null ? "Configuración" : (_conf.ProvIdenNombre ?? $"Prov#{_conf.IdProvIden}"))" />
+
+    @if (_cargando && _conf is null)
+    {
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="100%" Height="300px" Style="border-radius:10px;" />
+    }
+    else if (_conf is null)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-3">Configuración no encontrada</MudAlert>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="@VolverALista">Atrás</MudButton>
+    }
+    else
+    {
+        <div class="page-header">
+            <div class="page-title-row">
+                <div style="display:flex;gap:12px;align-items:center;">
+                    <h1 class="page-title">@(_conf.ProvIdenNombre ?? $"Prov#{_conf.IdProvIden}")</h1>
+                    <span class="badge @_estadoClass(_conf.Estado)">@_estadoNombre(_conf.Estado)</span>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <MudButton Variant="Variant.Outlined" OnClick="@VolverALista" StartIcon="@Icons.Material.Filled.ArrowBack">Atrás</MudButton>
+                    @if (Auth.TienePermiso("FED_CONFPROVIDEN_EDITAR"))
+                    {
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => OpenEditDialog(_conf))" StartIcon="@Icons.Material.Filled.Edit">Editar</MudButton>
+                    }
+                    @if (_conf.Estado == 1 && Auth.TienePermiso("FED_CONFPROVIDEN_EDITAR"))
+                    {
+                        <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="@(() => ConfirmDeactivate(_conf))" StartIcon="@Icons.Material.Filled.Block">Desactivar</MudButton>
+                    }
+                </div>
+            </div>
+            <p class="page-subtitle">@(_conf.TenantNombre ?? $"#{_conf.IdTenant}")</p>
+        </div>
+
+        <MudTabs @bind-ActivePanelIndex="_tabIndex" Class="detail-tabs" TabPanelsClass="pt-3">
+            <MudTabPanel Text="Información" Icon="@Icons.Material.Filled.Info">
+                <div class="detail-section">
+                    <div class="detail-section-title">Detalles de Configuración</div>
+                    <div class="field-row"><div class="field-label">Tenant</div><div class="field-value">@(_conf.TenantNombre ?? $"#{_conf.IdTenant}")</div></div>
+                    <div class="field-row"><div class="field-label">Proveedor</div><div class="field-value">@(_conf.ProvIdenNombre ?? $"#{_conf.IdProvIden}")</div></div>
+                    <div class="field-row"><div class="field-label">Client ID</div><div class="field-value mono">@_conf.ClientId</div></div>
+                    <div class="field-row"><div class="field-label">Callback</div><div class="field-value mono" style="font-size:10px;">@_conf.Callback</div></div>
+                    <div class="field-row"><div class="field-label">Redirect URI</div><div class="field-value mono" style="font-size:10px;">@(_conf.RedirectUri ?? "—")</div></div>
+                    <div class="field-row"><div class="field-label">Scopes</div><div class="field-value">@(_conf.Scopes ?? "—")</div></div>
+                    <div class="field-row"><div class="field-label">Estado</div><div class="field-value">@_estadoNombre(_conf.Estado)</div></div>
+                    <div class="field-row"><div class="field-label">Creado</div><div class="field-value" style="color:var(--text-muted);">@(_conf.FecCrea?.ToString("dd MMM yyyy") ?? "—")</div></div>
+                </div>
+            </MudTabPanel>
+            <MudTabPanel Text="Opciones" Icon="@Icons.Material.Filled.Tune">
+                <div class="detail-section">
+                    <div class="detail-section-title">Opciones Base</div>
+                    <div class="field-row"><div class="field-label">Rol Defecto</div><div class="field-value">@(_conf.RolDefectoNombre ?? _conf.RolDefecto?.ToString() ?? "—")</div></div>
+                    <div class="field-row"><div class="field-label">Guardar Tokens</div><div class="field-value"><MudIcon Icon="@(_conf.GuardarTokens ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)" Size="Size.Small" Color="@(_conf.GuardarTokens ? Color.Success : Color.Error)" /></div></div>
+                    <div class="field-row"><div class="field-label">Auto Link</div><div class="field-value"><MudIcon Icon="@(_conf.PermitirAutoLink ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)" Size="Size.Small" Color="@(_conf.PermitirAutoLink ? Color.Success : Color.Error)" /></div></div>
+                    <div class="field-row"><div class="field-label">Auto Provisionar</div><div class="field-value"><MudIcon Icon="@(_conf.AutoProvisionar ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)" Size="Size.Small" Color="@(_conf.AutoProvisionar ? Color.Success : Color.Error)" /></div></div>
+                </div>
+                <MudDivider Class="my-3" />
+                <div class="detail-section">
+                    <div class="detail-section-title">Políticas de Acceso</div>
+                    <div class="field-row"><div class="field-label">Login</div><div class="field-value"><MudIcon Icon="@(_conf.PermitirLogin ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)" Size="Size.Small" Color="@(_conf.PermitirLogin ? Color.Success : Color.Error)" /></div></div>
+                </div>
+                <MudDivider Class="my-3" />
+                <div class="detail-section">
+                    <div class="detail-section-title">Visualización</div>
+                    <div class="field-row"><div class="field-label">Prioridad</div><div class="field-value">@_conf.Prioridad</div></div>
+                    <div class="field-row"><div class="field-label">Orden Visual</div><div class="field-value">@_conf.OrdenVisual</div></div>
+                    <div class="field-row"><div class="field-label">Logo</div><div class="field-value">@(_conf.Logo ?? "—")</div></div>
+                    <div class="field-row"><div class="field-label">Color</div><div class="field-value">
+                        @if (!string.IsNullOrEmpty(_conf.Color))
+                        {
+                            <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:@(_conf.Color);vertical-align:middle;margin-right:4px;"></span>
+                            <span style="font-size:11px;font-family:monospace;">@_conf.Color</span>
+                        }
+                        else
+                        {
+                            <text>—</text>
+                        }
+                    </div></div>
+                    <div class="field-row"><div class="field-label">Tooltip</div><div class="field-value">@(_conf.Tooltip ?? "—")</div></div>
+                    <div class="field-row"><div class="field-label">Descripción</div><div class="field-value" style="font-size:11px;">@(_conf.Descripcion ?? "—")</div></div>
+                </div>
+            </MudTabPanel>
+        </MudTabs>
+    }
+</div>
+}
+
+@code {
+    [Parameter] public int IdTenant { get; set; }
+    [Parameter] public int Id { get; set; }
+
+    private ConfProvIdenDto? _conf;
+    private int _tabIndex;
+    private bool _cargando = true;
+
+    private const string ListaUrl = "/federacion/confproviden";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!Auth.TienePermiso("FED_CONFPROVIDEN_VER")) return; // S114 · D3
+        _tabIndex = 0;
+        await Cargar();
+    }
+
+    // No hay GET por id: tenant/{idTenant} trae activas e inactivas.
+    private async Task Cargar()
+    {
+        _cargando = true;
+        try
+        {
+            var todas = await Api.GetAsync<List<ConfProvIdenDto>>($"api/confproviden/tenant/{IdTenant}") ?? [];
+            _conf = todas.FirstOrDefault(c => c.Id == Id);
+        }
+        catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error al cargar: {ex.Message}", Severity.Error); }
+        finally { _cargando = false; }
+    }
+
+    private void VolverALista() => Navigation.NavigateTo(ListaUrl);
+
+    private async Task OpenEditDialog(ConfProvIdenDto item)
+    {
+        var parameters = new DialogParameters { ["IsEdit"] = true, ["ConfProvIden"] = item };
+        var dialog = await Dialog.ShowAsync<ConfProvIdenDialog>("Editar Configuración", parameters, OpcionesDialogo.Dialogo(TamanoDialogo.Amplio));
+        var result = await dialog.Result;
+        if (result is { Canceled: false }) { await Cargar(); Snackbar.Add("Configuración actualizada", Severity.Success); }
+    }
+
+    private async Task ConfirmDeactivate(ConfProvIdenDto item)
+    {
+        var parameters = new DialogParameters { ["Title"] = "Confirmar", ["Message"] = $"Desactivar configuración para {item.ProvIdenNombre ?? $"#{item.IdProvIden}"}?", ["ConfirmText"] = "Si", ["CancelText"] = "Cancelar" };
+        var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parameters);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            var ok = await Api.PostVoidAsync($"api/confproviden/{item.Id}/desactivar");
+            if (ok) { Snackbar.Add("Configuración desactivada", Severity.Success); await Cargar(); }
+            else Snackbar.Add(Api.LastError ?? "Error al desactivar", Severity.Error);
+        }
+    }
+
+    private static string _estadoNombre(byte estado) => estado switch
+    {
+        0 => "Inactivo",
+        1 => "Activo",
+        2 => "Revocado",
+        _ => "Desconocido"
+    };
+
+    private static string _estadoClass(byte estado) => estado switch
+    {
+        0 => "badge-warning",
+        1 => "badge-active",
+        2 => "badge-inactive",
+        _ => "badge-inactive"
+    };
+}

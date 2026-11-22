@@ -2,18 +2,22 @@
 @inject NavigationManager Nav
 @inject ISnackbar Snackbar
 
-<MudMenu Direction="Direction.Bottom" OffsetX="true" Class="tenant-switcher-menu" OnMouseEnter="@LoadTenants">
+@* S96 · D4 — parámetros de MudBlazor 9: abre bajo el chip y carga los tenants al abrirse *@
+<MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Class="tenant-switcher-menu" OpenChanged="@OnOpenChanged">
     <ActivatorContent>
         <MudChip T="string" Size="Size.Small"
                  Color="@(Auth.EsPlatform ? Color.Info : Color.Primary)"
                  Variant="Variant.Outlined"
-                 Class="appbar-tenant-chip d-none d-sm-flex mx-1 tenant-switcher-chip">
-            <MudIcon Icon="@Icons.Material.Filled.SwapHoriz" Size="Size.Small" Class="mr-1" />
-            @GetTenantLabel()
+                 OnClick="@context.ToggleAsync"
+                 Class="appbar-tenant-chip mx-1 tenant-switcher-chip"
+                 aria-label="Cambiar de tenant">
+            @* S97 · D3 — bajo 600 px el chip queda visible solo con el icono *@
+            <MudIcon Icon="@Icons.Material.Filled.SwapHoriz" Size="Size.Small" Class="mr-sm-1" />
+            <span class="tenant-switcher-label d-none d-sm-inline">@GetTenantLabel()</span>
         </MudChip>
     </ActivatorContent>
     <ChildContent>
-        <MudList T="string" Dense="true" Clickable="true" Class="tenant-switcher-list">
+        <MudList T="string" Dense="true" ReadOnly="false" Class="tenant-switcher-list">
             @if (_loading)
             {
                 <MudListItem T="string" Disabled="true">
@@ -55,6 +59,11 @@
         if (Auth.EsPlatform) return "Plataforma";
         if (!string.IsNullOrEmpty(Auth.NombreTenant)) return Auth.NombreTenant;
         return "Tenant";
+    }
+
+    private async Task OnOpenChanged(bool abierto)
+    {
+        if (abierto) await LoadTenants();
     }
 
     private async Task LoadTenants()

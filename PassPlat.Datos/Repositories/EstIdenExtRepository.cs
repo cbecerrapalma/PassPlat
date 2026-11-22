@@ -23,7 +23,7 @@ public class EstIdenExtRepository : RepositoryAsync<EstIdenExt>, IEstIdenExtRepo
             var entity = await DbSet.FirstOrDefaultAsync(e => e.Nombre == nombre, ct);
             return Result<EstIdenExt?>.Success(entity, allowNull: true);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<EstIdenExt?>.Failure("DB_ERROR", ex.Message);
         }
@@ -36,7 +36,7 @@ public class EstIdenExtRepository : RepositoryAsync<EstIdenExt>, IEstIdenExtRepo
             var list = await DbSet.Where(e => e.Activo).OrderBy(e => e.Orden).AsNoTracking().ToListAsync(ct);
             return Result<IReadOnlyList<EstIdenExt>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<EstIdenExt>>.Failure("DB_ERROR", ex.Message);
         }

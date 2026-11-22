@@ -60,17 +60,29 @@ public class ApiClient
         if (!response.IsSuccessStatusCode)
         {
             var bodyText = await response.Content.ReadAsStringAsync();
-            try
-            {
-                using var doc = JsonDocument.Parse(bodyText);
-                if (doc.RootElement.TryGetProperty("detail", out var detail))
-                    return (default, detail.GetString() ?? bodyText);
-            }
-            catch { }
-            return (default, bodyText);
+            return (default, ExtractErrorMessage(bodyText));
         }
         var result = await response.Content.ReadFromJsonAsync<T>(JsonOpts);
         return (result, null);
+    }
+
+    /// <summary>S54: mensaje de error legible del servidor (ProblemDetails "detail" o "mensaje"/"title").</summary>
+    private static string ExtractErrorMessage(string bodyText)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(bodyText);
+            foreach (var prop in new[] { "detail", "mensaje", "title", "error" })
+            {
+                if (doc.RootElement.TryGetProperty(prop, out var value) && value.ValueKind == JsonValueKind.String)
+                {
+                    var text = value.GetString();
+                    if (!string.IsNullOrWhiteSpace(text)) return text;
+                }
+            }
+        }
+        catch { }
+        return bodyText.Length > 500 ? bodyText[..500] : bodyText;
     }
 
     public async Task<bool> PostVoidAsync(string endpoint, object? body = null)

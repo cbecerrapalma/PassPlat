@@ -24,7 +24,7 @@ public class GrupoRepository : RepositoryAsync<Grupo>, IGrupoRepository
             var list = await DbSet.Include(g => g.Tenant).OrderBy(g => g.Nombre).AsNoTracking().ToListAsync(ct);
             return Result<IReadOnlyList<Grupo>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<Grupo>>.Failure("DB_ERROR", ex.Message);
         }
@@ -34,10 +34,11 @@ public class GrupoRepository : RepositoryAsync<Grupo>, IGrupoRepository
     {
         try
         {
-            var list = await DbSet.Where(g => g.IdTenant == idTenant).OrderBy(g => g.Nombre).AsNoTracking().ToListAsync(ct);
+            // S91 · D4 — con Tenant, para que TenantNombre llegue igual que en ObtenerTodosAsync.
+            var list = await DbSet.Include(g => g.Tenant).Where(g => g.IdTenant == idTenant).OrderBy(g => g.Nombre).AsNoTracking().ToListAsync(ct);
             return Result<IReadOnlyList<Grupo>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<Grupo>>.Failure("DB_ERROR", ex.Message);
         }
@@ -50,7 +51,7 @@ public class GrupoRepository : RepositoryAsync<Grupo>, IGrupoRepository
             var entity = await DbSet.FirstOrDefaultAsync(g => g.IdTenant == idTenant && g.Codigo == codigo, ct);
             return Result<Grupo?>.Success(entity, allowNull: true);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<Grupo?>.Failure("DB_ERROR", ex.Message);
         }

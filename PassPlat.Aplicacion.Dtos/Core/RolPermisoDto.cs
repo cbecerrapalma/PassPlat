@@ -19,3 +19,16 @@ public class AsignarPermisoDto
     public int IdRol { get; set; }
     public int IdPermiso { get; set; }
 }
+
+// S106 · D1 — cambios de permisos de un rol en una sola petición (todo o nada)
+public class AplicarPermisosRolDto
+{
+    public List<CambioPermisoDto> Cambios { get; set; } = [];
+}
+
+public class ResultadoAplicarPermisosRolDto
+{
+    public int Agregados { get; set; }
+    public int Quitados { get; set; }
+    public int SinCambio { get; set; }
+}

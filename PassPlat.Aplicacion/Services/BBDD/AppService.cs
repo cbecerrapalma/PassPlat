@@ -30,9 +30,11 @@ public class AppService : ServiceAsync<App, AppDto>, IAppService
     private readonly IEmailQueue _emailQueue;
     private readonly IConfigAppRepository _configAppRepo;
     private readonly ILogger<AppService> _logger;
+    private readonly SesionRepository _sesionRepo;
+    private readonly IAccesoRepository _accesoRepo;
 
-    public AppService(AppRepository repo, IUnitOfWorkAsync uow, IMapper mapper, IEmailQueue emailQueue, IConfigAppRepository configAppRepo, ILogger<AppService> logger)
-        : base(repo, mapper) { _repo = repo; _uow = uow; _emailQueue = emailQueue; _configAppRepo = configAppRepo; _logger = logger; }
+    public AppService(AppRepository repo, IUnitOfWorkAsync uow, IMapper mapper, IEmailQueue emailQueue, IConfigAppRepository configAppRepo, ILogger<AppService> logger, SesionRepository sesionRepo, IAccesoRepository accesoRepo)
+        : base(repo, mapper) { _repo = repo; _uow = uow; _emailQueue = emailQueue; _configAppRepo = configAppRepo; _logger = logger; _sesionRepo = sesionRepo; _accesoRepo = accesoRepo; }
 
     public async Task<Result<IReadOnlyList<AppDto>>> ObtenerTodasAsync(CancellationToken ct = default)
     {
@@ -106,7 +108,16 @@ public class AppService : ServiceAsync<App, AppDto>, IAppService
         r.Value.Activa = false;
         var updResult = Repository.Update(r.Value);
         if (updResult.IsFailure) return Result.Failure(updResult.Error!);
+        // S57.19 H-5: desactivar una App revoca sus sesiones y desactiva sus accesos (mismo UoW; commit en controller).
+        var sesionesResult = await _sesionRepo.RevocarTodasPorAppAsync(id, ct);
+        if (sesionesResult.IsFailure) return Result.Failure(sesionesResult.Error!);
+        var accesosResult = await _accesoRepo.WhereAsync(a => a.IdApp == id && a.Activo, asNoTracking: false, ct: ct);
+        if (accesosResult.IsFailure) return Result.Failure(accesosResult.Error!);
+        foreach (var acceso in accesosResult.Value)
+            acceso.Revocar();
         await _repo.InvalidarCacheAsync(ct);
+        _logger.LogInformation("App desactivada: Id={IdApp} | SesionesRevocadas={Sesiones} | AccesosDesactivados={Accesos}",
+            id, sesionesResult.Value, accesosResult.Value.Count);
         return Result.Success();
     }
 

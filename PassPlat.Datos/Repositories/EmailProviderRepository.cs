@@ -22,7 +22,7 @@ public class EmailProviderRepository : RepositoryAsync<EmailProvider>, IEmailPro
             var entity = await DbSet.FirstOrDefaultAsync(e => e.Codigo == codigo, ct);
             return Result<EmailProvider?>.Success(entity, allowNull: true);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<EmailProvider?>.Failure("DB_ERROR", ex.Message);
         }

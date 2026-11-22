@@ -1,0 +1,109 @@
+@* S84 · D1 — campana de la barra: las notificaciones no leidas reales del usuario de la sesion,
+   las mismas que lista /notificaciones. Sin NOTIFICACIONES_VER no se dibuja ni llama a la API. *@
+@inject ApiClient Api
+@inject AuthService Auth
+
+@if (Visible)
+{
+    <div class="appbar-notif-menu">
+        <div class="d-flex align-center appbar-action-icon" @onclick="@OnAlternar" @onclick:stopPropagation="true">
+            <MudBadge Content="@Total" Visible="@(Total > 0)" Color="Color.Error" Class="appbar-badge" Max="99">
+                <MudTooltip Text="Notificaciones">
+                    <MudIcon Icon="@Icons.Material.Filled.NotificationsNone" Color="Color.Inherit" />
+                </MudTooltip>
+            </MudBadge>
+        </div>
+        @if (Abierto)
+        {
+            <div class="appbar-notif-dropdown">
+                <div class="notif-header">
+                    <div class="d-flex align-center justify-space-between">
+                        <MudText Typo="Typo.subtitle2" Class="notif-title">Notificaciones</MudText>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Filled" Class="notif-badge">
+                            @Total
+                        </MudChip>
+                    </div>
+                    <MudText Typo="Typo.caption" Class="text-secondary">@Total sin leer</MudText>
+                </div>
+                <MudDivider Class="my-1" />
+                <div class="notif-scroll">
+                    @if (_noLeidas is null)
+                    {
+                        <div class="notif-item">
+                            <MudText Typo="Typo.body2" Class="text-secondary">No se pudieron cargar las notificaciones</MudText>
+                        </div>
+                    }
+                    else if (_noLeidas.Count == 0)
+                    {
+                        <div class="notif-item">
+                            <MudText Typo="Typo.body2" Class="text-secondary">No tienes notificaciones sin leer</MudText>
+                        </div>
+                    }
+                    else
+                    {
+                        var primero = true;
+                        foreach (var aviso in _noLeidas.Take(MaxAvisos))
+                        {
+                            if (!primero)
+                            {
+                                <MudDivider Class="my-0" />
+                            }
+                            primero = false;
+                            <div class="notif-item notif-unread">
+                                <div class="d-flex align-start" style="gap:10px;">
+                                    <MudAvatar Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled">
+                                        <MudIcon Icon="@Icons.Material.Filled.Notifications" Size="Size.Small" />
+                                    </MudAvatar>
+                                    <div class="flex-grow-1">
+                                        <MudText Typo="Typo.body2" Class="font-weight-bold">@aviso.Asunto</MudText>
+                                        @if (!string.IsNullOrWhiteSpace(aviso.Mensaje))
+                                        {
+                                            <MudText Typo="Typo.caption" Class="text-secondary">@aviso.Mensaje</MudText>
+                                        }
+                                        <MudText Typo="Typo.caption" Class="text-secondary notif-time-inline">@aviso.FecCrea.ToString("g")</MudText>
+                                    </div>
+                                    <span class="notif-dot-unread"></span>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+                <MudDivider Class="my-1" />
+                <button type="button" class="notif-view-all" @onclick="@OnVerTodas">
+                    <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Class="mr-2" />
+                    <MudText Typo="Typo.button">Ver todas las notificaciones</MudText>
+                </button>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private const int MaxAvisos = 5;
+
+    [Parameter] public bool Abierto { get; set; }
+    [Parameter] public EventCallback OnAlternar { get; set; }
+    [Parameter] public EventCallback OnVerTodas { get; set; }
+
+    // null = error al cargar; [] = sin avisos.
+    private List<NotificacionDto>? _noLeidas = [];
+    private bool _cargado;
+    private bool _abiertoAnterior;
+
+    private bool Visible => Auth.IsAuthenticated && Auth.IdUsuario.HasValue && Auth.TienePermiso("NOTIFICACIONES_VER");
+
+    private int Total => _noLeidas?.Count ?? 0;
+
+    // S84 · D1 — MainLayout se redibuja cada segundo (reloj): solo se carga la primera vez
+    // y cuando la campana pasa de cerrada a abierta.
+    protected override async Task OnParametersSetAsync()
+    {
+        var seAbre = Abierto && !_abiertoAnterior;
+        _abiertoAnterior = Abierto;
+        if (!Visible || (_cargado && !seAbre))
+            return;
+
+        _cargado = true;
+        _noLeidas = await Api.GetAsync<List<NotificacionDto>>($"api/notificaciones/no-leidas/{Auth.IdUsuario}");
+    }
+}

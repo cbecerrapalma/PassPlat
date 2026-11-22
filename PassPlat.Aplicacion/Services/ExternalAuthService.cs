@@ -24,13 +24,12 @@ internal class ProveedorTokenMetadata
     public string? AccessToken { get; set; }
     public string? RefreshToken { get; set; }
     public int? ExpiresIn { get; set; }
-    public string? IdToken { get; set; }
 }
 
 public interface IExternalAuthService
 {
-    Task<Result<AuthResponseDto>> LoginExternoAsync(int idTenant, int idApp, string providerCode, string authorizationCode, string redirectUri, int? idDisp = null, int? idIP = null, int? idAgente = null, string? codeVerifier = null, string? nonce = null, CancellationToken ct = default);
-    Task<Result<string>> GenerateAuthorizationUrlAsync(string providerCode, int idTenant, int idApp = 1, CancellationToken ct = default);
+    Task<Result<AuthResponseDto>> LoginExternoAsync(int idTenant, int idApp, string providerCode, string authorizationCode, string redirectUri, int? idDisp = null, int? idIP = null, int? idAgente = null, string? codeVerifier = null, CancellationToken ct = default);
+    Task<Result<string>> GenerateAuthorizationUrlAsync(string providerCode, int idTenant, int idApp = 1, string? urlRetorno = null, CancellationToken ct = default);
 }
 
 public class ExternalAuthService : IExternalAuthService
@@ -49,6 +48,9 @@ public class ExternalAuthService : IExternalAuthService
     private readonly ICacheService _cache;
     private readonly IAuthenticationTokenService _tokenService;
     private readonly IUsuarioTenantRepository _usuarioTenantRepo;
+    private readonly IAppService _appService;
+    private readonly ITenantService _tenantService;
+    private readonly IExternalLoginProviderService _externalLoginProviderService;
 
     public ExternalAuthService(
         IEnumerable<IExternalIdentityProvider> providers,
@@ -64,7 +66,10 @@ public class ExternalAuthService : IExternalAuthService
         IIdenExtTokensRepository idenExtTokensRepo,
         ICacheService cache,
         IAuthenticationTokenService tokenService,
-        IUsuarioTenantRepository usuarioTenantRepo)
+        IUsuarioTenantRepository usuarioTenantRepo,
+        IAppService appService,
+        ITenantService tenantService,
+        IExternalLoginProviderService externalLoginProviderService)
     {
         _providers = providers;
         _externalAuthRepo = externalAuthRepo;
@@ -80,9 +85,44 @@ public class ExternalAuthService : IExternalAuthService
         _cache = cache;
         _tokenService = tokenService;
         _usuarioTenantRepo = usuarioTenantRepo;
+        _appService = appService;
+        _tenantService = tenantService;
+        _externalLoginProviderService = externalLoginProviderService;
     }
 
-    public async Task<Result<AuthResponseDto>> LoginExternoAsync(int idTenant, int idApp, string providerCode, string authorizationCode, string redirectUri, int? idDisp = null, int? idIP = null, int? idAgente = null, string? codeVerifier = null, string? nonce = null, CancellationToken ct = default)
+    // S57.19 H-1: distingue "no existe" (400) de fallo de infraestructura (500).
+    private static bool IsNotFound(string? code)
+        => code is not null
+            && (code.EndsWith("NOT_FOUND", StringComparison.OrdinalIgnoreCase)
+                || code.EndsWith("NO_ENCONTRADO", StringComparison.OrdinalIgnoreCase));
+
+    // S57.19 H-1+H-2: validación App/Tenant (retorna AppCodigo para audiencia JWT).
+    private async Task<Result<string>> ValidarAppTenantAsync(int idApp, int idTenant, CancellationToken ct)
+    {
+        if (idApp <= 0 || idTenant <= 0)
+            return Result<string>.Failure("LOGIN_VALIDATION", "IdApp e IdTenant son requeridos y deben ser mayores que cero.");
+        var appResult = await _appService.ObtenerPorIdAsync(idApp, ct);
+        if (appResult.IsFailure)
+            return IsNotFound(appResult.Error?.Code)
+                ? Result<string>.Failure("LOGIN_VALIDATION", $"Aplicación inexistente (IdApp={idApp}). [APP_INEXISTENTE]")
+                : Result<string>.Failure("APP_VALIDATION_ERROR", "No fue posible validar la aplicación.");
+        if (appResult.Value is null)
+            return Result<string>.Failure("LOGIN_VALIDATION", $"Aplicación inexistente (IdApp={idApp}). [APP_INEXISTENTE]");
+        if (!appResult.Value.Activa)
+            return Result<string>.Failure("LOGIN_VALIDATION", $"Aplicación inactiva (IdApp={idApp}). [APP_INACTIVA]");
+        var tenantResult = await _tenantService.ObtenerPorIdAsync(idTenant, ct);
+        if (tenantResult.IsFailure)
+            return IsNotFound(tenantResult.Error?.Code)
+                ? Result<string>.Failure("LOGIN_VALIDATION", $"Tenant inexistente (IdTenant={idTenant}). [TENANT_INEXISTENTE]")
+                : Result<string>.Failure("TENANT_VALIDATION_ERROR", "No fue posible validar el tenant.");
+        if (tenantResult.Value is null)
+            return Result<string>.Failure("LOGIN_VALIDATION", $"Tenant inexistente (IdTenant={idTenant}). [TENANT_INEXISTENTE]");
+        if (!tenantResult.Value.Activo)
+            return Result<string>.Failure("LOGIN_VALIDATION", $"Tenant inactivo (IdTenant={idTenant}). [TENANT_INACTIVO]");
+        return Result<string>.Success(appResult.Value.Codigo ?? string.Empty);
+    }
+
+    public async Task<Result<AuthResponseDto>> LoginExternoAsync(int idTenant, int idApp, string providerCode, string authorizationCode, string redirectUri, int? idDisp = null, int? idIP = null, int? idAgente = null, string? codeVerifier = null, CancellationToken ct = default)
     {
         using var _ = _logger.BeginScope(new Dictionary<string, object>
         {
@@ -93,8 +133,13 @@ public class ExternalAuthService : IExternalAuthService
         });
 
         _logger.LogInformation(OAuthEventIds.LoginStarted,
-            "[1] LoginExternoAsync iniciado | Provider={Provider} | IdTenant={IdTenant} | IdApp={IdApp} | HasCodeVerifier={HasCV} | HasNonce={HasNonce}",
-            providerCode, idTenant, idApp, !string.IsNullOrWhiteSpace(codeVerifier), !string.IsNullOrWhiteSpace(nonce));
+            "[1] LoginExternoAsync iniciado | Provider={Provider} | IdTenant={IdTenant} | IdApp={IdApp} | HasCodeVerifier={HasCV}",
+            providerCode, idTenant, idApp, !string.IsNullOrWhiteSpace(codeVerifier));
+
+        // S57.19 H-1+H-2: valida app/tenant y resuelve AppCodigo para la audiencia JWT.
+        var appCheck = await ValidarAppTenantAsync(idApp, idTenant, ct);
+        if (appCheck.IsFailure)
+            return Result<AuthResponseDto>.Failure(appCheck.Error!);
 
         var provider = _providers.FirstOrDefault(p => p.ProviderCode == providerCode);
         if (provider == null)
@@ -119,7 +164,8 @@ public class ExternalAuthService : IExternalAuthService
         }
 
         _logger.LogInformation(OAuthEventIds.LoginConfigOk, "[3] Catálogo OK | IdProvIden={IdProvIden}", provIden.Id);
-        var confResult = await _confProvIdenRepo.ObtenerConfiguracionAsync(idTenant, provIden.Id, ct);
+        // S126 · D9 — la misma configuración que eligió authorize: la del tenant o, si no tiene una válida, la de PLATFORM
+        var confResult = await _externalLoginProviderService.ResolverConfiguracionAsync(idTenant, provIden.Id, idApp, ct);
         if (confResult.IsFailure || confResult.Value == null)
         {
             _logger.LogWarning(OAuthEventIds.LoginError, "Configuración no encontrada para tenant {IdTenant} provider {IdProvIden}", idTenant, provIden.Id);
@@ -170,7 +216,7 @@ public class ExternalAuthService : IExternalAuthService
         }
 
         _logger.LogInformation(OAuthEventIds.LoginClaimsStarted, "[7] Llamando ValidateAndExtractClaimsAsync...");
-        var claimsResult = await provider.ValidateAndExtractClaimsAsync(authorizationCode, redirectUri, conf.ClientId, clientSecret, conf.Scopes, codeVerifier, nonce, ct);
+        var claimsResult = await provider.ValidateAndExtractClaimsAsync(authorizationCode, redirectUri, conf.ClientId, clientSecret, conf.Scopes, codeVerifier, ct);
         if (claimsResult.IsFailure)
         {
             _logger.LogWarning(OAuthEventIds.LoginClaimsResult,
@@ -191,7 +237,7 @@ public class ExternalAuthService : IExternalAuthService
         var loginResult = await _externalAuthRepo.LoginExternoAsync(
             idTenant, idApp, conf.IdProvIden, claims.Sub,
             claims.Email, claims.Nombre, claims.Avatar, claims.MetadataJson,
-            ip, userAgent, idDisp, idAgente, ct);
+            ip, userAgent, idDisp, idAgente, idConfProvIden: conf.Id, ct: ct);   // S126 · D9 — el SP usa esa fila (del tenant o de PLATFORM)
 
         if (loginResult.IsFailure)
         {
@@ -246,16 +292,17 @@ public class ExternalAuthService : IExternalAuthService
 
         if (!esExitoso)
         {
+            // S123 · D2 — por nombre del enum (= tabla ResultadosAcceso), no por número fijo
             var errorCode = result.Resultado switch
             {
-                12 => "OAuthProviderDisabled",
-                14 => "OAuthIdentityRevoked",
-                15 => "OAuthProviderError",
-                16 => "OAuthUserWithoutEmail",
-                17 => "OAuthAutoLinkDenied",
-                18 => "OAuthRoleDefaultNotConfigured",
-                6 => "CuentaInactiva",
-                4 => "SinAccesoApp",
+                (int)EResultadoAcceso.OAuthProviderDisabled => "OAuthProviderDisabled",
+                (int)EResultadoAcceso.OAuthIdentityRevoked => "OAuthIdentityRevoked",
+                (int)EResultadoAcceso.OAuthProviderError => "OAuthProviderError",
+                (int)EResultadoAcceso.OAuthUserWithoutEmail => "OAuthUserWithoutEmail",
+                (int)EResultadoAcceso.OAuthAutoLinkDenied => "OAuthAutoLinkDenied",
+                (int)EResultadoAcceso.OAuthRoleDefaultNotConfigured => "OAuthRoleDefaultNotConfigured",
+                (int)EResultadoAcceso.CuentaInactiva => "CuentaInactiva",
+                (int)EResultadoAcceso.SinAccesoApp => "SinAccesoApp",
                 _ => "AUTH_FAILED"
             };
 
@@ -263,7 +310,7 @@ public class ExternalAuthService : IExternalAuthService
                 "Login no exitoso | Resultado={Resultado} | ErrorCode={ErrorCode} | Mensaje={Mensaje}",
                 result.Resultado, errorCode, result.Mensaje);
 
-            if ((result.Resultado == 6 || result.Resultado == 4) && result.IdUsuario.HasValue)
+            if ((result.Resultado == (int)EResultadoAcceso.CuentaInactiva || result.Resultado == (int)EResultadoAcceso.SinAccesoApp) && result.IdUsuario.HasValue)
                 await NotificarErrorAuthAsync(result.IdUsuario.Value, idTenant, conf.IdProvIden, providerCode, result.Mensaje, ct);
 
             await RegistrarAuditoriaExtendidaAsync(httpStatus: 401);
@@ -293,7 +340,8 @@ public class ExternalAuthService : IExternalAuthService
             IdDispositivo: null, IdIp: null,
             Origen: AuthenticationOrigin.OAuth,
             EsSistema: result.EsSistema,
-            IdUsuarioTenant: idUsuarioTenant);
+            IdUsuarioTenant: idUsuarioTenant,
+            AppCodigo: appCheck.Value);
         var tokenResult = await _tokenService.OAuthAsync(authContext, ct);
         if (tokenResult.IsFailure)
             return Result<AuthResponseDto>.Failure(tokenResult.Error!);
@@ -329,7 +377,7 @@ public class ExternalAuthService : IExternalAuthService
         });
     }
 
-    public async Task<Result<string>> GenerateAuthorizationUrlAsync(string providerCode, int idTenant, int idApp = 1, CancellationToken ct = default)
+    public async Task<Result<string>> GenerateAuthorizationUrlAsync(string providerCode, int idTenant, int idApp = 1, string? urlRetorno = null, CancellationToken ct = default)
     {
         var provider = _providers.FirstOrDefault(p => p.ProviderCode == providerCode);
         if (provider == null)
@@ -343,8 +391,11 @@ public class ExternalAuthService : IExternalAuthService
         if (!provIden.Activo)
             return Result<string>.Failure("PROVIDER_DISABLED", $"El proveedor '{providerCode}' está deshabilitado en el catálogo");
 
-        var confResult = await _confProvIdenRepo.ObtenerConfiguracionAsync(idTenant, provIden.Id, ct);
-        if (confResult.IsFailure || confResult.Value == null)
+        // S126 · D5/D9 — la del tenant o, si no tiene una válida, la de PLATFORM; y debe servir a la App
+        var confResult = await _externalLoginProviderService.ResolverConfiguracionAsync(idTenant, provIden.Id, idApp, ct);
+        if (confResult.IsFailure)
+            return Result<string>.Failure(confResult.Error!);
+        if (confResult.Value == null)
             return Result<string>.Failure("PROVIDER_NOT_CONFIGURED", "Proveedor no configurado para este tenant");
 
         var conf = confResult.Value;
@@ -366,20 +417,17 @@ public class ExternalAuthService : IExternalAuthService
         var codeChallenge = Convert.ToBase64String(SHA256.HashData(Encoding.ASCII.GetBytes(codeVerifier)))
             .TrimEnd('=').Replace('+', '-').Replace('/', '_');
 
-        var nonce = Convert.ToBase64String(RandomNumberGenerator.GetBytes(16))
-            .TrimEnd('=').Replace('+', '-').Replace('/', '_');
-
         await _cache.SetAsync($"oauth_state:{state}", new OAuthSession
         {
             CodeVerifier = codeVerifier,
-            Nonce = nonce,
             ProviderCode = providerCode,
             IdTenant = idTenant,
             IdApp = idApp,
-            RedirectUri = conf.Callback
+            RedirectUri = conf.Callback,
+            UrlRetorno = urlRetorno
         }, new CacheEntryOptions(TimeSpan.FromMinutes(10)), ct);
 
-        return await provider.GenerateAuthorizationUrlAsync(conf.Callback, conf.ClientId, conf.Scopes, state, codeChallenge, nonce, ct);
+        return await provider.GenerateAuthorizationUrlAsync(conf.Callback, conf.ClientId, conf.Scopes, state, codeChallenge, ct);
     }
 
     private async Task NotificarLoginExternoAsync(int idUsuario, int idTenant, int idProvIden, string providerCode, string? nombreExterno, CancellationToken ct)
@@ -502,11 +550,9 @@ public class ExternalAuthService : IExternalAuthService
 
             var accessTokenEnc = EncryptToken(metadata.AccessToken);
             var refreshTokenEnc = EncryptToken(metadata.RefreshToken);
-            var idTokenEnc = EncryptToken(metadata.IdToken);
 
             var accessTokenHash = HashToken(metadata.AccessToken);
             var refreshTokenHash = HashToken(metadata.RefreshToken);
-            var idTokenHash = HashToken(metadata.IdToken);
 
             var token = IdenExtTokens.Crear(
                 idIdenExt: idenExt.Id,
@@ -516,8 +562,6 @@ public class ExternalAuthService : IExternalAuthService
                 refreshTokenEnc: refreshTokenEnc,
                 refreshTokenHash: refreshTokenHash,
                 refreshTokenExpires: metadata.ExpiresIn.HasValue ? now.AddDays(90) : null,
-                idTokenEnc: idTokenEnc,
-                idTokenHash: idTokenHash,
                 scope: claims.Scope,
                 tokenType: "Bearer",
                 correlationId: correlationId,

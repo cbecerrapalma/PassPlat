@@ -11,11 +11,9 @@ public class ProvIden
     public byte TipoProveedor { get; set; }
     public string? Protocolo { get; set; }
     public string? Version { get; set; }
-    public string? UrlIssuer { get; set; }
     public string? EndpointAutorizacion { get; set; }
     public string? EndpointToken { get; set; }
     public string? EndpointUserInfo { get; set; }
-    public string? JwksUri { get; set; }
     public string? EndpointRevocacion { get; set; }
     public bool SoportaPKCE { get; set; }
     public bool SoportaRefreshToken { get; set; }
@@ -31,7 +29,7 @@ public class ProvIden
     public ICollection<IdenExt> IdenExt { get; set; } = [];
     public ICollection<AudIdenExt> Auditorias { get; set; } = [];
 
-    public static ProvIden Crear(string codigo, string nombre, byte tipoProveedor, string? protocolo = null, string? version = null, string? urlIssuer = null, string? endpointAutorizacion = null, string? endpointToken = null, string? endpointUserInfo = null, string? jwksUri = null, string? endpointRevocacion = null, bool soportaPKCE = false, bool soportaRefreshToken = false, bool soportaMFA = false, string? icono = null, short orden = 0, OAuthProviderMetadata? metadata = null)
+    public static ProvIden Crear(string codigo, string nombre, byte tipoProveedor, string? protocolo = null, string? version = null, string? endpointAutorizacion = null, string? endpointToken = null, string? endpointUserInfo = null, string? endpointRevocacion = null, bool soportaPKCE = false, bool soportaRefreshToken = false, bool soportaMFA = false, string? icono = null, short orden = 0, OAuthProviderMetadata? metadata = null)
     {
         return new ProvIden
         {
@@ -40,11 +38,9 @@ public class ProvIden
             TipoProveedor = tipoProveedor,
             Protocolo = protocolo,
             Version = version,
-            UrlIssuer = urlIssuer,
             EndpointAutorizacion = endpointAutorizacion,
             EndpointToken = endpointToken,
             EndpointUserInfo = endpointUserInfo,
-            JwksUri = jwksUri,
             EndpointRevocacion = endpointRevocacion,
             SoportaPKCE = soportaPKCE,
             SoportaRefreshToken = soportaRefreshToken,

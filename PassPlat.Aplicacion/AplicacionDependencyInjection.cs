@@ -1,5 +1,6 @@
 using System.Reflection;
 using CBP.Events.DependencyInjection;
+using CBP.Outbox;
 using CBP.Services.Async;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,6 +16,8 @@ using PassPlat.Aplicacion.Services.Authentication;
 using PassPlat.Aplicacion.Services.Authentication.Claims;
 using PassPlat.Aplicacion.Services.Infrastructure;
 using PassPlat.Aplicacion.Services.OAuth;
+using PassPlat.Aplicacion.Services.Security;
+using PassPlat.Datos.Repositories;
 
 namespace PassPlat.Aplicacion;
 
@@ -34,10 +37,12 @@ public static class AplicacionDependencyInjection
 
         services.AddServiceAsync<IAuthService, AuthService>();
         services.AddServiceAsync<IPasswordService, PasswordService>();
+        services.AddScoped<IPasswordNuevaService, PasswordNuevaService>();
         services.AddServiceAsync<ISesionService, SesionService>();
         services.AddServiceAsync<ITokenRestService, TokenRestService>();
         services.AddServiceAsync<IMFAService, MFAService>();
         services.AddServiceAsync<IBloqueoService, BloqueoService>();
+        services.AddScoped<IVisibilidadUsuarioService, VisibilidadUsuarioService>();
         services.AddServiceAsync<IUsuarioService, UsuarioService>();
         services.AddServiceAsync<IAccesoService, AccesoService>();
         services.AddServiceAsync<IPoliticaPwdService, PoliticaPwdService>();
@@ -65,13 +70,13 @@ public static class AplicacionDependencyInjection
         services.AddServiceAsync<ITipoAuditoriaService, TipoAuditoriaService>();
 
         // Contexto
-        services.AddServiceAsync<IDispService, DispService>();
         services.AddServiceAsync<IIPService, IPService>();
-        services.AddServiceAsync<IUserAgentService, UserAgentService>();
 
         // Core extra
         services.AddServiceAsync<IRolPoliticaPwdService, RolPoliticaPwdService>();
         services.AddServiceAsync<IRolPermisoService, RolPermisoService>();
+        // S113 · D3 — «no puedes dar lo que no tienes»
+        services.AddScoped<IConcesionPermisosService, ConcesionPermisosService>();
 
         // Permisos
         services.AddServiceAsync<IPermisoService, PermisoService>();
@@ -79,6 +84,7 @@ public static class AplicacionDependencyInjection
         // Modulos
         services.AddServiceAsync<IModuloService, ModuloService>();
         services.AddServiceAsync<IAppModuloService, AppModuloService>();
+        services.AddScoped<IInyeccionCatalogoService, InyeccionCatalogoService>();
         services.AddServiceAsync<ITipoModuloService, TipoModuloService>();
 
         // Nuevas tablas
@@ -101,12 +107,13 @@ public static class AplicacionDependencyInjection
         services.AddScoped<IEmailAccountResolverService, EmailAccountResolverService>();
         services.AddScoped<IPassPlatEmailService, PassPlatEmailService>();
         services.AddServiceAsync<IEmailTemplateService, EmailTemplateService>();
-        services.AddServiceAsync<IEmailTemplatePartialService, EmailTemplatePartialService>();
-        services.AddServiceAsync<IEmailTemplateHistorialService, EmailTemplateHistorialService>();
         services.AddServiceAsync<IEmailProviderService, EmailProviderService>();
         services.AddServiceAsync<IEmailAccountService, EmailAccountService>();
         services.AddServiceAsync<ITenantEmailAccountService, TenantEmailAccountService>();
         services.AddServiceAsync<IAppEmailAccountService, AppEmailAccountService>();
+
+        // S78: Email API para apps externas
+        services.AddScoped<IEmailApiService, EmailApiService>();
         // BackgroundServices: instancia concreta única → IHostedService e IBackgroundJobStatus
         // resuelven la MISMA instancia (identity DI verificada por test G11).
         services.AddSingleton<EmailBackgroundService>();
@@ -116,13 +123,13 @@ public static class AplicacionDependencyInjection
         services.AddSingleton<IHostedService>(sp => sp.GetRequiredService<IdenExtTokensRotacionJob>());
         services.AddSingleton<IBackgroundJobStatus>(sp => sp.GetRequiredService<IdenExtTokensRotacionJob>());
 
-        // S21: Outbox
-        services.AddOptions<OutboxOptions>()
-            .BindConfiguration(OutboxOptions.SectionName)
-            .ValidateDataAnnotations();
-        services.AddSingleton<OutboxProcessor>();
-        services.AddSingleton<IHostedService>(sp => sp.GetRequiredService<OutboxProcessor>());
-        services.AddSingleton<IBackgroundJobStatus>(sp => sp.GetRequiredService<OutboxProcessor>());
+        // S21 / S136 · D8: Outbox genérico de CBP (store = OutboxRepository de PassPlat.Datos, tabla dbo.Outbox)
+        services.AddCbpOutbox<OutboxRepository>();
+        services.AddCbpOutboxEvento<NewIpDetectedEvent>();
+        services.AddCbpOutboxEvento<NewDeviceDetectedEvent>();
+        services.AddScoped<IOutboxPublicacionFiltro, NuevaIpOutboxFiltro>();
+        services.AddCbpOutboxProcesador<PassPlat.Aplicacion.Services.Infrastructure.OutboxProcessor>();
+        services.AddSingleton<IBackgroundJobStatus>(sp => sp.GetRequiredService<PassPlat.Aplicacion.Services.Infrastructure.OutboxProcessor>());
 
         // MFA temp code store
         services.AddSingleton<IMfaCodeStore, MfaCodeStore>();
@@ -133,12 +140,11 @@ public static class AplicacionDependencyInjection
 
         // FASE 17.1+17.6: OAuth state + anti-replay via IDistributedCache (Memory en dev, Redis en prod)
         // Registrado en Program.cs via AddDistributedMemoryCache() / AddStackExchangeRedisCache()
-        services.AddSingleton<IJwksStore, JwksStore>();
 
-        // FASE 14: Federación de Identidades (5 proveedores: Google, GitHub, LinkedIn, Instagram, Facebook)
+        // FASE 14 / S129: Federación solo OAuth2 (Google, Microsoft, GitHub, Instagram, Facebook)
         services.AddScoped<IExternalIdentityProvider, GoogleIdentityProvider>();
+        services.AddScoped<IExternalIdentityProvider, MicrosoftIdentityProvider>();
         services.AddScoped<IExternalIdentityProvider, GitHubIdentityProvider>();
-        services.AddScoped<IExternalIdentityProvider, LinkedInIdentityProvider>();
         services.AddScoped<IExternalIdentityProvider, InstagramIdentityProvider>();
         services.AddScoped<IExternalIdentityProvider, FacebookIdentityProvider>();
         services.AddServiceAsync<IExternalAuthService, ExternalAuthService>();
@@ -147,21 +153,24 @@ public static class AplicacionDependencyInjection
         services.AddServiceAsync<IIdenExtervice, IdenExtervice>();
         services.AddServiceAsync<IEstIdenExtService, EstIdenExtService>();
         services.AddServiceAsync<IHistorialIdenExtService, HistorialIdenExtService>();
-        services.AddServiceAsync<IAudIdenExtService, AudIdenExtService>();
 
         // FASE 10: Dashboard federación
-        services.AddScoped<IFederacionService, FederacionService>();
 
         // FASE 17: Dashboard Enterprise
         services.AddScoped<IDashboardEnterpriseService, DashboardEnterpriseService>();
         services.AddScoped<IBackgroundStatusService, BackgroundStatusService>();
 
+        // S77: inicio por perfil (GET api/inicio)
+        services.AddScoped<IInicioService, InicioService>();
+
         // FASE 17.3.3: OAuth Catalog Validation
-        services.AddScoped<IOAuthCatalogValidationService, OAuthCatalogValidationService>();
 
         // External login provider listing
         services.AddScoped<IExternalProviderValidator, ExternalProviderValidator>();
         services.AddScoped<IExternalLoginProviderService, ExternalLoginProviderService>();
+
+        // S125 — retorno del login externo con código de canje
+        services.AddScoped<ILoginExternoCanjeService, LoginExternoCanjeService>();
 
         return services;
     }

@@ -10,6 +10,11 @@ public class CrearConfProvIdenValidator : AbstractValidator<CrearConfProvIdenDto
     {
         RuleFor(x => x.IdTenant).GreaterThan(0);
         RuleFor(x => x.IdProvIden).GreaterThan(0);
+        // S123 · D7 — un proveedor inexistente se rechaza aquí (antes llegaba a la FK y daba 500)
+        RuleFor(x => x.IdProvIden)
+            .MustAsync(async (id, ct) => await provIdenService.AnyAsync(p => p.Id == id, ct) is { IsSuccess: true, Value: true })
+            .When(x => x.IdProvIden > 0)
+            .WithMessage("El proveedor de identidad no existe");
         RuleFor(x => x.ClientId).NotEmpty().MaximumLength(500);
         RuleFor(x => x.ClientSecret).NotEmpty().MaximumLength(1000);
         RuleFor(x => x.Callback).NotEmpty().MaximumLength(500);
@@ -17,6 +22,8 @@ public class CrearConfProvIdenValidator : AbstractValidator<CrearConfProvIdenDto
         RuleFor(x => x.Scopes).MaximumLength(500);
         RuleFor(x => x.Estado).InclusiveBetween((byte)0, (byte)2);
         When(x => x.RolDefecto.HasValue, () => RuleFor(x => x.RolDefecto!.Value).GreaterThan(0));
+        // S126 · D4
+        RuleForEach(x => x.IdsApps).GreaterThan(0);
 
         WhenAsync(async (dto, ct) => await EsGoogle(dto.IdProvIden, provIdenService, ct), () =>
         {
@@ -27,8 +34,8 @@ public class CrearConfProvIdenValidator : AbstractValidator<CrearConfProvIdenDto
                 .Must(id => id.EndsWith(".apps.googleusercontent.com"))
                 .WithMessage("ClientId debe terminar en .apps.googleusercontent.com");
             RuleFor(x => x.Scopes)
-                .Must(s => !string.IsNullOrWhiteSpace(s) && s.Contains("openid") && s.Contains("profile") && s.Contains("email"))
-                .WithMessage("Scopes debe contener openid, profile y email");
+                .Must(s => !string.IsNullOrWhiteSpace(s) && s.Contains("profile") && s.Contains("email"))
+                .WithMessage("Scopes debe contener profile y email");
         });
     }
 
@@ -60,5 +67,7 @@ public class ActualizarConfProvIdenValidator : AbstractValidator<ActualizarConfP
         When(x => x.Scopes != null, () => RuleFor(x => x.Scopes).MaximumLength(500));
         When(x => x.Estado.HasValue, () => RuleFor(x => x.Estado!.Value).InclusiveBetween((byte)0, (byte)2));
         When(x => x.RolDefecto.HasValue, () => RuleFor(x => x.RolDefecto!.Value).GreaterThan(0));
+        // S126 · D4
+        When(x => x.IdsApps != null, () => RuleForEach(x => x.IdsApps).GreaterThan(0));
     }
 }

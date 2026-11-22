@@ -12,7 +12,7 @@ public class AppModuloConfiguration : IEntityTypeConfiguration<AppModulo>
         builder.HasKey(am => am.Id);
         builder.Property(am => am.Id).ValueGeneratedOnAdd();
         builder.Property(am => am.Activo).HasDefaultValue(true).IsRequired();
-        builder.Property(am => am.FecCrea).HasDefaultValueSql("sysutcdatetime()").IsRequired();
+        builder.Property(am => am.FecCrea).HasDefaultValueSql("sysdatetime()").IsRequired();
 
         builder.HasOne(am => am.App).WithMany(a => a.AppsModulos).HasForeignKey(am => am.IdApp)
             .OnDelete(DeleteBehavior.Restrict);

@@ -14,7 +14,6 @@ public interface IConfigAppRepository : IRepositoryAsync<ConfigApp>
     Task<Result<ConfigApp?>> ObtenerPorClaveAsync(string clave, int? idTenant, CancellationToken ct = default);
     Task<Result<IReadOnlyList<ConfigApp>>> ObtenerPorTenantAsync(int? idTenant, CancellationToken ct = default);
     Task<Result<IReadOnlyList<ConfigApp>>> ObtenerActivosAsync(CancellationToken ct = default);
-    Task<Result<ConfigApp>> SetValorAsync(string grupo, string clave, string valor, string tipo = "string", string? descripcion = null, int? idTenant = null, CancellationToken ct = default);
     Task<Result<(IReadOnlyList<ConfigApp> Items, int TotalCount)>> BuscarPaginadoAsync(string search, int pageNumber, int pageSize, CancellationToken ct = default);
     Task InvalidarCacheGrupoAsync(string grupo, CancellationToken ct = default);
 }
@@ -50,7 +49,7 @@ public class ConfigAppRepository : RepositoryAsync<ConfigApp>, IConfigAppReposit
 
             return Result<IReadOnlyList<ConfigApp>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<ConfigApp>>.Failure("DB_ERROR", ex.Message);
         }
@@ -63,7 +62,7 @@ public class ConfigAppRepository : RepositoryAsync<ConfigApp>, IConfigAppReposit
             var entity = await DbSet.Include(c => c.Tenant).FirstOrDefaultAsync(c => c.Clave == clave && c.IdTenant == idTenant, ct);
             return Result<ConfigApp?>.Success(entity, allowNull: true);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<ConfigApp?>.Failure("DB_ERROR", ex.Message);
         }
@@ -76,7 +75,7 @@ public class ConfigAppRepository : RepositoryAsync<ConfigApp>, IConfigAppReposit
             var list = await DbSet.Where(c => c.IdTenant == idTenant).Include(c => c.Tenant).ToListAsync(ct);
             return Result<IReadOnlyList<ConfigApp>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<ConfigApp>>.Failure("DB_ERROR", ex.Message);
         }
@@ -89,37 +88,10 @@ public class ConfigAppRepository : RepositoryAsync<ConfigApp>, IConfigAppReposit
             var list = await DbSet.Where(c => c.Activo).Include(c => c.Tenant).ToListAsync(ct);
             return Result<IReadOnlyList<ConfigApp>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<ConfigApp>>.Failure("DB_ERROR", ex.Message);
         }
-    }
-
-    public async Task<Result<ConfigApp>> SetValorAsync(string grupo, string clave, string valor, string tipo = "string", string? descripcion = null, int? idTenant = null, CancellationToken ct = default)
-    {
-        var existing = await DbSet.FirstOrDefaultAsync(c => c.Grupo == grupo && c.Clave == clave && c.IdTenant == idTenant, ct);
-        if (existing != null)
-        {
-            existing.Valor = valor;
-            existing.Activo = true;
-            Update(existing);
-            await InvalidarCacheGrupoAsync(grupo, ct);
-            return Result<ConfigApp>.Success(existing);
-        }
-
-        var entity = new ConfigApp
-        {
-            Grupo = grupo,
-            Clave = clave,
-            Valor = valor,
-            Tipo = tipo,
-            Descripcion = descripcion ?? $"Configuracion de {grupo}:{clave}",
-            Activo = true,
-            IdTenant = idTenant
-        };
-        await DbSet.AddAsync(entity, ct);
-        await InvalidarCacheGrupoAsync(grupo, ct);
-        return Result<ConfigApp>.Success(entity);
     }
 
     public async Task<Result<(IReadOnlyList<ConfigApp> Items, int TotalCount)>> BuscarPaginadoAsync(string search, int pageNumber, int pageSize, CancellationToken ct = default)
@@ -139,7 +111,7 @@ public class ConfigAppRepository : RepositoryAsync<ConfigApp>, IConfigAppReposit
                 .ToListAsync(ct);
             return Result<(IReadOnlyList<ConfigApp>, int)>.Success((items, total));
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<(IReadOnlyList<ConfigApp>, int)>.Failure("DB_ERROR", ex.Message);
         }

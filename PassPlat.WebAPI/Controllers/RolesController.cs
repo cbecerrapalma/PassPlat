@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using PassPlat.Aplicacion.Dtos.Catalogos;
 using PassPlat.Aplicacion.Services;
 using PassPlat.Dominio.Entities.Catalogos;
+using PassPlat.WebAPI.Auth;
 
 namespace PassPlat.WebAPI.Controllers;
 
@@ -16,28 +17,70 @@ public class RolesController : BaseApiController
 {
     private readonly IRolService _service;
     private readonly ITenantContext _tenantContext;
-    public RolesController(IRolService service, ITenantContext tenantContext)
+    private readonly IUsuarioPermisoService _usuarioPermiso;
+    public RolesController(IRolService service, ITenantContext tenantContext, IUsuarioPermisoService usuarioPermiso)
     {
         _service = service;
         _tenantContext = tenantContext;
+        _usuarioPermiso = usuarioPermiso;
     }
 
-    private int? GetIdUsuarioActual()
+    [HttpGet]
+    public async Task<IActionResult> GetAll(CancellationToken ct, [FromQuery] int? idApp)
     {
-        return int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) && id > 0 ? id : null;
+        var alcance = User.AlcanceTenant(_tenantContext);
+        if (!idApp.HasValue)
+        {
+            if (alcance == null) return FromResultQuery(await _service.ObtenerTodosAsync(ct));
+            return FromResultQuery(await _service.ObtenerParaTenantAsync(alcance.Value, ct));
+        }
+        var denegado = await ValidarAppAsync(idApp.Value, ct);
+        if (denegado is not null) return denegado;
+        return FromResultQuery(await _service.ObtenerPorAppsAsync(alcance, [idApp.Value], soloActivos: alcance != null, ct));
     }
 
-    [HttpGet] public async Task<IActionResult> GetAll(CancellationToken ct) => FromResultQuery(await _service.ObtenerTodosAsync(ct));
-
-    [HttpGet("{id}")] public async Task<IActionResult> GetById(int id, CancellationToken ct) => FromResultQuery(await _service.GetByIdAsync(id, ct));
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetById(int id, CancellationToken ct)
+    {
+        var result = await _service.GetByIdAsync(id, ct);
+        if (result.IsSuccess && result.Value?.IdTenant is int t && User.FueraDeAlcance(_tenantContext, t))
+            return NotFound();
+        return FromResultQuery(result);
+    }
 
     [HttpGet("para-tenant/{idTenant}")]
-    public async Task<IActionResult> GetParaTenant(int idTenant, CancellationToken ct)
-        => FromResultQuery(await _service.ObtenerParaTenantAsync(idTenant, ct));
+    public async Task<IActionResult> GetParaTenant(int idTenant, CancellationToken ct, [FromQuery] int? idApp)
+    {
+        if (User.FueraDeAlcance(_tenantContext, idTenant)) return NotFound();
+        if (idApp.HasValue)
+        {
+            var denegado = await ValidarAppAsync(idApp.Value, ct);
+            if (denegado is not null) return denegado;
+            return FromResultQuery(await _service.ObtenerPorAppsAsync(idTenant, [idApp.Value], soloActivos: true, ct));
+        }
+        return FromResultQuery(await _service.ObtenerParaTenantAsync(idTenant, ct));
+    }
 
     [HttpGet("lookup/{idTenant}")]
-    public async Task<IActionResult> GetLookup(int idTenant, CancellationToken ct)
-        => FromResultQuery(await _service.ObtenerLookupPorTenantAsync(idTenant, ct));
+    public async Task<IActionResult> GetLookup(int idTenant, CancellationToken ct, [FromQuery] int? idApp)
+    {
+        if (User.FueraDeAlcance(_tenantContext, idTenant)) return NotFound();
+        if (idApp.HasValue)
+        {
+            var denegado = await ValidarAppAsync(idApp.Value, ct);
+            if (denegado is not null) return denegado;
+            return FromResultQuery(await _service.ObtenerLookupPorAppsAsync(idTenant, [idApp.Value], ct));
+        }
+        return FromResultQuery(await _service.ObtenerLookupPorTenantAsync(idTenant, ct));
+    }
+
+    // S111 · D3 — valida que quien llama tenga Acceso activo a la app en su tenant (403 SIN_ACCESO_APP)
+    private async Task<IActionResult?> ValidarAppAsync(int idApp, CancellationToken ct)
+    {
+        var apps = await _usuarioPermiso.ObtenerAppsPermitidasAsync(User.IdUsuario() ?? 0, User.AlcanceTenant(_tenantContext), idApp, ct);
+        if (apps.IsFailure) return FromResult(apps);
+        return null;
+    }
 
     [HttpPost]
     [Authorize(Policy = "ROLES_CREAR")]
@@ -47,7 +90,7 @@ public class RolesController : BaseApiController
         if (!User.HasClaim("is_system", "true"))
             dto.IdTenant = _tenantContext.CurrentId;
 
-        var idUsrEjecutor = GetIdUsuarioActual();
+        var idUsrEjecutor = User.IdUsuario();
         var result = await _service.CrearAsync(dto, idUsrEjecutor, ct);
         return result.IsSuccess
             ? Created(string.Empty, result.Value)
@@ -57,16 +100,10 @@ public class RolesController : BaseApiController
     [HttpPut("{id}")]
     [Authorize(Policy = "ROLES_EDITAR")]
     public async Task<IActionResult> Update(int id, [FromBody] ActualizarRolDto dto, CancellationToken ct)
-    {
-        var idUsrEjecutor = GetIdUsuarioActual();
-        return FromResultQuery(await _service.ActualizarAsync(id, dto.Nombre, dto.Descripcion, dto.Activo, idUsrEjecutor, ct));
-    }
+        => FromResultQuery(await _service.ActualizarAsync(id, dto.Nombre, dto.Descripcion, dto.Activo, User.AlcanceTenant(_tenantContext), ct));
 
     [HttpDelete("{id}")]
     [Authorize(Policy = "ROLES_ELIMINAR")]
     public async Task<IActionResult> Delete(int id, CancellationToken ct)
-    {
-        var idUsrEjecutor = GetIdUsuarioActual();
-        return FromResult(await _service.DesactivarAsync(id, idUsrEjecutor, ct));
-    }
+        => FromResult(await _service.DesactivarAsync(id, User.AlcanceTenant(_tenantContext), ct));
 }

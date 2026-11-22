@@ -20,11 +20,9 @@ public class ProvIdenConfiguration : IEntityTypeConfiguration<ProvIden>
         builder.Property(p => p.TipoProveedor).IsRequired();
         builder.Property(p => p.Protocolo).HasMaxLength(20);
         builder.Property(p => p.Version).HasMaxLength(50);
-        builder.Property(p => p.UrlIssuer).HasMaxLength(500);
         builder.Property(p => p.EndpointAutorizacion).HasMaxLength(500);
         builder.Property(p => p.EndpointToken).HasMaxLength(500);
         builder.Property(p => p.EndpointUserInfo).HasMaxLength(500);
-        builder.Property(p => p.JwksUri).HasMaxLength(500);
         builder.Property(p => p.EndpointRevocacion).HasMaxLength(500);
         builder.Property(p => p.SoportaPKCE).HasDefaultValue(false).IsRequired();
         builder.Property(p => p.SoportaRefreshToken).HasDefaultValue(false).IsRequired();
@@ -32,7 +30,7 @@ public class ProvIdenConfiguration : IEntityTypeConfiguration<ProvIden>
         builder.Property(p => p.Icono).HasMaxLength(50);
         builder.Property(p => p.Orden).HasDefaultValue((short)0).IsRequired();
         builder.Property(p => p.Activo).HasDefaultValue(true).IsRequired();
-        builder.Property(p => p.FecCrea).HasDefaultValueSql("sysutcdatetime()");
+        builder.Property(p => p.FecCrea).HasDefaultValueSql("sysdatetime()");
         builder.Property(p => p.FecMod);
 
         builder.HasIndex(p => p.Codigo).IsUnique().HasDatabaseName("UK_ProvIden_Codigo");

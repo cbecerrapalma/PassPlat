@@ -15,7 +15,6 @@ public class IdenExt
     public string? ClaimsJson { get; set; }
     public byte[]? AccessToken { get; set; }
     public byte[]? RefreshToken { get; set; }
-    public byte[]? IdToken { get; set; }
     public DateTime? TokenExpiration { get; set; }
     public Guid? CorrelationId { get; set; }
     public bool EsPrincipal { get; set; }
@@ -58,7 +57,7 @@ public class IdenExt
             Avatar = avatar,
             Activo = true,
             Eliminado = false,
-            IdEstado = (byte)Enums.EEstIdenExt.Autorizada,
+            IdEstado = (byte)Enums.EEstIdenExt.Activo,
             FecCrea = DateTime.Now
         };
     }

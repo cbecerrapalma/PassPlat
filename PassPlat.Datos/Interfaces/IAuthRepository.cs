@@ -11,9 +11,13 @@ public interface IAuthRepository : IRepositoryAsync<Usuario>
     Task<Result<Usuario?>> ObtenerUsuarioBasicoAsync(int idUsuario, CancellationToken ct = default);
     Task<Result<Usuario?>> ObtenerUsuarioPorNomAsync(string? nomUsuario, string? email, CancellationToken ct = default);
     Task<Result<string?>> ObtenerHashActualAsync(int idUsuario, CancellationToken ct = default);
-    Task<Result<string?>> ObtenerRolCodigoPorAccesoAsync(int idUsuario, int idApp, CancellationToken ct = default);
+    Task<Result<bool>> ObtenerPwdExpiradaAsync(int idUsuario, int idTenant, CancellationToken ct = default);
     Task<Result<IReadOnlyList<string>>> ObtenerCodigosPermisosPorUsuarioAsync(int idUsuario, int idTenant, int idApp, CancellationToken ct = default);
     Task<Result<IReadOnlyList<string>>> ObtenerCodigosPermisosPorUsuarioTenantAsync(int idUsuarioTenant, int idApp, CancellationToken ct = default);
     Task<Result<IReadOnlyList<string>>> ObtenerCodigosPermisosPlatformAsync(int idUsuario, int idApp, CancellationToken ct = default);
     Task<Result<bool>> ExisteAccesoPlatformActivoAsync(int idUsuario, int idApp, CancellationToken ct = default);
+    // S103 · D2 — permisos que aporta cada rol (base y heredado) al usuario en (tenant, app); replica SP_Permisos_Usuario_Efectivos sin directos
+    Task<Result<IReadOnlyList<PermisoDeRol>>> ObtenerPermisosDeRolesAsync(int idUsuario, int idTenant, int idApp, CancellationToken ct = default);
 }
+
+public sealed record PermisoDeRol(int IdPermiso, int IdRol, string RolNombre, bool Heredado);

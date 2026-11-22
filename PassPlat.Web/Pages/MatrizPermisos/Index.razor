@@ -13,36 +13,74 @@
 else
 {
 <div class="iam-page">
-    <MudBreadcrumbs Class="mb-3">
-        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
-        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/usuarios"))">Seguridad</MudBreadcrumbItem>
-        <MudBreadcrumbItem>Matriz de Permisos</MudBreadcrumbItem>
-    </MudBreadcrumbs>
+<MigasDePan />
 
     <div class="page-header">
         <div class="page-title-row">
             <div>
                 <h1 class="page-title">Matriz de Permisos</h1>
-                <p class="page-subtitle">Visualiza y gestiona la asignación de permisos por rol. Los permisos heredados se muestran con borde discontinuo.</p>
+                <p class="page-subtitle">Permisos por rol y modulo. Solo lectura: la asignacion se hace en «Roles y Permisos».</p>
             </div>
         </div>
     </div>
 
-    <MudAlert Severity="Severity.Info" Class="mb-4">
-        <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="mr-2" />
-        Seleccione un rol para visualizar los permisos asignados.
+    <MudAlert Severity="Severity.Info" Class="mb-4" Dense="true">
+        Elija un rol para ver sus permisos. Los permisos heredados se muestran con borde discontinuo.
     </MudAlert>
 
-    <div class="role-selector-bar">
-        <MudText Typo="Typo.body2">Rol seleccionado:</MudText>
-        <MudSelect T="int" Value="_idRolSeleccionado" Variant="Variant.Outlined" Dense="true"
-                   ValueChanged="async (int val) => { _idRolSeleccionado = val; await OnRoleChanged(); }">
-            <MudSelectItem Value="0">-- Seleccionar Rol --</MudSelectItem>
-            @foreach (var r in _roles)
+    <div class="matrix-toolbar">
+        <MudPaper Elevation="0" Outlined="true" Class="matrix-role-panel">
+            <MudText Typo="Typo.subtitle2" Class="mb-2">Rol</MudText>
+            @if (_roles.Count == 0)
             {
-                <MudSelectItem Value="r.Id" Key="r.Id">@r.Nombre</MudSelectItem>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">No hay roles para mostrar.</MudText>
             }
-        </MudSelect>
+            else
+            {
+                <div class="matrix-role-list">
+                    @foreach (var grupo in _rolesAgrupados)
+                    {
+                        <div class="matrix-role-group" @key="@($"g-{grupo.Titulo}")">
+                            <div class="matrix-role-group-title">@grupo.Titulo</div>
+                            @foreach (var r in grupo.Roles)
+                            {
+                                var seleccionado = r.Id == _idRolSeleccionado;
+                                <button type="button" class="matrix-role-item @(seleccionado ? "is-selected" : "")"
+                                    @key="@($"r-{r.Id}")"
+                                    @onclick="@(() => OnRolElegido(r.Id))"
+                                    aria-pressed="@(seleccionado ? "true" : "false")"
+                                    title="@($"{r.Nombre} ({r.Codigo}) — {AmbitoDe(r)}")">
+                                    <span class="matrix-role-name">@r.Nombre</span>
+                                    <span class="matrix-role-code">@r.Codigo</span>
+                                </button>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </MudPaper>
+
+        <MudPaper Elevation="0" Outlined="true" Class="matrix-filters">
+            <div class="matrix-filters-row">
+                <MudTextField T="string" Value="_busqueda" ValueChanged="@(v => { _busqueda = v; RecalcularVisibles(); })"
+                    Immediate="true" Placeholder="Buscar permiso por nombre o codigo" Adornment="Adornment.Start"
+                    AdornmentIcon="@Icons.Material.Filled.Search" Variant="Variant.Outlined"
+                    Margin="Margin.Dense" Clearable="true" aria-label="Buscar permiso por nombre o codigo" />
+
+                <MudSwitch T="bool" Value="_soloAsignados" ValueChanged="@(v => { _soloAsignados = v; RecalcularVisibles(); })"
+                    Color="Color.Primary" Label="Solo asignados" Disabled="@(_idRolSeleccionado <= 0)" />
+
+                <MudSwitch T="bool" Value="_verTodos" ValueChanged="@(v => { _verTodos = v; RecalcularVisibles(); })"
+                    Color="Color.Primary" Label="Ver todos los roles" />
+            </div>
+
+            <div class="matrix-legend" aria-label="Leyenda de estados">
+                <span class="matrix-legend-item"><span class="matrix-cell matrix-cell-on" aria-hidden="true"></span> Directo</span>
+                <span class="matrix-legend-item"><span class="matrix-cell matrix-cell-heredado" aria-hidden="true"></span> Heredado</span>
+                <span class="matrix-legend-item"><span class="matrix-cell matrix-cell-off" aria-hidden="true"></span> Denegado</span>
+                <span class="matrix-legend-item"><span class="matrix-cell matrix-cell-inactive" aria-hidden="true"></span> Inactivo</span>
+            </div>
+        </MudPaper>
     </div>
 
     @if (_cargando)
@@ -52,85 +90,84 @@ else
     else if (_roles.Count > 0 && _modulos.Count > 0)
     {
         <div class="matrix-layout">
-            <div class="matrix-wrap" style="overflow-x:auto;">
+            <div class="matrix-wrap">
                 <table class="matrix-table mud-table">
                     <thead>
                         <tr>
-                            <th scope="col">Permiso</th>
-                            @foreach (var r in _roles)
+                            <th scope="col" class="matrix-col-permiso">Permiso</th>
+                            @foreach (var r in _rolesVisibles)
                             {
                                 var isSelected = r.Id == _idRolSeleccionado && _idRolSeleccionado > 0;
-                                <th @key="r.Id" scope="col" class="@(isSelected ? "matrix-col-selected" : "") mud-table-cell"
-                                    style="max-width:100px;overflow:hidden;text-overflow:ellipsis;"
-                                    title="@r.Nombre">@r.Nombre</th>
+                                <th @key="@($"h-{r.Id}")" scope="col" class="@(isSelected ? "matrix-col-selected " : "")matrix-col-rol"
+                                    title="@($"{r.Nombre} ({r.Codigo}) — {AmbitoDe(r)}")">
+                                    <span class="matrix-role-head-name">@r.Nombre</span>
+                                    <span class="matrix-role-head-code">@r.Codigo</span>
+                                </th>
                             }
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var mod in _modulos)
+                        @foreach (var mod in _modulosVisibles)
                         {
-                            <tr @key="mod.IdModulo" class="matrix-group-header">
-                                <td colspan="@(_roles.Count + 1)" class="mud-table-cell">@mod.NombreModulo</td>
+                            var abierto = !_modulosColapsados.Contains(mod.IdModulo);
+                            <tr @key="@($"m-{mod.IdModulo}")" class="matrix-group-header">
+                                <td colspan="@(_rolesVisibles.Count + 1)" class="mud-table-cell">
+                                    <button type="button" class="matrix-module-toggle" @onclick="@(() => AlternarModulo(mod.IdModulo))"
+                                        aria-expanded="@(abierto ? "true" : "false")"
+                                        aria-label="@(abierto ? "Contraer" : "Expandir") + $" el modulo {mod.NombreModulo}">
+                                        <MudIcon Icon="@(abierto ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)" Size="Size.Small" />
+                                        <span>@mod.NombreModulo</span>
+                                        <span class="matrix-module-count">@mod.Permisos.Count</span>
+                                    </button>
+                                </td>
                             </tr>
-                            @foreach (var perm in mod.Permisos)
+                            @if (abierto)
                             {
-                                <tr @key="perm.IdPermiso">
-                                    <td class="mud-table-cell">
-                                        <div class="matrix-row-label">
-                                            <MudText Typo="Typo.body2">@perm.NombrePermiso</MudText>
-                                            <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="font-family:'JetBrains Mono',monospace;">@perm.CodigoPermiso</MudText>
-                                        </div>
-                                    </td>
-                                    @foreach (var r in _roles)
-                                    {
-                                        var cell = ObtenerCelda(perm.IdPermiso, r.Id);
-                                        var isSelected = r.Id == _idRolSeleccionado && _idRolSeleccionado > 0;
-                                        var tdClass = isSelected ? "matrix-col-selected mud-table-cell" : "mud-table-cell";
-                                        if (cell is not null)
+                                @foreach (var perm in mod.Permisos)
+                                {
+                                    <tr @key="@($"p-{perm.IdPermiso}")">
+                                        <td class="mud-table-cell matrix-col-permiso">
+                                            <div class="matrix-row-label">
+                                                <div>
+                                                    <MudText Typo="Typo.body2">@perm.NombrePermiso</MudText>
+                                                    <MudText Typo="Typo.caption" Class="mud-text-secondary matrix-perm-code">@perm.CodigoPermiso</MudText>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        @foreach (var r in _rolesVisibles)
                                         {
-                                            if (cell.EsHeredado)
-                                            {
-                                                <td @key="r.Id" class="@tdClass">
-                                                    <MudTooltip Text="Heredado">
-                                                        <span class="matrix-inherited"><MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" /></span>
-                                                    </MudTooltip>
-                                                </td>
-                                            }
-                                            else if (cell.Estado == "on")
-                                            {
-                                                <td @key="r.Id" class="@tdClass">
-                                                    <MudTooltip Text="Asignado">
-                                                        <span class="matrix-check on"><MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" /></span>
-                                                    </MudTooltip>
-                                                </td>
-                                            }
-                                            else if (cell.Estado == "off")
-                                            {
-                                                <td @key="r.Id" class="@tdClass">
-                                                    <MudTooltip Text="Denegado">
-                                                        <span class="matrix-check off"><MudIcon Icon="@Icons.Material.Filled.Close" Size="Size.Small" /></span>
-                                                    </MudTooltip>
-                                                </td>
-                                            }
-                                            else
-                                            {
-                                                <td @key="r.Id" class="@tdClass">
-                                                    <MudTooltip Text="Inactivo">
-                                                        <span class="matrix-check inactive"><MudIcon Icon="@Icons.Material.Filled.HorizontalRule" Size="Size.Small" /></span>
-                                                    </MudTooltip>
-                                                </td>
-                                            }
-                                        }
-                                        else
-                                        {
-                                            <td @key="r.Id" class="@tdClass">
-                                                <MudTooltip Text="Sin datos">
-                                                    <span class="matrix-check inactive"><MudIcon Icon="@Icons.Material.Filled.HorizontalRule" Size="Size.Small" /></span>
-                                                </MudTooltip>
+                                            var celda = ObtenerCelda(perm.IdPermiso, r.Id);
+                                            var isSelected = r.Id == _idRolSeleccionado && _idRolSeleccionado > 0;
+                                            var tdClass = isSelected ? "matrix-col-selected mud-table-cell" : "mud-table-cell";
+                                            <td @key="@($"c-{perm.IdPermiso}-{r.Id}")" class="@tdClass">
+                                                @if (celda is not null && celda.EsHeredado)
+                                                {
+                                                    <span class="matrix-cell matrix-cell-heredado" role="img"
+                                                        aria-label="@($"Permiso heredado en {r.Nombre}")"
+                                                        title="@($"Heredado en {r.Nombre}")"></span>
+                                                }
+                                                else if (celda is not null && celda.Estado == "on")
+                                                {
+                                                    <span class="matrix-cell matrix-cell-on" role="img"
+                                                        aria-label="@($"Permiso asignado directamente a {r.Nombre}")"
+                                                        title="@($"Asignado en {r.Nombre}")"></span>
+                                                }
+                                                else if (celda is not null && celda.Estado == "off")
+                                                {
+                                                    <span class="matrix-cell matrix-cell-off" role="img"
+                                                        aria-label="@($"Permiso denegado a {r.Nombre}")"
+                                                        title="@($"Denegado en {r.Nombre}")"></span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="matrix-cell matrix-cell-inactive" role="img"
+                                                        aria-label="@($"Permiso inactivo en {r.Nombre}")"
+                                                        title="@($"Inactivo en {r.Nombre}")"></span>
+                                                }
                                             </td>
                                         }
-                                    }
-                                </tr>
+                                    </tr>
+                                }
                             }
                         }
                     </tbody>
@@ -175,7 +212,7 @@ else
                     }
                 </MudPaper>
                 <MudPaper Elevation="0" Outlined="true" Class="pa-4">
-                    <MudText Typo="Typo.subtitle2" Class="mb-3">Distribución por Módulo</MudText>
+                    <MudText Typo="Typo.subtitle2" Class="mb-3">Distribucion por Modulo</MudText>
                     <div id="module-distribution">
                         @if (_rolSeleccionado is not null)
                         {
@@ -193,7 +230,7 @@ else
                         }
                         else
                         {
-                            <MudText Typo="Typo.caption" Class="mud-text-secondary pa-2">Seleccione un rol para ver la distribución</MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary pa-2">Seleccione un rol para ver la distribucion</MudText>
                         }
                     </div>
                 </MudPaper>
@@ -203,50 +240,27 @@ else
     else if (_cargado && _modulos.Count == 0)
     {
         <div class="table-panel" style="padding:40px;text-align:center;">
-            <div style="color:var(--text-muted);font-size:14px;">No se encontraron datos de matriz de permisos</div>
+            <MudIcon Icon="@Icons.Material.Filled.TableChart" Size="Size.Large" Color="Color.Default" />
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">No se encontraron datos de matriz de permisos</MudText>
         </div>
     }
-
-    <MudOverlay Visible="_loadingOverlay">
-        <MudProgressCircular Indeterminate="true" />
-    </MudOverlay>
 </div>
 }
 
 @code {
     private List<RolDto> _roles = [];
+    private List<RolDto> _rolesVisibles = [];
     private List<MatrizPermisoRow> _items = [];
+    private List<ModuloMatriz> _modulos = [];
+    private List<ModuloMatriz> _modulosVisibles = [];
+    private Dictionary<(int IdPermiso, int IdRol), CeldaMatriz> _celdas = [];
     private int _idRolSeleccionado;
     private bool _cargando;
     private bool _cargado;
-    private bool _loadingOverlay;
-
-    private List<ModuloMatriz> _modulos => _items
-        .GroupBy(i => new { i.IdModulo, i.NombreModulo, i.OrdenModulo })
-        .OrderBy(g => g.Key.OrdenModulo)
-        .Select(g => new ModuloMatriz
-        {
-            IdModulo = g.Key.IdModulo,
-            NombreModulo = g.Key.NombreModulo,
-            OrdenModulo = g.Key.OrdenModulo,
-            Permisos = g
-                .GroupBy(p => new { p.IdPermiso, p.NombrePermiso, p.CodigoPermiso, p.OrdenPermiso })
-                .OrderBy(pg => pg.Key.OrdenPermiso)
-                .Select(pg => new PermisoMatriz
-                {
-                    IdPermiso = pg.Key.IdPermiso,
-                    NombrePermiso = pg.Key.NombrePermiso,
-                    CodigoPermiso = pg.Key.CodigoPermiso,
-                    OrdenPermiso = pg.Key.OrdenPermiso,
-                    Celdas = pg.Select(c => new CeldaMatriz
-                    {
-                        IdRol = c.IdRol,
-                        Estado = c.Estado,
-                        EsDirecto = c.EsDirecto,
-                        EsHeredado = c.EsHeredado
-                    }).ToList()
-                }).ToList()
-        }).ToList();
+    private string _busqueda = "";
+    private bool _soloAsignados;
+    private bool _verTodos;
+    private readonly HashSet<int> _modulosColapsados = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -254,6 +268,10 @@ else
         await CargarDatos();
     }
 
+    /// <summary>
+    /// S58.1 · D1 — una sola carga: se piden los roles y la matriz una vez y todo
+    /// (agrupado, indice de celdas y filtros) se calcula en memoria.
+    /// </summary>
     private async Task CargarDatos()
     {
         _cargando = true;
@@ -265,26 +283,133 @@ else
             await Task.WhenAll(tRoles, tMatriz);
             _roles = tRoles.Result ?? [];
             _items = tMatriz.Result ?? [];
+            ConstruirIndice();
             _cargado = true;
         }
         catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error al cargar datos: {ex.Message}", Severity.Error); }
         finally { _cargando = false; }
     }
 
-    private CeldaMatriz? ObtenerCelda(int idPermiso, int idRol)
+    /// <summary>S58.1 · D1 — agrupa y indexa una sola vez (no en cada lectura).</summary>
+    private void ConstruirIndice()
     {
-        foreach (var m in _modulos)
+        _celdas = new Dictionary<(int, int), CeldaMatriz>();
+        foreach (var item in _items)
         {
-            foreach (var p in m.Permisos)
+            _celdas[(item.IdPermiso, item.IdRol)] = new CeldaMatriz
             {
-                if (p.IdPermiso == idPermiso)
-                {
-                    return p.Celdas.FirstOrDefault(c => c.IdRol == idRol);
-                }
-            }
+                IdRol = item.IdRol,
+                Estado = item.Estado,
+                EsDirecto = item.EsDirecto,
+                EsHeredado = item.EsHeredado
+            };
         }
-        return null;
+
+        _modulos = _items
+            .GroupBy(i => new { i.IdModulo, i.NombreModulo, i.OrdenModulo })
+            .OrderBy(g => g.Key.OrdenModulo)
+            .Select(g => new ModuloMatriz
+            {
+                IdModulo = g.Key.IdModulo,
+                NombreModulo = g.Key.NombreModulo,
+                OrdenModulo = g.Key.OrdenModulo,
+                Permisos = g
+                    .GroupBy(p => new { p.IdPermiso, p.NombrePermiso, p.CodigoPermiso, p.OrdenPermiso })
+                    .OrderBy(pg => pg.Key.OrdenPermiso)
+                    .Select(pg => new PermisoMatriz
+                    {
+                        IdPermiso = pg.Key.IdPermiso,
+                        NombrePermiso = pg.Key.NombrePermiso,
+                        CodigoPermiso = pg.Key.CodigoPermiso,
+                        OrdenPermiso = pg.Key.OrdenPermiso
+                    }).ToList()
+            }).ToList();
+
+        // Modulos plegados por defecto salvo el primero.
+        _modulosColapsados.Clear();
+        foreach (var mod in _modulos.Skip(1))
+            _modulosColapsados.Add(mod.IdModulo);
+
+        RecalcularVisibles();
     }
+
+    /// <summary>S58.1 · D1 — la vista visible se recalcula solo al cambiar un filtro.</summary>
+    private void RecalcularVisibles()
+    {
+        var busqueda = (_busqueda ?? "").Trim();
+
+        _rolesVisibles = _verTodos
+            ? _roles
+            : _roles.Where(r => r.Id == _idRolSeleccionado && _idRolSeleccionado > 0).ToList();
+
+        _modulosVisibles = _modulos
+            .Select(m => new ModuloMatriz
+            {
+                IdModulo = m.IdModulo,
+                NombreModulo = m.NombreModulo,
+                OrdenModulo = m.OrdenModulo,
+                Permisos = m.Permisos.Where(p => CumpleFiltro(p, busqueda)).ToList()
+            })
+            .Where(m => m.Permisos.Count > 0)
+            .ToList();
+    }
+
+    private bool CumpleFiltro(PermisoMatriz perm, string busqueda)
+    {
+        if (busqueda.Length > 0)
+        {
+            var coincide = perm.NombrePermiso.Contains(busqueda, StringComparison.OrdinalIgnoreCase)
+                        || perm.CodigoPermiso.Contains(busqueda, StringComparison.OrdinalIgnoreCase);
+            if (!coincide) return false;
+        }
+
+        if (_soloAsignados && _idRolSeleccionado > 0)
+        {
+            var celda = ObtenerCelda(perm.IdPermiso, _idRolSeleccionado);
+            if (celda is null) return false;
+            return celda.EsHeredado || celda.Estado == "on";
+        }
+
+        return true;
+    }
+
+    /// <summary>Roles agrupados por ambito: primero los globales, luego cada tenant.</summary>
+    private List<(string Titulo, List<RolDto> Roles)> _rolesAgrupados
+    {
+        get
+        {
+            var grupos = new List<(string, List<RolDto>)>();
+            var globales = _roles.Where(r => r.IdTenant is null).OrderBy(r => r.Nombre).ToList();
+            if (globales.Count > 0) grupos.Add(("Global", globales));
+
+            foreach (var g in _roles.Where(r => r.IdTenant is not null)
+                                    .GroupBy(r => r.TenantNombre ?? $"Tenant {r.IdTenant}")
+                                    .OrderBy(g => g.Key))
+            {
+                grupos.Add((g.Key, g.OrderBy(r => r.Nombre).ToList()));
+            }
+
+            return grupos;
+        }
+    }
+
+    private static string AmbitoDe(RolDto rol) =>
+        rol.IdTenant is null ? "Global" : (rol.TenantNombre ?? $"Tenant {rol.IdTenant}");
+
+    private void AlternarModulo(int idModulo)
+    {
+        if (!_modulosColapsados.Add(idModulo)) _modulosColapsados.Remove(idModulo);
+    }
+
+    /// <summary>S58.1 · D1 — elegir un rol filtra en memoria: no vuelve a pedir la matriz.</summary>
+    private void OnRolElegido(int idRol)
+    {
+        _idRolSeleccionado = idRol;
+        RecalcularVisibles();
+    }
+
+    private CeldaMatriz? ObtenerCelda(int idPermiso, int idRol) =>
+        _celdas.TryGetValue((idPermiso, idRol), out var celda) ? celda : null;
 
     private ResumenRol ObtenerResumen(int idRol)
     {
@@ -293,7 +418,7 @@ else
         {
             foreach (var perm in mod.Permisos)
             {
-                var celda = perm.Celdas.FirstOrDefault(c => c.IdRol == idRol);
+                var celda = ObtenerCelda(perm.IdPermiso, idRol);
                 if (celda is null) continue;
                 res.Total++;
                 if (celda.EsHeredado) { res.Heredados++; res.Concedidos++; }
@@ -308,7 +433,7 @@ else
 
     private List<ModuloStat> ObtenerModuloStats(int idRol)
     {
-        var colores = new[] { "#818cf8", "#a78bfa", "#60a5fa", "#22c55e", "#f59e0b", "#f472b6", "#34d399", "#fb923c" };
+        var colores = new[] { "var(--dat-indigo)", "var(--dat-lila)", "var(--dat-azul-claro)", "var(--dat-verde-claro)", "var(--dat-naranja-claro)", "var(--dat-rosa-claro)", "var(--dat-esmeralda)", "var(--dat-naranja-vivo)" };
         var idx = 0;
         return _modulos.Select(mod =>
         {
@@ -316,7 +441,7 @@ else
             var total = 0;
             foreach (var perm in mod.Permisos)
             {
-                var celda = perm.Celdas.FirstOrDefault(c => c.IdRol == idRol);
+                var celda = ObtenerCelda(perm.IdPermiso, idRol);
                 if (celda is null) continue;
                 total++;
                 if (celda.Estado == "on" || celda.EsHeredado) concedidos++;
@@ -331,30 +456,6 @@ else
     private RolDto? _rolSeleccionado
     {
         get => _roles.FirstOrDefault(r => r.Id == _idRolSeleccionado);
-    }
-
-    private async Task OnRoleChanged()
-    {
-        _cargando = true;
-        try
-        {
-            var url = _idRolSeleccionado > 0
-                ? $"api/MatrizPermisos?idRol={_idRolSeleccionado}"
-                : "api/MatrizPermisos";
-            var result = await Api.GetAsync<List<MatrizPermisoRow>>(url);
-            _items = result ?? [];
-            if (Api.LastError != null)
-                Snackbar.Add(Api.LastError, Severity.Error);
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add(Api.LastError ?? $"Error al filtrar: {ex.Message}", Severity.Error);
-        }
-        finally
-        {
-            _cargando = false;
-            StateHasChanged();
-        }
     }
 
     public class MatrizPermisoRow
@@ -389,7 +490,6 @@ else
         public string NombrePermiso { get; set; } = "";
         public string CodigoPermiso { get; set; } = "";
         public byte OrdenPermiso { get; set; }
-        public List<CeldaMatriz> Celdas { get; set; } = [];
     }
 
     public class CeldaMatriz
@@ -417,6 +517,6 @@ else
         public int Concedidos { get; set; }
         public int Total { get; set; }
         public int Porcentaje { get; set; }
-        public string Color { get; set; } = "#818cf8";
+        public string Color { get; set; } = "var(--dat-indigo)";
     }
 }

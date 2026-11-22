@@ -25,7 +25,7 @@ public class AppEmailAccountRepository : RepositoryAsync<AppEmailAccount>, IAppE
                 .ToListAsync(ct);
             return Result<IReadOnlyList<AppEmailAccount>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<AppEmailAccount>>.Failure("DB_ERROR", ex.Message);
         }

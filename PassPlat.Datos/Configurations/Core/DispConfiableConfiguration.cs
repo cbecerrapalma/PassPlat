@@ -16,7 +16,7 @@ public class DispConfiableConfiguration : IEntityTypeConfiguration<DispConfiable
         builder.Property(d => d.IdTenant).IsRequired();
         builder.Property(d => d.IdDisp).IsRequired();
         builder.Property(d => d.Nombre).HasMaxLength(100);
-        builder.Property(d => d.FecAlta).HasDefaultValueSql("sysutcdatetime()").IsRequired();
+        builder.Property(d => d.FecAlta).HasDefaultValueSql("sysdatetime()").IsRequired();
         builder.Property(d => d.Confiable).HasDefaultValue(false).IsRequired();
         builder.Property(d => d.UltUso);
 

@@ -3,30 +3,36 @@
    Apply via .iam-page class on page container
    ──────────────────────────────────────────────────────────── */
 .iam-page {
-    --bg-card: #1a1d28;
-    --bg-panel: #171a26;
-    --bg-input: #12141c;
-    --border-subtle: rgba(255,255,255,.06);
-    --border-default: rgba(255,255,255,.10);
-    --text-primary: #e8eaf0;
-    --text-secondary: #8b90a7;
-    --text-muted: #555972;
-    --radius-md: 10px;
-    --radius-sm: 6px;
+    /* ─── S55 · D1 — tokens de la pagina IAM derivados de la paleta de la app.
+       Antes eran fijos (siempre oscuros) y las tarjetas KPI quedaban blancas
+       sobre un lienzo oscuro sin importar el tema. */
+    --bg-card: var(--app-surface-raised);
+    --bg-panel: var(--app-surface);
+    --bg-input: var(--app-surface-sunken);
+    --border-subtle: var(--app-border);
+    --border-default: var(--app-border-strong);
+    --text-primary: var(--app-text);
+    --text-secondary: var(--app-text-muted);
+    --text-muted: var(--app-text-muted);
+    --radius-md: var(--app-radius-md);
+    --radius-sm: var(--app-radius-sm);
+    --accent-soft: color-mix(in srgb, var(--app-accent) 12%, transparent);
+    --hover-soft: color-mix(in srgb, var(--app-accent) 8%, transparent);
 }
 
-/* ── Dark canvas ─────────────────────────────────────────── */
+/* ── Canvas (sigue al tema) ─────────────────────────────── */
 .iam-page {
-    background: #0f1117;
+    background: var(--app-surface);
     min-height: 100%;
     padding: 16px 24px;
 }
 
 /* ── KPI Cards (prototype .kpi-card) ─────────────────────── */
+/* S59 · D6 — gana a las utilidades de espaciado y flex de MudBlazor (.pa-3, .d-flex, .ma-2...), que priorizan la misma propiedad. */
 .iam-page .mud-grid > [class*="col-"] > .mud-paper {
-    background: var(--bg-card) !important;
-    border: 1px solid var(--border-subtle) !important;
-    border-radius: var(--radius-md) !important;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
     padding: 14px 16px !important;
     flex-direction: column !important;
     align-items: flex-start !important;
@@ -40,152 +46,93 @@
     margin-bottom: 4px;
 }
 .iam-page .mud-grid > [class*="col-"] > .mud-paper .mud-typography-h5 {
-    font-size: 22px !important;
-    font-weight: 700 !important;
-    letter-spacing: -.5px !important;
-    line-height: 1.1 !important;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -.5px;
+    line-height: 1.1;
 }
 .iam-page .mud-grid > [class*="col-"] > .mud-paper .mud-typography-body2 {
-    font-size: 11px !important;
-    font-weight: 500 !important;
-    color: var(--text-muted) !important;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
 }
+/* S59 · D6 — gana a las utilidades de espaciado y flex de MudBlazor (.pa-3, .d-flex, .ma-2...), que priorizan la misma propiedad. */
 .iam-page .mud-grid > [class*="col-"] > .mud-paper .mud-typography-caption {
-    font-size: 11px !important;
-    color: var(--text-muted) !important;
+    font-size: 11px;
+    color: var(--text-muted);
     margin-top: -4px !important;
 }
 /* Avatar icon backgrounds per color class */
 .iam-page .mud-grid > [class*="col-"] > .mud-paper .mud-avatar-filled.mud-avatar-primary {
-    background: rgba(99,102,241,.12) !important;
-    color: #818cf8 !important;
+    background: color-mix(in srgb, var(--mud-palette-primary) 14%, transparent);
+    color: var(--mud-palette-primary);
 }
 .iam-page .mud-grid > [class*="col-"] > .mud-paper .mud-avatar-filled.mud-avatar-success {
-    background: rgba(34,197,94,.12) !important;
-    color: #22c55e !important;
+    background: color-mix(in srgb, var(--mud-palette-success) 14%, transparent);
+    color: var(--mud-palette-success);
 }
 .iam-page .mud-grid > [class*="col-"] > .mud-paper .mud-avatar-filled.mud-avatar-secondary {
-    background: rgba(167,139,250,.12) !important;
-    color: #a78bfa !important;
+    background: color-mix(in srgb, var(--mud-palette-secondary) 14%, transparent);
+    color: var(--mud-palette-secondary);
 }
 .iam-page .mud-grid > [class*="col-"] > .mud-paper .mud-avatar-filled.mud-avatar-info {
-    background: rgba(59,130,246,.12) !important;
-    color: #60a5fa !important;
+    background: color-mix(in srgb, var(--mud-palette-info) 14%, transparent);
+    color: var(--mud-palette-info);
 }
 .iam-page .mud-grid > [class*="col-"] > .mud-paper .mud-avatar-filled.mud-avatar-warning {
-    background: rgba(245,158,11,.12) !important;
-    color: #f59e0b !important;
+    background: color-mix(in srgb, var(--mud-palette-warning) 14%, transparent);
+    color: var(--mud-palette-warning);
 }
 .iam-page .mud-grid > [class*="col-"] > .mud-paper .mud-avatar-filled.mud-avatar-error {
-    background: rgba(239,68,68,.12) !important;
-    color: #ef4444 !important;
-}
-
-/* ── Table Panel (prototype .table-panel) ──────────────────── */
+    background: color-mix(in srgb, var(--mud-palette-error) 14%, transparent);
+    color: var(--mud-palette-error);
+}/* ── Table Panel (prototype .table-panel) ──────────────────── */
 .iam-page .table-panel {
-    background: var(--bg-card) !important;
-    border: 1px solid var(--border-subtle) !important;
-    border-radius: var(--radius-md) !important;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
     overflow: hidden;
 }
 .iam-page .table-panel .mud-paper {
-    background: transparent !important;
-    border: none !important;
+    background: transparent;
+    border: none;
 }
 .iam-page .table-panel .mud-table {
-    background: transparent !important;
+    background: transparent;
 }
 .iam-page .table-panel .mud-table-container {
-    border: none !important;
-    border-radius: 0 !important;
-}
-.iam-page .table-panel thead th {
-    background: var(--bg-card) !important;
-    color: var(--text-muted) !important;
-    font-size: 11px !important;
-    font-weight: 600 !important;
-    text-transform: uppercase !important;
-    letter-spacing: .5px !important;
-    border-bottom: 1px solid var(--border-subtle) !important;
-    padding: 10px 16px !important;
+    border: none;
+    border-radius: 0;
+}.iam-page .table-panel thead th {
+    background: var(--bg-card);
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    border-bottom: 1px solid var(--border-subtle);
+    padding: 10px 16px;
 }
 .iam-page .table-panel tbody tr {
     border-bottom: 1px solid var(--border-subtle);
     cursor: pointer;
-}
-.iam-page .table-panel tbody tr:hover {
-    background: rgba(255,255,255,.03) !important;
-}
-.iam-page .table-panel tbody tr.selected {
-    background: rgba(99,102,241,.08) !important;
-}
-.iam-page .table-panel tbody td {
-    padding: 11px 16px !important;
-    font-size: 12px !important;
-    color: var(--text-primary) !important;
+}.iam-page .table-panel tbody tr:hover {
+    background: var(--hover-soft);
+}.iam-page .table-panel tbody tr.selected {
+    background: var(--accent-soft);
+}.iam-page .table-panel tbody td {
+    padding: 11px 16px;
+    font-size: 12px;
+    color: var(--text-primary);
     vertical-align: middle;
 }
 .iam-page .table-panel .mud-table-cell {
-    color: var(--text-primary) !important;
+    color: var(--text-primary);
 }
-
-/* ── Inspector Panel (prototype .inspector) ───────────────── */
-.iam-page .inspector {
-    background: var(--bg-panel) !important;
-    border: 1px solid var(--border-subtle) !important;
-    border-radius: var(--radius-md) !important;
-    overflow: hidden;
-}
-.iam-page .inspector .mud-paper {
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-}
-/* Inspector tabs — prototype style custom tabs */
-.iam-page .inspector .mud-tabs {
-    background: transparent !important;
-}
-.iam-page .inspector .mud-tabs-tabbar {
-    background: transparent !important;
-    border-bottom: 1px solid var(--border-subtle) !important;
-    padding: 0 !important;
-}
-.iam-page .inspector .mud-tab {
-    font-size: 12px !important;
-    font-weight: 500 !important;
-    color: var(--text-secondary) !important;
-    min-height: 36px !important;
-    padding: 5px 10px !important;
-    border-radius: var(--radius-sm) var(--radius-sm) 0 0 !important;
-    border: 1px solid transparent !important;
-    border-bottom: none !important;
-    transition: all .15s;
-    text-transform: none !important;
-}
-.iam-page .inspector .mud-tab:hover {
-    color: var(--text-primary) !important;
-}
-.iam-page .inspector .mud-tab.mud-tab-active {
-    background: var(--bg-card) !important;
-    border-color: var(--border-default) !important;
-    color: var(--text-primary) !important;
-}
-.iam-page .inspector .mud-tabs-panels {
-    padding: 12px 16px !important;
-    background: transparent !important;
-}
-.iam-page .inspector .insp-section-title {
-    font-size: 10px; font-weight: 600;
-    color: var(--text-muted);
-    text-transform: uppercase; letter-spacing: .8px;
-    margin-bottom: 10px;
-}
-.iam-page .inspector .field-label,
-.iam-page .iam-inspector .field-label {
+.iam-page .field-label {
     font-size: 11px; color: var(--text-muted); margin-bottom: 3px; font-weight: 500;
 }
-.iam-page .inspector .field-value,
-.iam-page .iam-inspector .field-value {
+.iam-page .field-value {
     font-size: 12px; color: var(--text-primary);
 }
 .iam-page .field-row {
@@ -208,38 +155,36 @@
 
 /* ── Chip/Badge overrides for dark theme ─────────────────── */
 .iam-page .mud-chip-filled.mud-chip-success {
-    background: rgba(34,197,94,.12) !important;
-    color: #22c55e !important;
+    background: rgba(34,197,94,.12);
+    color: #22c55e;
 }
 .iam-page .mud-chip-filled.mud-chip-error {
-    background: rgba(239,68,68,.12) !important;
-    color: #ef4444 !important;
+    background: rgba(239,68,68,.12);
+    color: #ef4444;
 }
 .iam-page .mud-chip-filled.mud-chip-warning {
-    background: rgba(245,158,11,.12) !important;
-    color: #f59e0b !important;
+    background: rgba(245,158,11,.12);
+    color: #f59e0b;
 }
 .iam-page .mud-chip-filled.mud-chip-info {
-    background: rgba(99,102,241,.14) !important;
-    color: #818cf8 !important;
+    background: rgba(99,102,241,.14);
+    color: #818cf8;
 }
 .iam-page .mud-chip-filled.mud-chip-default {
-    background: rgba(139,144,167,.10) !important;
-    color: var(--text-secondary) !important;
-}
-
-/* ── Filter toolbar ──────────────────────────────────────── */
+    background: rgba(139,144,167,.10);
+    color: var(--text-secondary);
+}/* ── Filter toolbar ──────────────────────────────────────── */
 .iam-page .filter-bar {
-    background: var(--bg-card) !important;
-    border: 1px solid var(--border-subtle) !important;
-    border-radius: var(--radius-sm) !important;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
     padding: 12px 16px;
 }
 .iam-page .filter-bar .mud-input {
-    color: var(--text-primary) !important;
+    color: var(--text-primary);
 }
 .iam-page .filter-bar .mud-input > .mud-input-outlined-border {
-    border-color: var(--border-default) !important;
+    border-color: var(--border-default);
 }
 .iam-page .filter-row {
     display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
@@ -269,27 +214,27 @@
 
 /* ── Breadcrumb overrides for dark ───────────────────────── */
 .iam-page .mud-breadcrumbs li .mud-breadcrumb-item {
-    color: var(--text-muted) !important;
+    color: var(--text-muted);
 }
 .iam-page .mud-breadcrumbs li:last-child .mud-breadcrumb-item {
-    color: var(--text-primary) !important;
+    color: var(--text-primary);
 }
 
 /* ── Button overrides for dark ────────────────────────────── */
 .iam-page .mud-button.mud-button-variant-outlined {
-    border-color: var(--border-default) !important;
-    color: var(--text-primary) !important;
+    border-color: var(--border-default);
+    color: var(--text-primary);
 }
 .iam-page .mud-button.mud-button-variant-outlined:hover {
-    border-color: #6366f1 !important;
+    border-color: #6366f1;
 }
 .iam-page .mud-button.mud-button-variant-text {
-    color: #818cf8 !important;
+    color: #818cf8;
 }
 
 /* ── Overlay loading ──────────────────────────────────────── */
 .iam-page .mud-overlay {
-    background: rgba(0,0,0,.55) !important;
+    background: rgba(0,0,0,.55);
 }
 
 /* ── Info bar (prototype .info-bar) ───────────────────────── */
@@ -307,11 +252,25 @@
 }
 
 /* ── KPI Row (prototype .kpi-row) ────────────────────────── */
-.iam-page .kpi-row {
+/* S55.1 · K2 (D2) — una sola rejilla de KPI para todas las paginas.
+   No cuelga de .iam-page: cualquier pagina puede usar .kpi-row.
+   Movil (< 600 px): exactamente 2 columnas; a partir de 600 px: auto-fit. */
+.kpi-row {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
     margin-bottom: 16px;
+}
+@media (min-width: 600px) {
+    .kpi-row {
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+}
+/* S58.1 · D4 — desde 960 px la fila de KPI es de 4 columnas. */
+@media (min-width: 960px) {
+    .kpi-row {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
 }
 .iam-page .kpi-card {
     background: var(--bg-card);
@@ -378,10 +337,29 @@
 .iam-page .table-header-count {
     font-size: 11px; color: var(--text-muted); white-space: nowrap;
 }
+.iam-page .table-toolbar .lista-filtro { flex: 1 1 200px; max-width: 280px; min-width: 180px; }
+/* S85 · D2 — la barra de filtros se queda en una fila y solo envuelve si no cabe */
+.iam-page .table-toolbar.filter-row { flex-wrap: wrap; }
+@media (max-width: 599px) {
+    .iam-page .table-toolbar .lista-filtro { flex-basis: 100%; max-width: none; }
+}
 
 /* ── Table Wrap ───────────────────────────────────────────── */
-.iam-page .table-wrap { overflow-x: auto; }
-.iam-page .table-wrap .mud-table { margin: 0; }
+.iam-page .table-wrap {
+    overflow-x: auto;
+    /* S55 · U9 — el desplazamiento horizontal queda visible (antes la barra de 6px
+       era casi invisible y la columna "Estado" parecia cortada sin poder desplazarse). */
+    scrollbar-width: thin;
+    scrollbar-color: var(--app-border-strong) transparent;
+    overscroll-behavior-x: contain;
+}
+.iam-page .table-wrap .mud-table { margin: 0; min-width: 880px; }
+.iam-page .table-wrap::-webkit-scrollbar { height: 10px; }
+.iam-page .table-wrap::-webkit-scrollbar-track { background: transparent; }
+.iam-page .table-wrap::-webkit-scrollbar-thumb {
+    background: var(--app-border-strong);
+    border-radius: 5px;
+}
 
 /* ── Badge Dot (prototype .badge-dot) ─────────────────────── */
 .iam-page .badge-dot {
@@ -400,19 +378,15 @@
 }
 .iam-page .badge-active { background: rgba(34,197,94,.12); color: #22c55e; }
 .iam-page .badge-inactive { background: rgba(239,68,68,.12); color: #ef4444; }
-.iam-page .badge-default { background: rgba(139,144,167,.10); color: var(--text-secondary); }
-
-/* ── Matrix Column Highlight ──────────────────────────────── */
+.iam-page .badge-default { background: rgba(139,144,167,.10); color: var(--text-secondary); }/* ── Matrix Column Highlight ──────────────────────────────── */
 .iam-page .matrix-col-selected {
-    background: rgba(99,102,241,.06) !important;
-}
-.iam-page .matrix-table thead th.matrix-col-selected {
-    background: rgba(99,102,241,.10) !important;
-    color: #818cf8 !important;
-    border-bottom-color: rgba(99,102,241,.25) !important;
-}
-.iam-page .matrix-table tbody td.matrix-col-selected {
-    background: rgba(99,102,241,.04) !important;
+    background: rgba(99,102,241,.06);
+}.iam-page .matrix-table thead th.matrix-col-selected {
+    background: rgba(99,102,241,.10);
+    color: #818cf8;
+    border-bottom-color: rgba(99,102,241,.25);
+}.iam-page .matrix-table tbody td.matrix-col-selected {
+    background: rgba(99,102,241,.04);
 }
 
 /* ── Matrix Table (prototype .matrix-table) ───────────────── */
@@ -438,15 +412,14 @@
     vertical-align: middle;
 }
 .iam-page .matrix-table tbody td:first-child { text-align: left; }
-.iam-page .matrix-table tbody tr:hover td { background: rgba(255,255,255,.02); }
-.iam-page .matrix-group-header td {
-    background: rgba(99,102,241,.06) !important;
+.iam-page .matrix-table tbody tr:hover td { background: var(--hover-soft); }.iam-page .matrix-group-header td {
+    background: rgba(99,102,241,.06);
     color: var(--text-muted);
     font-size: 10px; font-weight: 700;
     text-transform: uppercase; letter-spacing: .8px;
-    padding: 8px 12px !important;
+    padding: 8px 12px;
     border-bottom: 1px solid var(--border-subtle);
-    text-align: left !important;
+    text-align: left;
 }
 .iam-page .matrix-row-label {
     display: flex; align-items: center; gap: 8px;
@@ -472,6 +445,219 @@
     color: #818cf8; cursor: default;
 }
 .iam-page .matrix-inherited svg { width: 14px; height: 14px; }
+
+/* ── S58 · D2/D6 — Matriz: barra de herramientas, selector por ambito,
+   cabecera y primera columna fijas, modulos plegables y leyenda ───────────── */
+.iam-page .matrix-toolbar {
+    display: grid; grid-template-columns: 320px 1fr; gap: 14px;
+    margin-bottom: 16px; align-items: start;
+}
+.iam-page .matrix-role-panel { padding: 14px 16px; }
+.iam-page .matrix-role-list {
+    max-height: 240px; overflow-y: auto; padding-right: 4px;
+}
+.iam-page .matrix-role-group + .matrix-role-group { margin-top: 10px; }
+.iam-page .matrix-role-group-title {
+    font-size: 10px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase;
+    color: var(--text-muted); margin-bottom: 4px;
+}
+.iam-page .matrix-role-item {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+    width: 100%; text-align: left; cursor: pointer;
+    background: transparent; border: 1px solid transparent; border-radius: var(--radius-sm);
+    padding: 5px 8px; margin-bottom: 2px; color: var(--text-primary);
+    transition: background .15s, border-color .15s;
+}
+.iam-page .matrix-role-item:hover { background: var(--hover-soft); }
+.iam-page .matrix-role-item.is-selected {
+    background: rgba(99,102,241,.10); border-color: rgba(99,102,241,.35);
+}
+.iam-page .matrix-role-name { font-size: 12px; font-weight: 600; }
+.iam-page .matrix-role-code {
+    font-size: 10px; color: var(--text-muted);
+    font-family: 'JetBrains Mono', Consolas, monospace;
+}
+.iam-page .matrix-filters {
+    padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;
+}
+.iam-page .matrix-legend {
+    display: flex; flex-wrap: wrap; gap: 14px; align-items: center;
+    font-size: 11px; color: var(--text-secondary);
+}
+.iam-page .matrix-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.iam-page .matrix-wrap {
+    overflow: auto; max-height: 68vh;
+    border: 1px solid var(--border-subtle); border-radius: var(--radius-md);
+    background: var(--bg-card);
+}
+.iam-page .matrix-table thead th {
+    position: sticky; top: 0; z-index: 3;
+}
+.iam-page .matrix-table thead th:first-child { z-index: 4; }
+.iam-page .matrix-table tbody td:first-child,
+.iam-page .matrix-table thead th:first-child {
+    position: sticky; left: 0; z-index: 2;
+    background: var(--bg-card);
+    border-right: 1px solid var(--border-subtle);
+    min-width: 220px; max-width: 320px;
+}
+.iam-page .matrix-table thead th:first-child { background: var(--bg-card); }
+/* S59 · D6 — gana a las utilidades de espaciado y flex de MudBlazor (.pa-3, .d-flex, .ma-2...), que priorizan la misma propiedad. */
+.iam-page .matrix-col-rol {
+    min-width: 92px; max-width: 120px; white-space: normal !important;
+    text-transform: none; letter-spacing: 0;
+}
+.iam-page .matrix-filters-row {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+}
+.iam-page .matrix-filters-row .mud-text-field { flex: 1 1 240px; min-width: 0; }
+.iam-page .matrix-role-head-name {
+    display: block; font-size: 11px; font-weight: 600; color: var(--text-primary);
+    white-space: normal; word-break: normal; overflow-wrap: break-word; line-height: 1.2;
+}
+.iam-page .matrix-role-head-code {
+    display: block; font-size: 9px; font-weight: 500; color: var(--text-muted);
+    font-family: 'JetBrains Mono', Consolas, monospace; text-transform: none;
+    word-break: normal; overflow-wrap: anywhere; line-height: 1.15;
+}
+.iam-page .matrix-cell {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border-radius: 5px; cursor: default;
+    font-size: 12px; font-weight: 700; line-height: 1;
+}
+.iam-page .matrix-cell-on { background: rgba(34,197,94,.12); color: #22c55e; }
+.iam-page .matrix-cell-on::before { content: "\2713"; }
+.iam-page .matrix-cell-off { background: rgba(239,68,68,.08); color: #ef4444; }
+.iam-page .matrix-cell-off::before { content: "\2715"; }
+.iam-page .matrix-cell-inactive { background: rgba(139,144,167,.06); color: var(--text-muted); }
+.iam-page .matrix-cell-inactive::before { content: "\2014"; }
+.iam-page .matrix-cell-heredado {
+    border: 1.5px dashed rgba(99,102,241,.35);
+    background: rgba(99,102,241,.05); color: #818cf8;
+}
+.iam-page .matrix-cell-heredado::before { content: "\2713"; }
+.iam-page .matrix-group-header td { padding: 0; }
+.iam-page .matrix-module-toggle {
+    display: flex; align-items: center; gap: 6px; width: 100%;
+    background: transparent; border: 0; cursor: pointer; text-align: left;
+    padding: 8px 12px; color: inherit; font: inherit;
+    font-size: 10px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase;
+}
+.iam-page .matrix-module-toggle:hover { color: var(--text-primary); }
+.iam-page .matrix-module-count {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 20px; height: 18px; padding: 0 6px; border-radius: 9px;
+    background: rgba(99,102,241,.12); color: var(--text-secondary);
+    font-size: 10px; letter-spacing: 0; text-transform: none;
+}
+.iam-page .matrix-perm-code { font-family: 'JetBrains Mono', Consolas, monospace; }
+.iam-page .matrix-check, .iam-page .matrix-inherited { cursor: default; }
+@media (max-width: 960px) {
+    .iam-page .matrix-toolbar { grid-template-columns: 1fr; }
+    .iam-page .matrix-role-list { max-height: 180px; }
+}
+
+/* ── S58 · K5 (D6) — Panel principal: cabecera compacta, bloques y dos columnas ── */
+.iam-page .dash-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap; margin-bottom: 16px;
+}
+.iam-page .dash-head-text { min-width: 0; }
+.iam-page .dash-head-meta {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    font-size: 12px; color: var(--text-secondary);
+}
+.iam-page .dash-head-dot { opacity: .6; }
+.iam-page .dash-columns {
+    display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start;
+}
+.iam-page .dash-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.iam-page .dash-block { padding: 0 0 4px; overflow: hidden; }
+.iam-page .dash-block-head {
+    display: flex; align-items: center; gap: 8px;
+    padding: 14px 16px; border-bottom: 1px solid var(--border-subtle);
+}
+.iam-page .dash-empty { padding: 24px 16px; text-align: center; }
+.iam-page .dash-activity { list-style: none; margin: 0; padding: 4px 0; }
+.iam-page .dash-activity-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 16px; border-bottom: 1px solid var(--border-subtle);
+}
+.iam-page .dash-activity-item:last-child { border-bottom: 0; }
+.iam-page .dash-activity-text { min-width: 0; flex: 1; }
+.iam-page .dash-activity-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+    background: rgba(66,165,245,.12); color: #42a5f5;
+}
+.iam-page .dash-activity-icon-warning { background: rgba(255,152,0,.14); color: #ff9800; }
+.iam-page .dash-activity-icon-error { background: rgba(244,67,54,.14); color: #f44336; }
+.iam-page .dash-quick { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 12px 12px; }
+.iam-page .dash-quick-item { justify-content: flex-start; }
+.iam-page .dash-status-pill {
+    display: inline-flex; align-items: center; gap: 6px; margin-left: auto;
+    padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 600;
+    background: rgba(34,197,94,.12); color: #22c55e;
+}
+.iam-page .dash-status-warning { background: rgba(255,152,0,.14); color: #ff9800; }
+.iam-page .dash-status-error { background: rgba(244,67,54,.14); color: #f44336; }
+.iam-page .dash-status-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: currentColor;
+}
+.iam-page .dash-status-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 0; border-bottom: 1px solid var(--border-subtle);
+}
+.iam-page .dash-status-row:last-of-type { border-bottom: 0; }
+.iam-page .dash-status-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
+    background: rgba(34,197,94,.12); color: #22c55e;
+}
+.iam-page .dash-status-icon-warning { background: rgba(255,152,0,.14); color: #ff9800; }
+.iam-page .dash-status-icon-error { background: rgba(244,67,54,.14); color: #f44336; }
+.iam-page .dash-mini-row { display: flex; gap: 24px; flex-wrap: wrap; }
+.iam-page .iam-kpi-link {
+    display: block; text-decoration: none; color: inherit; min-width: 0;
+}
+.iam-page .iam-kpi-link:hover .iam-kpi-card { border-color: var(--border-default); }
+@media (min-width: 960px) {
+    .iam-page .dash-columns { grid-template-columns: 1.35fr 1fr; }
+}
+
+/* ── S58 · K6 (D6) — Ficha de usuario: cabecera, pares etiqueta/valor y formulario ── */
+.iam-page .detail-head { padding: 16px; }
+.iam-page .detail-head-main {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+}
+.iam-page .detail-head-info { flex: 1 1 260px; min-width: 0; }
+.iam-page .detail-head-title {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.iam-page .detail-head-actions {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: auto;
+}
+.iam-page .detail-tab-body { padding-top: 4px; }
+.iam-page .readonly-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px 20px;
+}
+.iam-page .readonly-item {
+    display: flex; flex-direction: column; gap: 2px; min-width: 0;
+    border-left: 2px solid var(--border-subtle); padding-left: 10px;
+}
+.iam-page .form-grid {
+    display: grid; grid-template-columns: 1fr; gap: 12px 16px;
+}
+.iam-page .form-field-check { display: flex; align-items: center; }
+.iam-page .form-savebar {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border-subtle);
+}
+@media (min-width: 960px) {
+    .iam-page .form-grid { grid-template-columns: 1fr 1fr; }
+}
+.iam-page .detail-tabs .mud-tab { white-space: nowrap; }
+.iam-page .detail-tabs .mud-tabs-bar { overflow-x: auto; flex-wrap: nowrap; }
 
 /* ── Summary Section (prototype .summary-section) ─────────── */
 .iam-page .summary-layout {
@@ -507,7 +693,7 @@
     font-size: 11px; color: var(--text-secondary); min-width: 80px;
 }
 .iam-page .module-stat-bar {
-    flex: 1; height: 6px; background: rgba(255,255,255,.06);
+    flex: 1; height: 6px; background: var(--border-subtle);
     border-radius: 3px; overflow: hidden;
 }
 .iam-page .module-stat-fill { height: 100%; border-radius: 3px; transition: width .3s; }
@@ -581,7 +767,7 @@
     font-size: 12px; color: var(--text-secondary);
     transition: background .1s;
 }
-.iam-page .tree-node:hover { background: rgba(255,255,255,.03); color: var(--text-primary); }
+.iam-page .tree-node:hover { background: var(--hover-soft); color: var(--text-primary); }
 .iam-page .tree-node.selected { background: rgba(99,102,241,.08); color: var(--text-primary); }
 .iam-page .tree-arrow {
     width: 10px; height: 10px; flex-shrink: 0;
@@ -597,60 +783,15 @@
 }
 .iam-page .tree-children { padding-left: 20px; }
 
-/* ── Inspector (prototype) ────────────────────────────────── */
-.iam-page .iam-inspector {
-    display: flex; flex-direction: column;
-    background: var(--bg-panel);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    overflow: hidden;
-}
-.iam-page .inspector-header {
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--border-subtle);
-}
-.iam-page .inspector-title-row {
-    display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
-}
-.iam-page .inspector-title {
-    font-size: 14px; font-weight: 600; color: var(--text-primary); flex: 1;
-}
-.iam-page .inspector-tabs {
-    display: flex; gap: 0;
-    border-bottom: 1px solid var(--border-subtle);
-    overflow-x: auto;
-    white-space: nowrap;
-    scrollbar-width: none;
-}
-.iam-page .inspector-tabs::-webkit-scrollbar { display: none; }
-.iam-page .tab-btn {
-    background: transparent; border: none;
-    padding: 6px 12px; cursor: pointer;
-    font-size: 12px; font-weight: 500; color: var(--text-secondary);
-    border-bottom: 2px solid transparent;
-    transition: all .15s;
-}
-.iam-page .tab-btn:hover { color: var(--text-primary); }
-.iam-page .tab-btn.active {
-    color: #818cf8; border-bottom-color: #818cf8;
-}
-.iam-page .inspector-body {
-    flex: 1; overflow-y: auto; padding: 12px 16px;
-    max-height: 420px;
-}
-.iam-page .insp-section {
+/* ── Secciones de las páginas de detalle ── */
+.iam-page .detail-section {
     margin-bottom: 14px;
 }
-.iam-page .insp-section-title {
+.iam-page .detail-section-title {
     font-size: 10px; font-weight: 600;
     color: var(--text-muted);
     text-transform: uppercase; letter-spacing: .8px;
     margin-bottom: 10px;
-}
-.iam-page .inspector-footer {
-    display: flex; gap: 8px;
-    padding: 10px 16px;
-    border-top: 1px solid var(--border-subtle);
 }
 
 /* ── App Badge (prototype .app-badge) ─────────────────────── */
@@ -681,7 +822,7 @@
     border-bottom: 1px solid var(--border-subtle);
     color: var(--text-primary);
 }
-.iam-page .mini-table tbody tr:hover { background: rgba(255,255,255,.02); }
+.iam-page .mini-table tbody tr:hover { background: var(--hover-soft); }
 .iam-page .mini-table .name-cell { font-weight: 500; }
 
 /* ── Audit Entry (prototype .audit-entry) ─────────────────── */
@@ -713,6 +854,12 @@
 .iam-page .page-actions {
     display: flex; align-items: center; gap: 8px;
 }
+/* S94 · D4 — en móvil el título y los botones de la cabecera bajan de línea en vez de desbordar (P21 F4) */
+@media (max-width: 599px) {
+    .iam-page .page-title-row,
+    .iam-page .page-title-row > div,
+    .iam-page .page-actions { flex-wrap: wrap; }
+}
 .iam-page .page-btn {
     display: inline-flex; align-items: center; gap: 6px;
     font-size: 12px; font-weight: 600; padding: 6px 14px;
@@ -742,41 +889,45 @@
     border-radius: var(--radius-md);
     overflow: hidden;
 }
-.iam-page .detail-panel .mud-paper { background: transparent !important; border: none !important; }
-.iam-page .detail-panel .mud-tabs { background: transparent !important; }
-.iam-page .detail-panel .mud-tabs-tabbar { background: transparent !important; border-bottom: 1px solid var(--border-subtle) !important; }
+.iam-page .detail-panel .mud-paper { background: transparent; border: none; }
+.iam-page .detail-panel .mud-tabs { background: transparent; }
+.iam-page .detail-panel .mud-tabs-tabbar { background: transparent; border-bottom: 1px solid var(--border-subtle); }
+/* S59 · D6 — gana a las utilidades de espaciado y flex de MudBlazor (.pa-3, .d-flex, .ma-2...), que priorizan la misma propiedad. */
 .iam-page .detail-panel .mud-tab {
-    font-size: 12px !important; font-weight: 500 !important;
-    color: var(--text-secondary) !important;
+    font-size: 12px; font-weight: 500;
+    color: var(--text-secondary);
     min-height: 36px !important; padding: 5px 10px !important;
-    text-transform: none !important;
+    text-transform: none;
 }
-.iam-page .detail-panel .mud-tab.mud-tab-active { color: #818cf8 !important; }
-.iam-page .detail-panel .mud-tabs-panels { padding: 0 !important; background: transparent !important; }
+.iam-page .detail-panel .mud-tab.mud-tab-active { color: #818cf8; }
+.iam-page .detail-panel .mud-tabs-panels { padding: 0; background: transparent; }
 
 /* ── Main Tabs (navigation tabs) ────────────────────────── */
 .iam-page .main-tabs.mud-tabs { background: transparent; }
+/* S59 · D6 — gana a las utilidades de espaciado y flex de MudBlazor (.pa-3, .d-flex, .ma-2...), que priorizan la misma propiedad. */
 .iam-page .main-tabs .mud-tabs-tabbar {
-    background: var(--bg-card) !important;
-    border: 1px solid var(--border-subtle) !important;
-    border-radius: var(--radius-md) var(--radius-md) 0 0 !important;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
     padding: 0 4px !important;
 }
+/* S59 · D6 — gana a las utilidades de espaciado y flex de MudBlazor (.pa-3, .d-flex, .ma-2...), que priorizan la misma propiedad. */
 .iam-page .main-tabs .mud-tab {
-    font-size: 13px !important; font-weight: 500 !important;
-    color: var(--text-secondary) !important;
+    font-size: 13px; font-weight: 500;
+    color: var(--text-secondary);
     min-height: 42px !important; padding: 6px 16px !important;
-    text-transform: none !important;
-    border-bottom: 2px solid transparent !important;
+    text-transform: none;
+    border-bottom: 2px solid transparent;
     transition: all .15s;
 }
-.iam-page .main-tabs .mud-tab:hover { color: var(--text-primary) !important; }
+.iam-page .main-tabs .mud-tab:hover { color: var(--text-primary); }
 .iam-page .main-tabs .mud-tab.mud-tab-active {
-    color: #818cf8 !important;
-    border-bottom-color: #818cf8 !important;
+    color: #818cf8;
+    border-bottom-color: #818cf8;
 }
+/* S59 · D6 — gana a las utilidades de espaciado y flex de MudBlazor (.pa-3, .d-flex, .ma-2...), que priorizan la misma propiedad. */
 .iam-page .main-tabs .mud-tabs-panels {
-    background: transparent !important;
+    background: transparent;
     padding: 0 !important;
 }
 
@@ -793,3 +944,43 @@
     display: flex; gap: 14px; align-items: flex-start;
 }
 .iam-page .content-body .table-panel { flex: 1; }
+
+/* ── S103 · Editor de permisos del usuario (pestaña Permisos) ── */
+.iam-page .permiso-grupo { overflow: hidden; }
+.iam-page .permiso-grupo-cabecera { border-bottom: 1px solid var(--border-subtle); }
+.iam-page .permiso-fila { border-bottom: 1px solid var(--border-subtle); }
+.iam-page .permiso-fila:last-child { border-bottom: 0; }
+.iam-page .permiso-fila:hover { background: var(--hover-soft); }
+.iam-page .barra-cambios {
+    position: sticky; bottom: 0; z-index: 5; margin-top: 12px;
+    background: var(--bg-card); border: 1px solid var(--border-default); border-radius: var(--radius-md);
+}
+
+/* ── S104 · páginas de permisos: árbol App → Módulo y pestaña del usuario plegable ── */
+.iam-page .tree-scroll.tree-scroll--pagina { max-height: none; }
+.iam-page .tree-app { font-weight: 600; color: var(--text-primary); background: var(--hover-soft); }
+.iam-page .tree-modulo { color: var(--text-primary); }
+.iam-page .tree-permiso { flex-wrap: wrap; row-gap: 2px; }
+.iam-page .tree-permiso .permiso-codigo {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted);
+}
+.iam-page .permisos-barra-filtros { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.iam-page .permisos-contador { margin-left: auto; }
+.iam-page .permiso-grupo-cabecera { cursor: pointer; }
+.iam-page .permiso-grupo.plegado .permiso-grupo-cabecera { border-bottom: 0; }
+.iam-page .permiso-grupo-flecha { transition: transform .15s; color: var(--text-muted); }
+.iam-page .permiso-grupo-flecha.abierto { transform: rotate(90deg); }
+.iam-page .permiso-grupo-progreso { width: 120px; flex-shrink: 0; }
+.iam-page .permiso-grilla {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 6px; padding: 8px;
+}
+.iam-page .permiso-grilla[hidden] { display: none; }
+.iam-page .permiso-grilla .permiso-fila,
+.iam-page .permiso-grilla .permiso-fila:last-child {
+    border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); min-width: 0;
+}
+.iam-page .vista-chip { cursor: pointer; }
+@media (max-width: 600px) {
+    .iam-page .permiso-grupo-progreso { display: none; }
+    .iam-page .permisos-contador { margin-left: 0; }
+}

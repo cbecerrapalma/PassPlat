@@ -13,7 +13,7 @@ public class LocalDateTimeConverter : JsonConverter<DateTime>
 
     public override void Write(Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options)
     {
-        writer.WriteStringValue(value.ToUniversalTime());
+        writer.WriteStringValue(DateTime.SpecifyKind(value.Kind == DateTimeKind.Utc ? value.ToLocalTime() : value, DateTimeKind.Unspecified));
     }
 }
 
@@ -29,6 +29,6 @@ public class LocalDateTimeNullableConverter : JsonConverter<DateTime?>
     public override void Write(Utf8JsonWriter writer, DateTime? value, JsonSerializerOptions options)
     {
         if (value == null) writer.WriteNullValue();
-        else writer.WriteStringValue(value.Value.ToUniversalTime());
+        else writer.WriteStringValue(DateTime.SpecifyKind(value.Value.Kind == DateTimeKind.Utc ? value.Value.ToLocalTime() : value.Value, DateTimeKind.Unspecified));
     }
 }

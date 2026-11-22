@@ -12,7 +12,6 @@ public interface IIPRepository : IRepositoryAsync<IP>
 {
     Task<Result<IP?>> ObtenerPorDireccionAsync(string direccion, CancellationToken ct = default);
     Result<IPRegistro> ObtenerOCrear(string direccion, byte tipoIP = 0, string? pais = null, string? ciudad = null);
-    Result MarcarComoSospechosa(int idIP);
 }
 
 public class IPRepository : RepositoryAsync<IP>, IIPRepository
@@ -26,7 +25,7 @@ public class IPRepository : RepositoryAsync<IP>, IIPRepository
             var entity = await DbSet.FirstOrDefaultAsync(d => d.Direccion == direccion, ct);
             return Result<IP?>.Success(entity, allowNull: true);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IP?>.Failure("DB_ERROR", ex.Message);
         }
@@ -47,26 +46,9 @@ public class IPRepository : RepositoryAsync<IP>, IIPRepository
             DbSet.Add(ip);
             return Result<IPRegistro>.Success(new IPRegistro(ip, true));
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IPRegistro>.Failure("DB_ERROR", ex.Message);
-        }
-    }
-
-    public Result MarcarComoSospechosa(int idIP)
-    {
-        try
-        {
-            var ip = DbSet.FirstOrDefault(d => d.Id == idIP && !d.EsSospechosa);
-            if (ip == null)
-                return Result.Failure("IP_NOT_FOUND", "IP no encontrada o ya marcada como sospechosa");
-
-            ip.EsSospechosa = true;
-            return Result.Success();
-        }
-        catch (Exception ex)
-        {
-            return Result.Failure("DB_ERROR", ex.Message);
         }
     }
 }

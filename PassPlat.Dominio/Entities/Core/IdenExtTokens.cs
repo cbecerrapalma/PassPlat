@@ -15,8 +15,6 @@ public class IdenExtTokens
     public string? RefreshTokenHash { get; set; }
     public DateTime? RefreshTokenExpires { get; set; }
 
-    public byte[]? IdTokenEnc { get; set; }
-    public string? IdTokenHash { get; set; }
 
     public string? Scope { get; set; }
     public string? TokenType { get; set; }
@@ -39,7 +37,6 @@ public class IdenExtTokens
         long idIdenExt,
         byte[]? accessTokenEnc = null, string? accessTokenHash = null, DateTime? accessTokenExpires = null,
         byte[]? refreshTokenEnc = null, string? refreshTokenHash = null, DateTime? refreshTokenExpires = null,
-        byte[]? idTokenEnc = null, string? idTokenHash = null,
         string? scope = null, string? tokenType = null, string? correlationId = null,
         string hashAlgoritmo = "SHA256", int version = 1)
     {
@@ -52,8 +49,6 @@ public class IdenExtTokens
             RefreshTokenEnc = refreshTokenEnc,
             RefreshTokenHash = refreshTokenHash,
             RefreshTokenExpires = refreshTokenExpires,
-            IdTokenEnc = idTokenEnc,
-            IdTokenHash = idTokenHash,
             Scope = scope,
             TokenType = tokenType,
             CorrelationId = correlationId,

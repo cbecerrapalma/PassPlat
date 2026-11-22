@@ -16,7 +16,7 @@ public class AppConfiguration : IEntityTypeConfiguration<App>
         builder.Property(a => a.Nombre).HasMaxLength(100).IsRequired();
         builder.Property(a => a.UrlBase).HasMaxLength(255);
         builder.Property(a => a.Activa).HasDefaultValue(true).IsRequired();
-        builder.Property(a => a.FecCrea).HasDefaultValueSql("sysutcdatetime()").IsRequired();
+        builder.Property(a => a.FecCrea).HasDefaultValueSql("sysdatetime()").IsRequired();
 
         builder.HasIndex(a => a.Codigo).IsUnique();
     }

@@ -15,6 +15,7 @@
     <Project Path="../CBP/CBP.Infraestructure/CBP.Emails/CBP.Emails.csproj" />
     <Project Path="../CBP/CBP.Infraestructure/CBP.Logging/CBP.Logging.csproj" />
     <Project Path="../CBP/CBP.Infraestructure/CBP.MultiTenant/CBP.MultiTenant.csproj" />
+    <Project Path="../CBP/CBP.Infraestructure/CBP.Outbox/CBP.Outbox.csproj" />
     <Project Path="../CBP/CBP.Infraestructure/CBP.Security/CBP.Security.Cryptography/CBP.Security.Cryptography.csproj" />
   </Folder>
   <Folder Name="/fwk/Caching/">
@@ -30,6 +31,10 @@
   <Folder Name="/fwk/WebApi/">
     <Project Path="../CBP/CBP.WebApi/CBP.WebApi/CBP.WebApi.csproj" />
   </Folder>
+  <Folder Name="/fwk/UI/">
+    <Project Path="../CBP/UI/Web/CBP.Blazor/CBP.Blazor.csproj" />
+    <Project Path="../CBP/UI/Web/CBP.Blazor.Mud/CBP.Blazor.Mud.csproj" />
+  </Folder>
   <Folder Name="/fwk/Authentication/">
     <Project Path="../CBP/CBP.Authentication/CBP.Authentication.Abstractions/CBP.Authentication.Abstractions.csproj" />
     <Project Path="../CBP/CBP.Authentication/CBP.Authentication.JwtBearer/CBP.Authentication.JwtBearer.csproj" />
@@ -42,7 +47,11 @@
     <Project Path="PassPlat.WebAPI/PassPlat.WebAPI.csproj" />
     <Project Path="PassPlat.Web/PassPlat.Web.csproj" />
     <Project Path="PassPlat.Consola/PassPlat.Consola.csproj" />
+    <Project Path="PassPlat.Client/PassPlat.Client.csproj" />
   </Folder>
-  <Project Path="PassPlat.Aplicacion.Test/PassPlat.Aplicacion.Test.csproj" />
-  <Project Path="PassPlat.CBP.Architecture.Test/PassPlat.CBP.Architecture.Test.csproj" />
+  <Project Path="PassPlat.Aplicacion.Tests/PassPlat.Aplicacion.Tests.csproj" />
+  <Project Path="PassPlat.CBP.Architecture.Tests/PassPlat.CBP.Architecture.Tests.csproj" />
+  <Project Path="PassPlat.Web.Tests/PassPlat.Web.Tests.csproj" />
 </Solution>
+
+

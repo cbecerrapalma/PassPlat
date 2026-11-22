@@ -16,6 +16,6 @@ public class EstadoUsrConfiguration : IEntityTypeConfiguration<EstadoUsr>
         builder.Property(e => e.Nombre).HasMaxLength(50).IsRequired();
         builder.Property(e => e.Descripcion).HasMaxLength(200);
         builder.Property(e => e.Activo).HasDefaultValue(true).IsRequired();
-        builder.Property(e => e.FecCrea).HasDefaultValueSql("sysutcdatetime()").IsRequired();
+        builder.Property(e => e.FecCrea).HasDefaultValueSql("sysdatetime()").IsRequired();
     }
 }

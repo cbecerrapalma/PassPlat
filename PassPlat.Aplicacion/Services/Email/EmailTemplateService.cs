@@ -17,7 +17,6 @@ public interface IEmailTemplateService : IServiceAsync<EmailTemplate, EmailTempl
     Task<Result> PublicarAsync(PublicarTemplateDto dto, CancellationToken ct = default);
     Task<Result> DesactivarAsync(int id, CancellationToken ct = default);
     Task<Result<EmailTemplateDto?>> ObtenerPorNombreCulturaAsync(string nombre, string cultura, int? idTenant, CancellationToken ct = default);
-    Task<Result<IReadOnlyList<EmailTemplateDto>>> ObtenerPorCategoriaAsync(string categoria, CancellationToken ct = default);
     Task<Result<IReadOnlyList<EmailTemplateDto>>> ObtenerPorTenantAsync(int idTenant, CancellationToken ct = default);
 }
 
@@ -91,13 +90,6 @@ public class EmailTemplateService : ServiceAsync<EmailTemplate, EmailTemplateDto
         if (entityResult.IsFailure) return Result<EmailTemplateDto?>.Failure(entityResult.Error!);
         var dto = entityResult.Value != null ? Mapper.Map<EmailTemplateDto>(entityResult.Value) : null;
         return Result<EmailTemplateDto?>.Success(dto, allowNull: true);
-    }
-
-    public async Task<Result<IReadOnlyList<EmailTemplateDto>>> ObtenerPorCategoriaAsync(string categoria, CancellationToken ct = default)
-    {
-        var result = await _repo.ObtenerPorCategoriaAsync(categoria, ct);
-        if (result.IsFailure) return Result<IReadOnlyList<EmailTemplateDto>>.Failure(result.Error!);
-        return Result<IReadOnlyList<EmailTemplateDto>>.Success(Mapper.Map<IReadOnlyList<EmailTemplateDto>>(result.Value));
     }
 
     public async Task<Result<IReadOnlyList<EmailTemplateDto>>> ObtenerPorTenantAsync(int idTenant, CancellationToken ct = default)

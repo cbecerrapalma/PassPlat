@@ -23,6 +23,11 @@ public class PoliticaPwd
     public bool VerificarBrechas { get; set; } = true;
     public bool PermitirEspacios { get; set; } = true;
     public short DiasVigencia { get; set; }
+    /// <summary>
+    /// S60 · D1 — true: la politica NUNCA se elige por alcance; solo se aplica mediante
+    /// RolesPoliticasPwd (exencion por rol, por ejemplo SIN_VENCIMIENTO).
+    /// </summary>
+    public bool SoloPorRol { get; set; }
     public byte PwdRecordadas { get; set; } = 24;
     public byte MaxIntentos { get; set; } = 5;
     public int DurBloqueoMin { get; set; } = 30;

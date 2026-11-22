@@ -25,7 +25,7 @@ public class TenantEmailAccountRepository : RepositoryAsync<TenantEmailAccount>,
                 .ToListAsync(ct);
             return Result<IReadOnlyList<TenantEmailAccount>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<TenantEmailAccount>>.Failure("DB_ERROR", ex.Message);
         }

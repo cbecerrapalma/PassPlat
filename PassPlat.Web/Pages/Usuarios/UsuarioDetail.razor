@@ -8,79 +8,42 @@
 @inject NavigationManager Navigation
 @inject AuthService Auth
 
-<MudContainer Class="pt-14">
+@if (!Auth.TienePermiso("USUARIOS_VER"))
+{
+    <SinPermiso PermisoRequerido="USUARIOS_VER" />
+}
+else
+{
+<div class="iam-page">
     @* ═══════════════ Breadcrumb ═══════════════ *@
-    <MudBreadcrumbs Class="mb-3">
-        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/usuarios"))">Usuarios</MudBreadcrumbItem>
-        @if (_usuario is not null)
-        {
-            <MudBreadcrumbItem>@_usuario.NomUsuario</MudBreadcrumbItem>
-        }
-        else
-        {
-            <MudBreadcrumbItem>Detalle</MudBreadcrumbItem>
-        }
-    </MudBreadcrumbs>
+    <MigasDePan Padre="/usuarios" Actual="@(_usuario?.NomUsuario ?? "Usuario")" />
 
     @* ═══════════════ Loading state ═══════════════ *@
     @if (_loading)
     {
-        <MudPaper Elevation="0" Class="pa-6" Style="border-radius:12px;">
-            <div class="d-flex align-center mb-6" style="gap:16px;">
-                <MudSkeleton Variant="SkeletonVariant.Circle" Width="64px" Height="64px" />
-                <div style="flex:1;">
-                    <MudSkeleton Variant="SkeletonVariant.Text" Width="200px" Height="20px" />
-                    <MudSkeleton Variant="SkeletonVariant.Text" Width="300px" Height="14px" Class="mt-2" />
-                </div>
-            </div>
-            <MudGrid>
-                @for (int i = 0; i < 4; i++)
-                {
-                    <MudItem xs6 sm3>
-                        <MudSkeleton Variant="SkeletonVariant.Rectangle" Width="100%" Height="80px" Style="border-radius:10px;" />
-                    </MudItem>
-                }
-            </MudGrid>
-            <MudSkeleton Variant="SkeletonVariant.Rectangle" Width="100%" Height="300px" Class="mt-4" Style="border-radius:10px;" />
-        </MudPaper>
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="100%" Height="300px" Style="border-radius:10px;" />
     }
     else if (_usuario is null)
     {
-        <MudPaper Elevation="0" Class="pa-8 text-center" Style="border-radius:12px;">
-            <MudIcon Icon="@Icons.Material.Filled.PersonOff" Size="Size.Large" Style="opacity:0.3;font-size:4rem;" />
-            <MudText Typo="Typo.h5" Class="mt-4 mb-2">Usuario no encontrado</MudText>
-            <MudText Typo="Typo.body2" Style="opacity:0.5;" Class="mb-4">El usuario solicitado no existe o ha sido eliminado.</MudText>
-            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ArrowBack"
-                OnClick="@(() => Navigation.NavigateTo("/usuarios"))">
-                Volver a Usuarios
-            </MudButton>
-        </MudPaper>
+        <MudAlert Severity="Severity.Error" Class="mb-3">Usuario no encontrado</MudAlert>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ArrowBack" Href="/usuarios">Atrás</MudButton>
     }
     else
     {
-        @* ═══════════════ Header: avatar + nombre + badges + quick actions ═══════════════ *@
-        <MudPaper Elevation="0" Class="pa-4 mb-4" Style="border-radius:12px;position:relative;overflow:hidden;">
-            <div class="dash-stat-bar dash-stat-bar-primary"></div>
-            <div class="d-flex align-center flex-wrap" style="gap:16px;">
-                <MudAvatar Size="Size.Large" Color="Color.Primary" Class="detail-avatar"
-                    Style="box-shadow:0 4px 16px rgba(30,136,229,0.25);">
-                    <MudText Typo="Typo.h4">@_iniciales</MudText>
-                </MudAvatar>
-                <div class="flex-grow-1">
-                    <div class="d-flex align-center flex-wrap" style="gap:8px;">
-                        <MudText Typo="Typo.h4" Class="m-0">@_usuario.NomUsuario</MudText>
-                        <MudChip T="string" Size="Size.Small" Color="@_colorEstado">@_usuario.EstadoNombre</MudChip>
-                        @if (_usuario.Eliminado == true)
-                        {
-                            <MudChip T="string" Size="Size.Small" Color="Color.Error">ELIMINADO</MudChip>
-                        }
-                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Class="detail-tenant-chip">@_usuario.TenantNombre</MudChip>
-                    </div>
-                    <MudText Typo="Typo.body2" Style="opacity:0.6;" Class="mt-1">
-                        @_usuario.Nombre @_usuario.Apellido · @_usuario.Email
-                    </MudText>
+        @* ═══════════════ Header: nombre + chips + acciones (S73 · patrón de detalle) ═══════════════ *@
+        <div class="page-header">
+            <div class="page-title-row">
+                <div class="d-flex align-center flex-wrap gap-2">
+                    <MudAvatar Size="Size.Medium" Color="Color.Primary">@_iniciales</MudAvatar>
+                    <h1 class="page-title">@_usuario.NomUsuario</h1>
+                    <MudChip T="string" Size="Size.Small" Color="@_colorEstado">@_usuario.EstadoNombre</MudChip>
+                    @if (_usuario.Eliminado == true)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Error">ELIMINADO</MudChip>
+                    }
+                    <MudChip T="string" Size="Size.Small" Color="Color.Default">@_usuario.TenantNombre</MudChip>
                 </div>
-                <div class="d-flex" style="gap:8px;">
+                <div class="page-actions">
                     @if (_sesionesCount > 0)
                     {
                         <MudTooltip Text="Cerrar todas las sesiones activas">
@@ -101,82 +64,30 @@
                     }
                 </div>
             </div>
-        </MudPaper>
+            <p class="page-subtitle">@_usuario.Nombre @_usuario.Apellido · @_usuario.Email</p>
+        </div>
 
-        @* ═══════════════ Stat cards ═══════════════ *@
-        <MudGrid Class="mb-4">
-            <MudItem xs6 sm3>
-                <MudPaper Elevation="0" Outlined="true" Class="dash-stat-card pa-3">
-                    <div class="dash-stat-bar dash-stat-bar-@(_usuario.EmailVerificado ? "success" : "error")"></div>
-                    <div class="d-flex align-center" style="gap:12px;">
-                        <MudAvatar Color="@(_usuario.EmailVerificado ? Color.Success : Color.Error)" Size="Size.Small">
-                            <MudIcon Icon="@Icons.Material.Filled.Email" Size="Size.Small" />
-                        </MudAvatar>
-                        <div>
-                            <MudText Typo="Typo.caption">Email verificado</MudText>
-                            <MudText Typo="Typo.body2" Style="font-weight:600;">@(_usuario.EmailVerificado ? "Sí" : "No")</MudText>
-                        </div>
-                    </div>
-                </MudPaper>
-            </MudItem>
-            <MudItem xs6 sm3>
-                <MudPaper Elevation="0" Outlined="true" Class="dash-stat-card pa-3">
-                    <div class="dash-stat-bar dash-stat-bar-secondary"></div>
-                    <div class="d-flex align-center" style="gap:12px;">
-                        <MudAvatar Color="Color.Tertiary" Size="Size.Small">
-                            <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" />
-                        </MudAvatar>
-                        <div>
-                            <MudText Typo="Typo.caption">Últ. cambio contraseña</MudText>
-                            <MudText Typo="Typo.body2" Style="font-weight:600;">
-                                @(_usuario.FecUltCambioPwd?.ToLocalTime().ToString("dd/MM/yyyy") ?? "Nunca")
-                            </MudText>
-                        </div>
-                    </div>
-                </MudPaper>
-            </MudItem>
-            <MudItem xs6 sm3>
-                <MudPaper Elevation="0" Outlined="true" Class="dash-stat-card pa-3">
-                    <div class="dash-stat-bar dash-stat-bar-@(_failedAttemptsCount > 0 ? "warning" : "info")"></div>
-                    <div class="d-flex align-center" style="gap:12px;">
-                        <MudAvatar Color="@(_failedAttemptsCount > 0 ? Color.Warning : Color.Default)" Size="Size.Small">
-                            <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Small" />
-                        </MudAvatar>
-                        <div>
-                            <MudText Typo="Typo.caption">Intentos fallidos (60 min)</MudText>
-                            <MudText Typo="Typo.body2" Style="font-weight:600;">@_failedAttemptsCount</MudText>
-                        </div>
-                    </div>
-                </MudPaper>
-            </MudItem>
-            <MudItem xs6 sm3>
-                <MudTooltip Text="Las sesiones expiran automáticamente según FecExpira y se cierran al revocarlas manualmente.">
-                    <MudPaper Elevation="0" Outlined="true" Class="dash-stat-card pa-3">
-                        <div class="dash-stat-bar dash-stat-bar-@(_sesionesCount > 0 ? "info" : "secondary")"></div>
-                        <div class="d-flex align-center" style="gap:12px;">
-                            <MudAvatar Color="@(_sesionesCount > 0 ? Color.Info : Color.Default)" Size="Size.Small">
-                                <MudIcon Icon="@Icons.Material.Filled.Devices" Size="Size.Small" />
-                            </MudAvatar>
-                            <div>
-                                <MudText Typo="Typo.caption">Sesiones activas</MudText>
-                                <MudText Typo="Typo.body2" Style="font-weight:600;">@_sesionesCount</MudText>
-                            </div>
-                        </div>
-                    </MudPaper>
-                </MudTooltip>
-            </MudItem>
-        </MudGrid>
+        @* ═══════════════ Estado en una fila (2 × 2 en celular) ═══════════════ *@
+        <div class="kpi-row mb-4">
+            <IamKpiCard Valor="@(_usuario.EmailVerificado ? "Sí" : "No")" Label="Email verificado"
+                Icon="@Icons.Material.Filled.Email" ColorClass="@(_usuario.EmailVerificado ? "success" : "error")" />
+            <IamKpiCard Valor="@(_usuario.FecUltCambioPwd?.ToString("dd/MM/yyyy") ?? "Nunca")"
+                Label="Ult. cambio de contraseña" Icon="@Icons.Material.Filled.Lock" ColorClass="secondary" />
+            <IamKpiCard Valor="@_failedAttemptsCount.ToString()" Label="Intentos fallidos (60 min)"
+                Icon="@Icons.Material.Filled.Warning" ColorClass="@(_failedAttemptsCount > 0 ? "warning" : "info")" />
+            <IamKpiCard Valor="@_sesionesCount.ToString()" Label="Sesiones activas"
+                Icon="@Icons.Material.Filled.Devices" ColorClass="@(_sesionesCount > 0 ? "info" : "secondary")" />
+        </div>
 
         @* ═══════════════ Tabs ═══════════════ *@
-        <MudPaper Elevation="0" Class="detail-tabs-card">
             <MudTabs @bind-ActivePanelIndex="_tabIndex" KeepPanelsAlive="true"
-                Class="detail-tabs" TabPanelStyle="padding-top:16px;">
+                Class="detail-tabs" TabPanelsClass="pt-3">
                 <MudTabPanel Text="General" Icon="@Icons.Material.Filled.Person" Class="detail-tab">
-                    <UsuarioGeneral UserId="Id" IsActive="@(_tabIndex == 0)" />
+                    <UsuarioGeneral UserId="Id" Usuario="_usuario" IsActive="@(_tabIndex == 0)" />
                 </MudTabPanel>
 
                 <MudTabPanel Text="@FormatearTab("Contraseñas", _historialCount)" Icon="@Icons.Material.Filled.Password">
-                    <UsuarioPassword UserInfo="_usuario" UserId="Id" IsActive="@(_tabIndex == 1)" CountChanged="@OnHistorialCount" HistoryChanged="@OnHistoryChanged" HistoryVersion="@_historialVersion" />
+                    <UsuarioPassword UserInfo="_usuario" UserId="Id" Politica="@_politica" IsActive="@(_tabIndex == 1)" CountChanged="@OnHistorialCount" HistoryChanged="@OnHistoryChanged" HistoryVersion="@_historialVersion" />
                 </MudTabPanel>
 
                 <MudTabPanel Text="@FormatearTab("Accesos", _accesosCount)" Icon="@Icons.Material.Filled.Key">
@@ -200,7 +111,7 @@
                 </MudTabPanel>
 
                 <MudTabPanel Text="@FormatearTab("Intentos", _intentosCount)" Icon="@Icons.Material.Filled.Login">
-                    <UsuarioIntentosAcceso UserId="Id" IsActive="@(_tabIndex == 7)" CountChanged="@OnIntentosCount" />
+                    <UsuarioIntentosAcceso UserId="Id" Intentos="@_intentos" IsActive="@(_tabIndex == 7)" CountChanged="@OnIntentosCount" />
                 </MudTabPanel>
 
                 <MudTabPanel Text="@FormatearTab("Auditoría", _auditoriaCount)" Icon="@Icons.Material.Filled.Assignment">
@@ -211,23 +122,27 @@
                     <UsuarioNotificaciones UserId="Id" IsActive="@(_tabIndex == 9)" CountChanged="@OnNotificacionesCount" />
                 </MudTabPanel>
 
-                <MudTabPanel Text="@FormatearTab("Permisos Efectivos", _permisosEfectivosCount)" Icon="@Icons.Material.Filled.Shield">
-                    <UsuarioPermisosEfectivos UserId="Id" IsActive="@(_tabIndex == 10)" CountChanged="@OnPermisosEfectivosCount" />
-                </MudTabPanel>
-
                 <MudTabPanel Text="@FormatearTab("Identidades", _identidadesCount)" Icon="@Icons.Material.Filled.Hub">
-                    <UsuarioIdentidades UserId="Id" IsActive="@(_tabIndex == 11)" CountChanged="@OnIdentidadesCount" />
+                    <UsuarioIdentidades UserId="Id" IsActive="@(_tabIndex == 10)" CountChanged="@OnIdentidadesCount" />
                 </MudTabPanel>
-            </MudTabs>
-        </MudPaper>
-    }
 
-</MudContainer>
+                @if (Auth.TienePermiso("PERMISOS_VER"))
+                {
+                    <MudTabPanel Text="@FormatearTab("Permisos", _permisosCount)" Icon="@Icons.Material.Filled.ManageAccounts">
+                        <UsuarioPermisos UserId="Id" UsuarioNombre="@($"{_usuario?.Nombre} {_usuario?.Apellido}")" IsActive="@(_tabIndex == 11)" CountChanged="@OnPermisosCount" />
+                    </MudTabPanel>
+                }
+            </MudTabs>
+    }
+</div>
+}
 
 @code {
     [Parameter] public int Id { get; set; }
 
     private UsuarioDto? _usuario;
+    // S58 · D4 — la politica de contraseña se pide una sola vez en la ficha.
+    private PoliticaPwdDto? _politica;
     private string _iniciales = "";
     private Color _colorEstado = Color.Default;
     private int _tabIndex;
@@ -241,14 +156,17 @@
     private int _dispConfCount = -1;
     private int _bloqueosCount = -1;
     private int _intentosCount = -1;
-    private int _permisosEfectivosCount = -1;
     private int _auditoriaCount = -1;
     private int _identidadesCount = -1;
+    private int _permisosCount = -1;
     private int _failedAttemptsCount;
+    // S58.1 · D2 — los intentos se cargan una vez en la ficha y se pasan a la pestaña.
+    private List<IntentoAccesoDto>? _intentos;
     private int _historialVersion;
 
     protected override async Task OnInitializedAsync()
     {
+        if (!Auth.TienePermiso("USUARIOS_VER")) return;
         await CargarUsuario();
     }
 
@@ -258,11 +176,13 @@
         try
         {
             _usuario = await Api.GetAsync<UsuarioDto>($"api/usuarios/{Id}");
+            _politica = await Api.GetAsync<PoliticaPwdDto>("api/usuarios/password-policy");
             if (_usuario is not null)
             {
                 _iniciales = CalcularIniciales();
                 _colorEstado = ObtenerColorEstado();
-                _failedAttemptsCount = await CargarIntentosFallidosAsync();
+                _intentos = Auth.TienePermiso("INTENTOSACCESO_VER") ? await Api.GetAsync<List<IntentoAccesoDto>>($"api/intentosacceso/recientes/{Id}/60") ?? [] : []; // S113 · D4
+                _failedAttemptsCount = _intentos.Count(i => !i.Exitoso);
             }
         }
         catch (Exception ex)
@@ -272,19 +192,6 @@
         finally
         {
             _loading = false;
-        }
-    }
-
-    private async Task<int> CargarIntentosFallidosAsync()
-    {
-        try
-        {
-            var items = await Api.GetAsync<List<IntentoAccesoDto>>($"api/intentosacceso/recientes/{Id}/60");
-            return items?.Count(i => !i.Exitoso) ?? 0;
-        }
-        catch
-        {
-            return _usuario?.IntentosFallidos ?? 0;
         }
     }
 
@@ -314,7 +221,7 @@
         };
     }
 
-    private string FormatearTab(string nombre, int count) => count >= 0 ? $"{nombre} ({count})" : nombre;
+    private string FormatearTab(string nombre, int count) => count > 0 ? $"{nombre} ({count})" : nombre;
 
     private void OnAccesosCount(int c) => _accesosCount = c;
     private void OnSesionesCount(int c) => _sesionesCount = c;
@@ -325,8 +232,8 @@
     private void OnIntentosCount(int c) => _intentosCount = c;
     private void OnAuditoriaCount(int c) => _auditoriaCount = c;
     private void OnNotificacionesCount(int c) => _notificacionesCount = c;
-    private void OnPermisosEfectivosCount(int c) => _permisosEfectivosCount = c;
     private void OnIdentidadesCount(int c) => _identidadesCount = c;
+    private void OnPermisosCount(int c) => _permisosCount = c;
     private void OnHistoryChanged() => _historialVersion++;
 
     private async Task RevocarTodasSesiones()
@@ -340,7 +247,7 @@
         };
         var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parameters);
         var result = await dialog.Result;
-        if (result.Canceled) return;
+        if (result?.Canceled == true) return;
 
         try
         {
@@ -371,7 +278,7 @@
         };
         var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parameters);
         var result = await dialog.Result;
-        if (result.Canceled) return;
+        if (result?.Canceled == true) return;
 
         try
         {

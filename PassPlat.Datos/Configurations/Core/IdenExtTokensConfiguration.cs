@@ -22,8 +22,6 @@ public class IdenExtTokensConfiguration : IEntityTypeConfiguration<IdenExtTokens
         builder.Property(t => t.RefreshTokenHash).HasMaxLength(128);
         builder.Property(t => t.RefreshTokenExpires);
 
-        builder.Property(t => t.IdTokenEnc).HasColumnType("varbinary(8000)");
-        builder.Property(t => t.IdTokenHash).HasMaxLength(128);
 
         builder.Property(t => t.Scope).HasMaxLength(1000);
         builder.Property(t => t.TokenType).HasMaxLength(50);

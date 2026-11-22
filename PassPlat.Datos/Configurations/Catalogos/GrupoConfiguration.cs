@@ -17,7 +17,7 @@ public class GrupoConfiguration : IEntityTypeConfiguration<Grupo>
         builder.Property(g => g.Nombre).HasMaxLength(100).IsRequired();
         builder.Property(g => g.Descripcion).HasMaxLength(200);
         builder.Property(g => g.Activo).HasDefaultValue(true).IsRequired();
-        builder.Property(g => g.FecCrea).HasDefaultValueSql("sysutcdatetime()").IsRequired();
+        builder.Property(g => g.FecCrea).HasDefaultValueSql("sysdatetime()").IsRequired();
 
         builder.HasOne(g => g.Tenant)
             .WithMany()

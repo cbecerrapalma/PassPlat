@@ -26,7 +26,7 @@ public class GrupoUsuarioRepository : RepositoryAsync<GrupoUsuario>, IGrupoUsuar
                 .ToListAsync(ct);
             return Result<IReadOnlyList<GrupoUsuario>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<GrupoUsuario>>.Failure("DB_ERROR", ex.Message);
         }
@@ -42,7 +42,7 @@ public class GrupoUsuarioRepository : RepositoryAsync<GrupoUsuario>, IGrupoUsuar
                 .ToListAsync(ct);
             return Result<IReadOnlyList<GrupoUsuario>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<GrupoUsuario>>.Failure("DB_ERROR", ex.Message);
         }

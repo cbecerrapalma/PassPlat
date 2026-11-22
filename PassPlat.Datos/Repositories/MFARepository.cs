@@ -43,7 +43,7 @@ public class MFARepository : RepositoryAsync<MFA>, IMFARepository
                 .ToListAsync(ct);
             return Result<IReadOnlyList<MFA>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<MFA>>.Failure("DB_ERROR", ex.Message);
         }
@@ -57,7 +57,7 @@ public class MFARepository : RepositoryAsync<MFA>, IMFARepository
                 .FirstOrDefaultAsync(m => m.IdUsuario == idUsuario && m.EsPrincipal && m.IdEstado == (int)EEstadoMFA.Activo, ct);
             return Result<MFA?>.Success(entity, allowNull: true);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<MFA?>.Failure("DB_ERROR", ex.Message);
         }
@@ -74,7 +74,7 @@ public class MFARepository : RepositoryAsync<MFA>, IMFARepository
             metodo.IdEstado = (int)EEstadoMFA.Revocado;
             return Result.Success();
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result.Failure("DB_ERROR", ex.Message);
         }

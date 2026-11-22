@@ -1,9 +1,11 @@
 using AutoMapper;
+using CBP.Data.Abstractions;
 using CBP.Results;
 using CBP.Services.Abstractions;
 using CBP.Services.Async;
 using PassPlat.Aplicacion.Dtos.Core;
 using PassPlat.Datos;
+using PassPlat.Datos.Models;
 using PassPlat.Datos.Repositories;
 using PassPlat.Dominio.Entities.Core;
 
@@ -11,10 +13,9 @@ namespace PassPlat.Aplicacion.Services;
 
 public interface IAuditoriaPwdService : IServiceAsync<AuditoriaPwd, AuditoriaPwdDto>
 {
-    Task<Result<IReadOnlyList<AuditoriaPwdDto>>> ObtenerPorUsuarioAsync(int idUsuario, int cantidad, CancellationToken ct = default);
     Task<Result<IReadOnlyList<AuditoriaPwdDto>>> ObtenerPorTenantAsync(int idTenant, int cantidad, CancellationToken ct = default);
-    Task<Result<IReadOnlyList<AuditoriaPwdDto>>> ObtenerEventosAltoRiesgoAsync(int nivelMinimo, int cantidad, CancellationToken ct = default);
     Task<Result<AuditoriaPwdDto>> RegistrarAuditoriaAsync(RegistrarAuditoriaPwdDto dto, CancellationToken ct = default);
+    Task<Result<IPagedResult<AuditoriaPwdDto>>> BuscarAsync(FiltroAuditoriaPwd filtro, int pageNumber, int pageSize, CancellationToken ct = default);
 }
 
 public class AuditoriaPwdService : ServiceAsync<AuditoriaPwd, AuditoriaPwdDto>, IAuditoriaPwdService
@@ -24,14 +25,6 @@ public class AuditoriaPwdService : ServiceAsync<AuditoriaPwd, AuditoriaPwdDto>, 
     public AuditoriaPwdService(AuditoriaPwdRepository repo, IMapper mapper)
         : base(repo, mapper) => _repo = repo;
 
-    public async Task<Result<IReadOnlyList<AuditoriaPwdDto>>> ObtenerPorUsuarioAsync(int idUsuario, int cantidad, CancellationToken ct = default)
-    {
-        var auditoriaResult = await _repo.ObtenerPorUsuarioAsync(idUsuario, cantidad, ct);
-        if (auditoriaResult.IsFailure) return Result<IReadOnlyList<AuditoriaPwdDto>>.Failure(auditoriaResult.Error!);
-        var auditoria = auditoriaResult.Value;
-        return Result<IReadOnlyList<AuditoriaPwdDto>>.Success(Mapper.Map<IReadOnlyList<AuditoriaPwdDto>>(auditoria));
-    }
-
     public async Task<Result<IReadOnlyList<AuditoriaPwdDto>>> ObtenerPorTenantAsync(int idTenant, int cantidad, CancellationToken ct = default)
     {
         var auditoriaResult = await _repo.ObtenerPorTenantAsync(idTenant, cantidad, ct);
@@ -40,12 +33,17 @@ public class AuditoriaPwdService : ServiceAsync<AuditoriaPwd, AuditoriaPwdDto>, 
         return Result<IReadOnlyList<AuditoriaPwdDto>>.Success(Mapper.Map<IReadOnlyList<AuditoriaPwdDto>>(auditoria));
     }
 
-    public async Task<Result<IReadOnlyList<AuditoriaPwdDto>>> ObtenerEventosAltoRiesgoAsync(int nivelMinimo, int cantidad, CancellationToken ct = default)
+    // S95 · D1 — búsqueda paginada; página o tamaño inválidos → 1 y 20
+    public async Task<Result<IPagedResult<AuditoriaPwdDto>>> BuscarAsync(FiltroAuditoriaPwd filtro, int pageNumber, int pageSize, CancellationToken ct = default)
     {
-        var auditoriaResult = await _repo.ObtenerEventosAltoRiesgoAsync(nivelMinimo, cantidad, ct);
-        if (auditoriaResult.IsFailure) return Result<IReadOnlyList<AuditoriaPwdDto>>.Failure(auditoriaResult.Error!);
-        var auditoria = auditoriaResult.Value;
-        return Result<IReadOnlyList<AuditoriaPwdDto>>.Success(Mapper.Map<IReadOnlyList<AuditoriaPwdDto>>(auditoria));
+        var pagina = pageNumber < 1 ? 1 : pageNumber;
+        var tamano = pageSize < 1 ? 20 : pageSize;
+        var pagResult = await _repo.BuscarAsync(filtro, pagina, tamano, ct);
+        if (pagResult.IsFailure) return Result<IPagedResult<AuditoriaPwdDto>>.Failure(pagResult.Error!);
+        var (items, totalCount) = pagResult.Value;
+        var mapped = Mapper.Map<IReadOnlyList<AuditoriaPwdDto>>(items);
+        return Result<IPagedResult<AuditoriaPwdDto>>.Success(
+            new PagedResultDto<AuditoriaPwdDto>(mapped, totalCount, pagina, tamano));
     }
 
     public async Task<Result<AuditoriaPwdDto>> RegistrarAuditoriaAsync(RegistrarAuditoriaPwdDto dto, CancellationToken ct = default)

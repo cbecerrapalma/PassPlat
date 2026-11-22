@@ -2,10 +2,15 @@
 @inject ApiClient Api
 @inject ISnackbar Snackbar
 @inject IDialogService Dialog
+@inject AuthService Auth
 
 @if (IsActive)
 {
-    @if (_loading)
+    @if (!Auth.TienePermiso("FED_IDENEXT_VER"))
+    {
+        <MudAlert Severity="Severity.Info" Dense="true" Class="ma-4">Se requiere el permiso FED_IDENEXT_VER para ver las identidades externas.</MudAlert>
+    }
+    else if (_loading)
     {
         <MudSkeleton Animation="Animation.Pulse" Height="200px" />
     }
@@ -16,6 +21,8 @@
                 <MudText Typo="Typo.h6" Class="font-weight-bold flex-grow-1">Identidades Externas Vinculadas</MudText>
                 <MudChip T="int" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">@_identidades.Count</MudChip>
             </div>
+            @if (Auth.TienePermiso("FED_IDENEXT_DESVINCULAR"))
+            {
             <div class="d-flex gap-2 mb-4">
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
                     Disabled="@_saving" OnClick="@(() => MostrarDialogoAgregarProveedor())">
@@ -28,6 +35,7 @@
                     Forzar MFA
                 </MudButton>
             </div>
+            }
 
             @if (_identidades.Count > 0)
             {
@@ -70,7 +78,7 @@
                         </MudTd>
                         <MudTd>
                             <MudText Typo="Typo.body2">
-                                @(context.UltimoLogin?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Nunca")
+                                @(context.UltimoLogin?.ToString("dd/MM/yyyy HH:mm") ?? "Nunca")
                             </MudText>
                         </MudTd>
                         <MudTd>
@@ -81,18 +89,18 @@
                         </MudTd>
                         <MudTd>
                             <div class="d-flex" style="gap:4px;">
-                                @if (context.IdEstado != 3)
+                                @if (context.IdEstado != 3 && Auth.TienePermiso("FED_IDENEXT_DESVINCULAR"))
                                 {
                                     <MudTooltip Text="Revocar identidad">
                                         <MudIconButton Icon="@Icons.Material.Filled.Block" Size="Size.Small" Color="Color.Error"
-                                            OnClick="@(() => RevocarAsync(context))" />
+                                            OnClick="@(() => RevocarAsync(context))" aria-label="Bloquear" />
                                     </MudTooltip>
                                 }
-                                @if (!context.EsPrincipal && context.IdEstado == 2)
+                                @if (!context.EsPrincipal && context.IdEstado == 2 && Auth.TienePermiso("FED_IDENEXT_DESVINCULAR"))
                                 {
                                     <MudTooltip Text="Establecer como principal">
                                         <MudIconButton Icon="@Icons.Material.Filled.Star" Size="Size.Small" Color="Color.Warning"
-                                            OnClick="@(() => CambiarPrincipalAsync(context))" />
+                                            OnClick="@(() => CambiarPrincipalAsync(context))" aria-label="Favorito" />
                                     </MudTooltip>
                                 }
                                 @if (context.EsPrincipal)
@@ -128,7 +136,7 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        if (IsActive && _identidades.Count == 0 && UserId > 0)
+        if (IsActive && _identidades.Count == 0 && UserId > 0 && Auth.TienePermiso("FED_IDENEXT_VER"))
             await CargarIdentidadesAsync();
     }
 
@@ -152,9 +160,15 @@
 
     private async Task MostrarDialogoAgregarProveedor()
     {
+        if (!Auth.EsTenant)
+        {
+            Snackbar.Add("Selecciona un tenant para ver sus proveedores configurados", Severity.Warning);
+            return;
+        }
+
         try
         {
-            _proveedoresConfig = await Api.GetAsync<List<ConfProvIdenDto>>($"api/confproviden/tenant/1") ?? [];
+            _proveedoresConfig = await Api.GetAsync<List<ConfProvIdenDto>>($"api/confproviden/tenant/{Auth.IdTenant}") ?? [];
         }
         catch { }
 
@@ -163,10 +177,9 @@
             ["UserId"] = UserId,
             ["Proveedores"] = _proveedoresConfig
         };
-        var dialog = await Dialog.ShowAsync<AgregarProveedorDialog>("Agregar proveedor externo", parameters,
-            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true });
+        var dialog = await Dialog.ShowAsync<AgregarProveedorDialog>("Agregar proveedor externo", parameters, OpcionesDialogo.Dialogo(TamanoDialogo.Compacto));
         var result = await dialog.Result;
-        if (!result.Canceled && result.Data is bool ok && ok)
+        if (result is { Canceled: false, Data: true })
             await CargarIdentidadesAsync();
     }
 
@@ -181,12 +194,12 @@
         };
         var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parameters);
         var result = await dialog.Result;
-        if (result.Canceled) return;
+        if (result is not { Canceled: false }) return;
 
         _saving = true;
         try
         {
-            var ok = await Api.PostVoidAsync($"api/iden-ext/{UserId}/forzar-mfa?idUsuarioAdmin={UserId}");
+            var ok = await Api.PostVoidAsync($"api/iden-ext/{UserId}/forzar-mfa");
             if (ok)
             {
                 Snackbar.Add("MFA forzado correctamente", Severity.Success);
@@ -216,11 +229,11 @@
         };
         var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parameters);
         var result = await dialog.Result;
-        if (result.Canceled) return;
+        if (result is not { Canceled: false }) return;
 
         try
         {
-            var ok = await Api.PutVoidAsync($"api/iden-ext/{identidad.Id}/revocar?idUsuarioRevoca=1&motivo=Revocado desde administración");
+            var ok = await Api.PutVoidAsync($"api/iden-ext/{identidad.Id}/revocar?motivo=Revocado desde administración");
             if (ok)
             {
                 Snackbar.Add("Identidad revocada", Severity.Success);
@@ -239,7 +252,7 @@
     {
         try
         {
-            var ok = await Api.PutVoidAsync($"api/iden-ext/{identidad.Id}/cambiar-principal?idUsuario={UserId}");
+            var ok = await Api.PutVoidAsync($"api/iden-ext/{identidad.Id}/cambiar-principal");
             if (ok)
             {
                 Snackbar.Add("Identidad principal actualizada", Severity.Success);

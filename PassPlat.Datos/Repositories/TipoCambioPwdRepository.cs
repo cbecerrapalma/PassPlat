@@ -24,7 +24,7 @@ public class TipoCambioPwdRepository : RepositoryAsync<TipoCambioPwd>, ITipoCamb
             var entity = await DbSet.FirstOrDefaultAsync(t => t.Codigo == codigo, ct);
             return Result<TipoCambioPwd?>.Success(entity, allowNull: true);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<TipoCambioPwd?>.Failure("DB_ERROR", ex.Message);
         }

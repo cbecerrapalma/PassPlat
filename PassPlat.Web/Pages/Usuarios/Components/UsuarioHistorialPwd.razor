@@ -1,8 +1,14 @@
 @using PassPlat.Aplicacion.Dtos.Core
 @inject ApiClient Api
 @inject ISnackbar Snackbar
+@inject AuthService Auth
 
-@if (_loading)
+@* S113 · D4 — sin el permiso, aviso en lugar de un 403 *@
+@if (!Auth.TienePermiso("HISTORIALPWD_VER"))
+{
+    <MudText Typo="Typo.body2" Class="pa-4">No tiene permiso para ver el historial de contraseñas.</MudText>
+}
+else if (_loading)
 {
     <MudSkeleton Width="100%" Height="200px" />
 }
@@ -38,8 +44,8 @@ else
                         @(context.EsActual ? "Sí" : "No")
                     </MudChip>
                 </MudTd>
-                <MudTd DataLabel="Registro">@context.FecRegistro?.ToLocalTime().ToString("g")</MudTd>
-                <MudTd DataLabel="Expira">@context.FecExpira?.ToLocalTime().ToString("g")</MudTd>
+                <MudTd DataLabel="Registro">@context.FecRegistro?.ToString("g")</MudTd>
+                <MudTd DataLabel="Expira">@context.FecExpira?.ToString("g")</MudTd>
             </RowTemplate>
             <NoRecordsContent>
                 <MudText Align="Align.Center" Class="py-8">
@@ -62,7 +68,7 @@ else
 
     protected override async Task OnParametersSetAsync()
     {
-        if (IsActive && (Version != _lastVersion))
+        if (IsActive && Auth.TienePermiso("HISTORIALPWD_VER") && (Version != _lastVersion))
         {
             _lastVersion = Version;
             await LoadData();

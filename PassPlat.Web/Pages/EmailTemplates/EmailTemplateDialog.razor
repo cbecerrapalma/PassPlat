@@ -13,71 +13,74 @@
 @inject IJSRuntime JS
 @inject IDialogService DialogService
 
-<MudDialog Options="_dialogOptions">
+<MudDialog Options="@OpcionesDialogo.Dialogo(TamanoDialogo.Estandar)" Class="dialogo-formulario">
     <TitleContent>
-        <MudText Typo="Typo.h6">@(IsEdit ? "Editar" : "Nueva") Plantilla de Email</MudText>
+        <TituloDialogo Icono="@(IsEdit ? Icons.Material.Filled.Edit : Icons.Material.Filled.Add)" Texto="@(IsEdit ? "Editar Plantilla de Email" : "Nueva Plantilla de Email")" />
     </TitleContent>
     <DialogContent>
-        <MudGrid>
-            <MudItem xs="12" sm="8">
-                <MudTextField @bind-Value="_nombre" Label="Nombre (código interno)" Variant="Variant.Outlined" Class="mb-3"
-                              Disabled="@IsEdit" Required="true" HelperText="Solo minúsculas, números, guiones y guión bajo"
-                              Error="@(_submitted && !EsNombreValido(_nombre))" ErrorText="@GetNombreError(_nombre)" />
-            </MudItem>
-            <MudItem xs="12" sm="4">
-                <MudTextField @bind-Value="_cultura" Label="Cultura" Variant="Variant.Outlined" Class="mb-3"
-                              Disabled="@IsEdit" Required="true" HelperText="Ej: es, en, pt-BR" MaxLength="10" />
-            </MudItem>
-        </MudGrid>
-        <MudTextField @bind-Value="_asunto" Label="Asunto" Variant="Variant.Outlined" Class="mb-3" Required="true"
-                      Error="@(_submitted && string.IsNullOrWhiteSpace(_asunto))" ErrorText="El asunto es requerido" MaxLength="500" />
-        <MudTextField @bind-Value="_descripcion" Label="Descripción" Variant="Variant.Outlined" Class="mb-3" MaxLength="500"
-                      HelperText="Descripción interna del propósito de la plantilla" />
-        <MudSelect T="string" @bind-Value="_categoria" Label="Categoría" Variant="Variant.Outlined" Class="mb-3" Required="true">
-            <MudSelectItem Value="@("transaccional")">Transaccional</MudSelectItem>
-            <MudSelectItem Value="@("marketing")">Marketing</MudSelectItem>
-            <MudSelectItem Value="@("sistema")">Sistema</MudSelectItem>
-            <MudSelectItem Value="@("alerta")">Alerta</MudSelectItem>
-        </MudSelect>
-        <MudText Typo="Typo.subtitle2" Class="mb-1">Cuerpo HTML <MudText Color="Color.Error" Inline="true">*</MudText></MudText>
-        <MudPaper Outlined="true" Class="mb-3" Style="padding:0; overflow:hidden;">
-            <StandaloneCodeEditor @ref="_editor" Id="email-template-editor" ConstructionOptions="EditorOptions" OnDidInit="OnEditorInit" OnDidChangeModelContent="OnEditorChanged" />
-        </MudPaper>
-        @if (_submitted && string.IsNullOrWhiteSpace(_cuerpoHtml))
-        {
-            <MudText Color="Color.Error" Typo="Typo.caption" Class="mb-3">El cuerpo HTML es requerido</MudText>
-        }
-        <MudStack Row="true" Spacing="1" Class="mb-3">
-            <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="FormatHtml" StartIcon="@Icons.Material.Filled.AutoFixHigh">Formatear</MudButton>
-            <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="ValidateHtml" StartIcon="@Icons.Material.Filled.CheckCircle">Validar</MudButton>
-            <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Info" OnClick="OpenPreview" StartIcon="@Icons.Material.Filled.Preview">Vista previa</MudButton>
-            <MudText Typo="Typo.caption" Class="ml-auto">@(_placeholderInfo)</MudText>
-        </MudStack>
-        <MudTextField @bind-Value="_cuerpoTexto" Label="Cuerpo texto plano (opcional)" Variant="Variant.Outlined" Class="mb-3"
-                      Lines="5" HelperText="Versión de texto plano para clientes que no soportan HTML" />
-        <MudTextField @bind-Value="_variablesDoc" Label="Documentación de variables (opcional)" Variant="Variant.Outlined" Class="mb-3"
-                      Lines="3" HelperText="JSON o texto libre documentando las variables Liquid esperadas" />
-        @if (IsEdit)
-        {
-            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mb-3">
-                <MudText Typo="Typo.body2">
-                    Estado actual: <strong>@Template!.Estado</strong> · Versión: <strong>v@(Template.Version)</strong>
-                </MudText>
-            </MudAlert>
-        }
+        <AlertaErrorDialogo Mensaje="@_errorServidor" />
+        <MudForm @ref="_form">
+        <div class="dialogo-campos">
+            <div class="dialogo-fila">
+                <MudTextField @bind-Value="_nombre" Label="Nombre (código interno)" Variant="Variant.Outlined"
+                              Disabled="@IsEdit" Required="true" HelperText="Solo minúsculas, números, guiones y guion bajo"
+                              RequiredError="El nombre es requerido"
+                              Validation="@(new Func<string, string?>(v => EsNombreValido(v) ? null : GetNombreError(v)))" />
+                <MudTextField @bind-Value="_cultura" Label="Cultura" Variant="Variant.Outlined"
+                              Disabled="@IsEdit" Required="@(!IsEdit)" RequiredError="La cultura es requerida" HelperText="Ej: es, en, pt-BR" MaxLength="10" />
+            </div>
+            <MudTextField @bind-Value="_asunto" Label="Asunto" Variant="Variant.Outlined" Required="true"
+                          RequiredError="El asunto es requerido" MaxLength="500" />
+            <MudTextField @bind-Value="_descripcion" Label="Descripción" Variant="Variant.Outlined" MaxLength="500"
+                          HelperText="Descripción interna del propósito de la plantilla" />
+            <MudSelect T="string" @bind-Value="_categoria" Label="Categoría" Variant="Variant.Outlined" Required="@(!IsEdit)" RequiredError="La categoría es requerida">
+                <MudSelectItem Value="@("transaccional")">Transaccional</MudSelectItem>
+                <MudSelectItem Value="@("marketing")">Marketing</MudSelectItem>
+                <MudSelectItem Value="@("sistema")">Sistema</MudSelectItem>
+                <MudSelectItem Value="@("alerta")">Alerta</MudSelectItem>
+                <MudSelectItem Value="@("seguridad")">Seguridad</MudSelectItem>
+                <MudSelectItem Value="@("permisos")">Permisos</MudSelectItem>
+                <MudSelectItem Value="@("plataforma")">Plataforma</MudSelectItem>
+                <MudSelectItem Value="@("app-externa")">App externa</MudSelectItem>
+            </MudSelect>
+            <div class="dialogo-seccion">Cuerpo HTML *</div>
+            <MudPaper Outlined="true" Style="padding:0; overflow:hidden;">
+                <StandaloneCodeEditor @ref="_editor" Id="email-template-editor" ConstructionOptions="EditorOptions" OnDidInit="OnEditorInit" OnDidChangeModelContent="OnEditorChanged" />
+            </MudPaper>
+            @if (_cuerpoVacio)
+            {
+                <MudText Color="Color.Error" Typo="Typo.caption">El cuerpo HTML es requerido</MudText>
+            }
+            <MudStack Row="true" Spacing="1">
+                <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="FormatHtml" StartIcon="@Icons.Material.Filled.AutoFixHigh">Formatear</MudButton>
+                <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="ValidateHtml" StartIcon="@Icons.Material.Filled.CheckCircle">Validar</MudButton>
+                <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Info" OnClick="OpenPreview" StartIcon="@Icons.Material.Filled.Preview">Vista previa</MudButton>
+                <MudText Typo="Typo.caption" Class="ml-auto">@(_placeholderInfo)</MudText>
+            </MudStack>
+            <MudTextField @bind-Value="_cuerpoTexto" Label="Cuerpo texto plano (opcional)" Variant="Variant.Outlined"
+                          Lines="5" HelperText="Versión de texto plano para clientes que no soportan HTML" />
+            <MudTextField @bind-Value="_variablesDoc" Label="Documentación de variables (opcional)" Variant="Variant.Outlined"
+                          Lines="3" HelperText="JSON o texto libre documentando las variables Liquid esperadas" />
+            @if (IsEdit)
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true">
+                    <MudText Typo="Typo.body2">
+                        Estado actual: <strong>@Template!.Estado</strong> · Versión: <strong>v@(Template.Version)</strong>
+                    </MudText>
+                </MudAlert>
+            }
+        </div>
+        </MudForm>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="@(() => MudDialog.Cancel())">Cancelar</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@Save" Disabled="@(!CanSave() || _saving)">
-            @(IsEdit ? "Guardar" : "Crear")
-        </MudButton>
+        <BotonGuardarDialogo Texto="@(IsEdit ? "Guardar" : "Crear")" Guardando="@_saving" OnClick="@Save" />
     </DialogActions>
 </MudDialog>
 
 @code {
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
-
-    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Large, FullWidth = true, CloseButton = true };
+    private string? _errorServidor;
 
     [Parameter] public bool IsEdit { get; set; }
     [Parameter] public EmailTemplateDto? Template { get; set; }
@@ -91,7 +94,8 @@
     private string _cuerpoTexto = "";
     private string _variablesDoc = "";
     private bool _saving;
-    private bool _submitted;
+    private MudForm _form = null!;
+    private bool _cuerpoVacio;
     private StandaloneCodeEditor _editor = null!;
     private bool _editorReady;
     private string _placeholderInfo = "";
@@ -139,6 +143,7 @@
         if (_editorReady)
         {
             _cuerpoHtml = await _editor.GetValue();
+            _cuerpoVacio = false;
             await UpdatePlaceholderInfo();
         }
     }
@@ -184,7 +189,7 @@
             ["Title"] = $"Vista previa — {(_nombre ?? "plantilla")} ({_cultura})",
             ["ButtonText"] = "Cerrar"
         };
-        await DialogService.ShowAsync<HtmlPreviewDialog>("", parameters, new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true });
+        await DialogService.ShowAsync<HtmlPreviewDialog>("", parameters, OpcionesDialogo.Dialogo(TamanoDialogo.Amplio));
     }
 
     private static bool EsNombreValido(string nombre) =>
@@ -197,22 +202,12 @@
         return "Solo minúsculas, números, guiones y guión bajo";
     }
 
-    private bool CanSave()
-    {
-        if (IsEdit)
-            return !string.IsNullOrWhiteSpace(_asunto) && !string.IsNullOrWhiteSpace(_cuerpoHtml);
-        return EsNombreValido(_nombre)
-            && !string.IsNullOrWhiteSpace(_cultura)
-            && !string.IsNullOrWhiteSpace(_asunto)
-            && !string.IsNullOrWhiteSpace(_categoria)
-            && !string.IsNullOrWhiteSpace(_cuerpoHtml);
-    }
-
     private async Task Save()
     {
-        _submitted = true;
+        await _form.ValidateAsync();
         if (_editorReady) _cuerpoHtml = await _editor.GetValue();
-        if (!CanSave()) return;
+        _cuerpoVacio = string.IsNullOrWhiteSpace(_cuerpoHtml);
+        if (!_form.IsValid || _cuerpoVacio) return;
         _saving = true;
         try
         {
@@ -235,7 +230,7 @@
                     MudDialog.Close(DialogResult.Ok(true));
                 }
                 else
-                    Snackbar.Add(Api.LastError ?? "Error al actualizar", Severity.Error);
+                    _errorServidor = Api.LastError ?? "Error al actualizar";
             }
             else
             {
@@ -256,12 +251,12 @@
                     MudDialog.Close(DialogResult.Ok(true));
                 }
                 else
-                    Snackbar.Add(Api.LastError ?? "Error al crear", Severity.Error);
+                    _errorServidor = Api.LastError ?? "Error al crear";
             }
         }
         catch (Exception ex)
         {
-            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+            _errorServidor = Api.LastError ?? $"Error: {ex.Message}";
         }
         finally
         {

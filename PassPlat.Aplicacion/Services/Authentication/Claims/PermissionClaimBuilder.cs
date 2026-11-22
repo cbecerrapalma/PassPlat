@@ -40,7 +40,13 @@ public class PermissionClaimBuilder : IPermissionClaimBuilder
                 return Result<IReadOnlyCollection<Claim>>.Failure(result.Error!);
 
             var permisos = result.Value;
-            var claims = permisos.Select(c => new Claim("permiso", c)).ToList();
+            // GAP-03: emitir claims duales para backward compatibility + Inventa (permissions plural)
+            var claims = new List<Claim>(permisos.Count * 2);
+            foreach (var c in permisos)
+            {
+                claims.Add(new Claim("permiso", c));
+                claims.Add(new Claim("permissions", c));
+            }
 
             _logger.LogInformation(AuthenticationEvents.PermissionClaimsBuilt,
                 "Claims de permisos construidos | Usuario={IdUsuario} Tenant={IdTenant} App={IdApp} UsuarioTenant={IdUsuarioTenant} Permisos={Count}",

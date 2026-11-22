@@ -1,48 +1,46 @@
 @inject ApiClient Api
 @inject ISnackbar Snackbar
 
-<MudDialog Options="_dialogOptions">
+<MudDialog Options="@OpcionesDialogo.Dialogo(TamanoDialogo.Compacto)" Class="dialogo-formulario">
     <TitleContent>
-        <div class="d-flex align-center gap-2">
-            <MudAvatar Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled">
-                <MudIcon Icon="@(IsEdit ? Icons.Material.Filled.Edit : Icons.Material.Filled.Add)" Size="Size.Small" />
-            </MudAvatar>
-            <MudText Typo="Typo.h6">@(IsEdit ? "Editar" : "Nuevo") Rol</MudText>
-        </div>
+        <TituloDialogo Icono="@(IsEdit ? Icons.Material.Filled.Edit : Icons.Material.Filled.Add)" Texto="@(IsEdit ? "Editar Rol" : "Nuevo Rol")" />
     </TitleContent>
     <DialogContent>
-        <MudText Typo="Typo.caption" Class="text-secondary mb-2 d-block">Información básica del rol</MudText>
-        <MudTextField @bind-Value="_codigo" Label="Código" Variant="Variant.Outlined" Class="mb-3"
-            Disabled="IsEdit" Required="true"
-            Error="@(_submitted && string.IsNullOrWhiteSpace(_codigo))" ErrorText="El código es requerido"
-            Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Code"
-            HelperText="Identificador único del rol (no se puede cambiar)" />
-        <MudTextField @bind-Value="_nombre" Label="Nombre" Variant="Variant.Outlined" Class="mb-3" Required="true"
-            Error="@(_submitted && string.IsNullOrWhiteSpace(_nombre))" ErrorText="El nombre es requerido"
-            Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Badge"
-            HelperText="Nombre descriptivo del rol" />
-        <MudTextField @bind-Value="_descripcion" Label="Descripción" Variant="Variant.Outlined" Class="mb-3"
-            Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Description"
-            HelperText="Opcional - descripción del propósito del rol" />
-        @if (IsEdit)
-        {
-            <MudDivider Class="my-3" />
-            <MudSwitch @bind-Value="_activo" Label="Rol activo" Color="Color.Primary" />
-            <MudText Typo="Typo.caption" Class="text-secondary ml-12">Los roles inactivos no se pueden asignar a usuarios</MudText>
-        }
+        <AlertaErrorDialogo Mensaje="@_errorServidor" />
+        <MudForm @ref="_form">
+        <div class="dialogo-campos">
+            <div class="dialogo-seccion">Información básica del rol</div>
+            <MudTextField @bind-Value="_codigo" Label="Código" Variant="Variant.Outlined"
+                Disabled="IsEdit" Required="true"
+                RequiredError="El código es requerido"
+                Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Code"
+                HelperText="Identificador único del rol (no se puede cambiar)" />
+            <MudTextField @bind-Value="_nombre" Label="Nombre" Variant="Variant.Outlined" Required="true"
+                RequiredError="El nombre es requerido"
+                Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Badge"
+                HelperText="Nombre descriptivo del rol" />
+            <MudTextField @bind-Value="_descripcion" Label="Descripción" Variant="Variant.Outlined"
+                Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Description"
+                HelperText="Opcional - descripción del propósito del rol" />
+            @if (IsEdit)
+            {
+                <div>
+                    <MudSwitch @bind-Value="_activo" Label="Rol activo" Color="Color.Primary" />
+                    <MudText Typo="Typo.caption" Class="text-secondary">Los roles inactivos no se pueden asignar a usuarios</MudText>
+                </div>
+            }
+        </div>
+        </MudForm>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="@(() => MudDialog.Cancel())">Cancelar</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@Save" Disabled="@(!CanSave() || _saving)">
-            @(IsEdit ? "Guardar" : "Crear")
-        </MudButton>
+        <BotonGuardarDialogo Texto="@(IsEdit ? "Guardar" : "Crear")" Guardando="@_saving" OnClick="@Save" />
     </DialogActions>
 </MudDialog>
 
 @code {
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
-
-    private DialogOptions _dialogOptions = new() { FullWidth = true, CloseButton = true };
+    private string? _errorServidor;
 
     [Parameter] public bool IsEdit { get; set; }
     [Parameter] public RolDto? Rol { get; set; }
@@ -52,7 +50,7 @@
     private string _descripcion = "";
     private bool _activo = true;
     private bool _saving;
-    private bool _submitted;
+    private MudForm _form = null!;
 
     protected override void OnInitialized()
     {
@@ -65,12 +63,10 @@
         }
     }
 
-    private bool CanSave() => !string.IsNullOrWhiteSpace(_codigo) && !string.IsNullOrWhiteSpace(_nombre);
-
     private async Task Save()
     {
-        _submitted = true;
-        if (!CanSave()) return;
+        await _form.ValidateAsync();
+        if (!_form.IsValid) return;
         _saving = true;
         try
         {
@@ -89,7 +85,7 @@
                     MudDialog.Close(DialogResult.Ok(true));
                 }
                 else
-                    Snackbar.Add(Api.LastError ?? "Error al actualizar rol", Severity.Error);
+                    _errorServidor = Api.LastError ?? "Error al actualizar rol";
             }
             else
             {
@@ -106,12 +102,12 @@
                     MudDialog.Close(DialogResult.Ok(true));
                 }
                 else
-                    Snackbar.Add(Api.LastError ?? "Error al crear rol", Severity.Error);
+                    _errorServidor = Api.LastError ?? "Error al crear rol";
             }
         }
         catch (Exception ex)
         {
-            Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error);
+            _errorServidor = Api.LastError ?? $"Error: {ex.Message}";
         }
         finally
         {

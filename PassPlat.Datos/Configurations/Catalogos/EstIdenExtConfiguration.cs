@@ -16,7 +16,7 @@ public class EstIdenExtConfiguration : IEntityTypeConfiguration<EstIdenExt>
         builder.Property(e => e.Color).HasMaxLength(20);
         builder.Property(e => e.Orden).HasDefaultValue((short)0);
         builder.Property(e => e.Activo).HasDefaultValue(true).IsRequired();
-        builder.Property(e => e.FecCrea).HasDefaultValueSql("sysutcdatetime()");
+        builder.Property(e => e.FecCrea).HasDefaultValueSql("sysdatetime()");
         builder.Property(e => e.FecMod);
 
         builder.HasIndex(e => e.Nombre).IsUnique().HasDatabaseName("UK_EstIdenExt_Nombre");

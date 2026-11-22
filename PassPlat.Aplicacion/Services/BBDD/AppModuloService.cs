@@ -12,7 +12,6 @@ namespace PassPlat.Aplicacion.Services;
 
 public interface IAppModuloService : IServiceAsync<AppModulo, AppModuloDto>
 {
-    Task<Result<IReadOnlyList<AppModuloDto>>> ObtenerPorAppAsync(int idApp, CancellationToken ct = default);
     Task<Result<IReadOnlyList<AppModuloDto>>> ObtenerActivosPorAppAsync(int idApp, CancellationToken ct = default);
     Task<Result<AppModuloDto>> AsignarModuloAsync(CrearAppModuloDto dto, CancellationToken ct = default);
     Task<Result> DesasignarModuloAsync(int id, CancellationToken ct = default);
@@ -28,13 +27,6 @@ public class AppModuloService : ServiceAsync<AppModulo, AppModuloDto>, IAppModul
     {
         _repo = repo;
         _uow = uow;
-    }
-
-    public async Task<Result<IReadOnlyList<AppModuloDto>>> ObtenerPorAppAsync(int idApp, CancellationToken ct = default)
-    {
-        var repoResult = await _repo.ObtenerPorAppAsync(idApp, ct);
-        if (repoResult.IsFailure) return Result<IReadOnlyList<AppModuloDto>>.Failure(repoResult.Error!);
-        return Result<IReadOnlyList<AppModuloDto>>.Success(Mapper.Map<IReadOnlyList<AppModuloDto>>(repoResult.Value));
     }
 
     public async Task<Result<IReadOnlyList<AppModuloDto>>> ObtenerActivosPorAppAsync(int idApp, CancellationToken ct = default)

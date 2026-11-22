@@ -14,7 +14,6 @@ namespace PassPlat.Aplicacion.Services;
 
 public interface ITokenRestService : IServiceAsync<TokenRest, TokenRestDto>
 {
-    Task<Result<GenerarTokenResult>> GenerarTokenAsync(int idUsuario, int idTenant, int idApp, string hashToken, DateTime fecVence, int? idDisp, int? idIP, int? idAgente, CancellationToken ct = default);
     Task<Result<ValidarTokenResult>> ValidarTokenAsync(string hashToken, int? idApp, CancellationToken ct = default);
     Task<Result<GenerarTokenResult>> GenerarTokenResetPasswordAsync(int idUsuario, int idTenant, int idApp, string tokenPlano, string hashToken, DateTime fecVence, string baseUrl, int? idDisp, int? idIP, int? idAgente, CancellationToken ct = default);
 }
@@ -33,12 +32,6 @@ public class TokenRestService : ServiceAsync<TokenRest, TokenRestDto>, ITokenRes
         _usuarioRepo = usuarioRepo;
         _emailQueue = emailQueue;
         _logger = logger;
-    }
-
-    public async Task<Result<GenerarTokenResult>> GenerarTokenAsync(int idUsuario, int idTenant, int idApp, string hashToken, DateTime fecVence, int? idDisp, int? idIP, int? idAgente, CancellationToken ct = default)
-    {
-        var result = await _repo.GenerarTokenAsync(idUsuario, idTenant, idApp, hashToken, fecVence, idDisp, idIP, idAgente, ct);
-        return result;
     }
 
     public async Task<Result<ValidarTokenResult>> ValidarTokenAsync(string hashToken, int? idApp, CancellationToken ct = default)

@@ -1,4 +1,7 @@
+@page "/admin/panel"
 @page "/admin/dashboard-enterprise"
+@page "/admin/iam-dashboard"
+@page "/admin/dashboard-operacional"
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Web
 @attribute [Authorize(Policy = "USUARIOS_VER")]
@@ -6,27 +9,22 @@
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 @inject AuthService Auth
-@inject IJSRuntime JSRuntime
+@using CBP.Blazor.Services
+@inject IFileDownloadService Descargas
 
 <MudContainer MaxWidth="MaxWidth.False" Class="pa-0">
     @* ── Header + Filtros Globales ── *@
     <MudPaper Class="pa-4 mb-4" Elevation="0" Outlined="true">
         <div class="d-flex flex-wrap align-center gap-4 mb-3">
             <div class="flex-grow-1">
-                <MudText Typo="Typo.h5" Class="font-weight-bold">Centro de Operaciones IAM</MudText>
-                <MudText Typo="Typo.body2" Color="Color.Secondary">Dashboard Ejecutivo y Operacional Enterprise</MudText>
+                <MudText Typo="Typo.h5" Class="font-weight-bold">Panel de administración</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Resumen, seguridad, federación, email y operación</MudText>
             </div>
             <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Refresh"
                         OnClick="RecargarTodoAsync" Disabled="@_loading">
                 @if (_loading) { <MudProgressCircular Size="Size.Small" Indeterminate="true" /> }
                 else { <span>Actualizar</span> }
             </MudButton>
-            <MudTextField @bind-Value="_filtro.TenantNombre" Label="Tenant" Variant="Variant.Outlined" Dense="true" Immediate="true"
-                            OnAdornmentClick="@(() => _filtro.TenantNombre = "")" AdornmentIcon="@Icons.Material.Filled.Search" Adornment="Adornment.Start" />
-            <MudTextField @bind-Value="_filtro.AppNombre" Label="Aplicación" Variant="Variant.Outlined" Dense="true" Immediate="true"
-                            OnAdornmentClick="@(() => _filtro.AppNombre = "")" AdornmentIcon="@Icons.Material.Filled.Search" Adornment="Adornment.Start" />
-            <MudDatePicker @bind-Date="_filtro.FechaDesde" Label="Desde" Variant="Variant.Outlined" Dense="true" />
-            <MudDatePicker @bind-Date="_filtro.FechaHasta" Label="Hasta" Variant="Variant.Outlined" Dense="true" />
             <MudSelect T="string" @bind-Value="_autoRefresh" Label="Auto-refresh" Variant="Variant.Outlined" Dense="true" Style="min-width:130px">
                 <MudSelectItem T="string" Value="@("off")">Manual</MudSelectItem>
                 <MudSelectItem T="string" Value="@("30")">30 seg</MudSelectItem>
@@ -60,11 +58,12 @@
 
     @* ── Tabs ── *@
     <MudPaper Elevation="0" Outlined="true" Class="pa-0">
-        <MudTabs Elevation="0" Rounded="false" ApplyEffectsToContainer="true" PanelClass="pa-4">
+        <MudTabs Elevation="0" Rounded="false" ApplyEffectsToContainer="true"
+                 ActivePanelIndex="_tabActiva" ActivePanelIndexChanged="AbrirTabAsync">
             <MudTabPanel Text="Ejecutivo" Icon="@Icons.Material.Filled.Dashboard">
                 @if (_ejec is not null)
                 {
-                    <MudGrid Class="mb-4">
+                    <div class="kpi-row mb-4">
                         @foreach (var (label, val, color, icon, url) in new (string, int, string, string, string)[] {
                             ("Total Usuarios", _ejec.TotalUsuarios, "primary", Icons.Material.Filled.People, "/admin/usuarios"),
                             ("Activos", _ejec.UsuariosActivos, "success", Icons.Material.Filled.CheckCircle, "/admin/usuarios?estado=1"),
@@ -79,17 +78,17 @@
                             ("Tenants", _ejec.TotalTenants, "info", Icons.Material.Filled.Business, "/admin/tenants"),
                             ("Apps", _ejec.TotalApps, "secondary", Icons.Material.Filled.Apps, "/admin/apps"),
                             ("Identidades Ext.", _ejec.IdentidadesExternas, "warning", Icons.Material.Filled.Hub, "/admin/iam-identidades"),
-                            ("Disp. Confiables", _ejec.DispositivosConfiables, "success", Icons.Material.Filled.Devices, "/admin/disp-confiables"),
+                            ("Disp. Confiables", _ejec.DispositivosConfiables, "success", Icons.Material.Filled.Devices, "/disp-confiables"),
                             ("Notif. No Leídas", _ejec.NotificacionesNoLeidas, "warning", Icons.Material.Filled.Notifications, "/admin/notificaciones"),
                             ("Emails Hoy", _ejec.EmailsEnviadosHoy, "success", Icons.Material.Filled.Email, "/admin/email-logs"),
                             ("Emails Fallidos", _ejec.EmailsFallidos, "error", Icons.Material.Filled.Error, "/admin/email-logs?estado=Error"),
                         })
                         {
-                            <MudItem xs="6" sm="4" md="3">
+                            <div>
                                 <IamKpiCard Label="@label" Valor="@val.ToString()" Icon="@icon" ColorClass="@color" />
-                            </MudItem>
+                            </div>
                         }
-                    </MudGrid>
+                    </div>
                 }
                 else
                 {
@@ -101,7 +100,7 @@
             <MudTabPanel Text="Seguridad" Icon="@Icons.Material.Filled.Security">
                 @if (_seg is not null)
                 {
-                    <MudGrid>
+                    <div class="kpi-row mb-4">
                         @foreach (var (label, val, color, icon) in new (string, int, string, string)[] {
                             ("Logins Correctos", _seg.LoginsCorrectos, "success", Icons.Material.Filled.CheckCircle),
                             ("Logins Fallidos", _seg.LoginsFallidos, "error", Icons.Material.Filled.Error),
@@ -121,11 +120,11 @@
                             ("Nuevos Prov. OAuth 24h", _seg.NuevosProveedoresOAuth24h, "warning", Icons.Material.Filled.Add),
                         })
                         {
-                            <MudItem xs="6" sm="4" md="3">
+                            <div>
                                 <IamKpiCard Label="@label" Valor="@val.ToString()" Icon="@icon" ColorClass="@color" />
-                            </MudItem>
+                            </div>
                         }
-                    </MudGrid>
+                    </div>
                     @if (_seg.IntentosUltimos30Dias.Count > 0)
                     {
                         <MudPaper Class="pa-4 mt-4" Elevation="0" Outlined="true">
@@ -144,11 +143,10 @@
             <MudTabPanel Text="OAuth" Icon="@Icons.Material.Filled.VpnKey">
                 @if (_oauth is not null)
                 {
-                    <MudGrid>
+                    <div class="kpi-row mb-4">
                         @foreach (var (label, val, color, icon) in new (string, int, string, string)[] {
                             ("Google", _oauth.UsuariosGoogle, "info", Icons.Material.Filled.VpnKey),
                             ("GitHub", _oauth.UsuariosGithub, "secondary", Icons.Material.Filled.VpnKey),
-                            ("LinkedIn", _oauth.UsuariosLinkedIn, "info", Icons.Material.Filled.VpnKey),
                             ("Facebook", _oauth.UsuariosFacebook, "info", Icons.Material.Filled.VpnKey),
                             ("Instagram", _oauth.UsuariosInstagram, "warning", Icons.Material.Filled.VpnKey),
                             ("Vinculados", _oauth.UsuariosVinculados, "success", Icons.Material.Filled.Link),
@@ -160,35 +158,35 @@
                             ("Proveedor + Usado", _oauth.ProveedorMasUtilizado.Length, "primary", Icons.Material.Filled.Star),
                         })
                         {
-                            <MudItem xs="6" sm="4" md="3">
+                            <div>
                                 <IamKpiCard Label="@label" Valor="@val.ToString()" Icon="@icon" ColorClass="@color" />
-                            </MudItem>
+                            </div>
                         }
-                    </MudGrid>
+                    </div>
                     @if (_oauth.ProviderDeshabilitado > 0 || _oauth.ProviderTimeout > 0 || _oauth.ProviderUnavailable > 0)
                     {
                         <MudPaper Class="pa-3 mt-3" Elevation="0" Outlined="true">
                             <MudText Typo="Typo.subtitle2" Class="font-weight-bold mb-2">Incidencias de Proveedores</MudText>
-                            <MudGrid>
+                            <div class="kpi-row mb-4">
                                 @if (_oauth.ProviderDeshabilitado > 0)
                                 {
-                                    <MudItem xs="4">
+                                    <div>
                                         <IamKpiCard Label="Deshabilitados" Valor="@_oauth.ProviderDeshabilitado.ToString()" Icon="@Icons.Material.Filled.Block" ColorClass="error" />
-                                    </MudItem>
+                                    </div>
                                 }
                                 @if (_oauth.ProviderTimeout > 0)
                                 {
-                                    <MudItem xs="4">
+                                    <div>
                                         <IamKpiCard Label="Timeout" Valor="@_oauth.ProviderTimeout.ToString()" Icon="@Icons.Material.Filled.Timer" ColorClass="warning" />
-                                    </MudItem>
+                                    </div>
                                 }
                                 @if (_oauth.ProviderUnavailable > 0)
                                 {
-                                    <MudItem xs="4">
+                                    <div>
                                         <IamKpiCard Label="No Disponible" Valor="@_oauth.ProviderUnavailable.ToString()" Icon="@Icons.Material.Filled.Cloud" ColorClass="error" />
-                                    </MudItem>
+                                    </div>
                                 }
-                            </MudGrid>
+                            </div>
                         </MudPaper>
                     }
                 }
@@ -202,7 +200,7 @@
             <MudTabPanel Text="Email" Icon="@Icons.Material.Filled.Email">
                 @if (_email is not null)
                 {
-                    <MudGrid>
+                    <div class="kpi-row mb-4">
                         @foreach (var (label, val, color, icon) in new (string, int, string, string)[] {
                             ("Enviados", _email.EmailsEnviados, "success", Icons.Material.Filled.Send),
                             ("Pendientes", _email.EmailsPendientes, "warning", Icons.Material.Filled.Pending),
@@ -215,11 +213,11 @@
                             ("Cola", _email.ColaEmail, "warning", Icons.Material.Filled.Queue),
                         })
                         {
-                            <MudItem xs="6" sm="4" md="2">
+                            <div>
                                 <IamKpiCard Label="@label" Valor="@val.ToString()" Icon="@icon" ColorClass="@color" />
-                            </MudItem>
+                            </div>
                         }
-                    </MudGrid>
+                    </div>
                     @if (_email.TopTemplates.Count > 0)
                     {
                         <MudPaper Class="pa-4 mt-4" Elevation="0" Outlined="true">
@@ -247,7 +245,7 @@
             <MudTabPanel Text="Operacional" Icon="@Icons.Material.Filled.Memory">
                 @if (_oper is not null)
                 {
-                    <MudGrid>
+                    <div class="kpi-row mb-4">
                         @foreach (var (label, val, color, icon) in new (string, double, string, string)[] {
                             ("Resp. Login (ms)", _oper.TiempoRespuestaLoginMs, "info", Icons.Material.Filled.Speed),
                             ("CPU %", _oper.CpuPorcentaje, "warning", Icons.Material.Filled.Memory),
@@ -258,11 +256,11 @@
                             ("Resp. SQL (ms)", _oper.TiempoSqlMs, "secondary", Icons.Material.Filled.Storage),
                         })
                         {
-                            <MudItem xs="6" sm="4" md="3">
+                            <div>
                                 <IamKpiCard Label="@label" Valor="@val.ToString("F1")" Icon="@icon" ColorClass="@color" />
-                            </MudItem>
+                            </div>
                         }
-                    </MudGrid>
+                    </div>
                     @if (_oper.HealthChecks.Count > 0)
                     {
                         <MudPaper Class="pa-4 mt-4" Elevation="0" Outlined="true">
@@ -303,7 +301,7 @@
             <MudTabPanel Text="Auditoría" Icon="@Icons.Material.Filled.History">
                 @if (_aud is not null)
                 {
-                    <MudGrid>
+                    <div class="kpi-row mb-4">
                         @foreach (var (label, val, color, icon) in new (string, int, string, string)[] {
                             ("Eventos Hoy", _aud.EventosHoy, "info", Icons.Material.Filled.Today),
                             ("Eventos Semana", _aud.EventosSemana, "secondary", Icons.Material.Filled.DateRange),
@@ -319,11 +317,11 @@
                             ("Cambios Aplicación", _aud.CambiosAplicacion, "secondary", Icons.Material.Filled.Apps),
                         })
                         {
-                            <MudItem xs="6" sm="4" md="2">
+                            <div>
                                 <IamKpiCard Label="@label" Valor="@val.ToString()" Icon="@icon" ColorClass="@color" />
-                            </MudItem>
+                            </div>
                         }
-                    </MudGrid>
+                    </div>
                     @if (_aud.AuditoriaUltimos30Dias.Count > 0)
                     {
                         <MudPaper Class="pa-4 mt-4" Elevation="0" Outlined="true">
@@ -342,7 +340,7 @@
             <MudTabPanel Text="Dispositivos" Icon="@Icons.Material.Filled.Devices">
                 @if (_disp is not null)
                 {
-                    <MudGrid>
+                    <div class="kpi-row mb-4">
                         @foreach (var (label, val, color, icon) in new (string, int, string, string)[] {
                             ("Activos", _disp.DispositivosActivos, "success", Icons.Material.Filled.CheckCircle),
                             ("Bloqueados", _disp.DispositivosBloqueados, "error", Icons.Material.Filled.Block),
@@ -351,11 +349,11 @@
                             ("Total IPs", _disp.TotalIPs, "warning", Icons.Material.Filled.Public),
                         })
                         {
-                            <MudItem xs="6" sm="4" md="2">
+                            <div>
                                 <IamKpiCard Label="@label" Valor="@val.ToString()" Icon="@icon" ColorClass="@color" />
-                            </MudItem>
+                            </div>
                         }
-                    </MudGrid>
+                    </div>
                     @if (_disp.PorSO.Count > 0)
                     {
                         <MudPaper Class="pa-4 mt-4" Elevation="0" Outlined="true">
@@ -389,13 +387,13 @@
                 @if (_tend is not null)
                 {
                     @foreach (var (nombre, datos, color) in new (string, List<TrendItemDto>, string)[] {
-                        ("Usuarios", _tend.UsuariosUltimos30Dias, "#1976d2"),
-                        ("Logins", _tend.LoginsUltimos30Dias, "#388e3c"),
-                        ("Emails", _tend.EmailsUltimos30Dias, "#fbc02d"),
-                        ("OAuth", _tend.OAuthUltimos30Dias, "#7b1fa2"),
-                        ("Errores", _tend.ErroresUltimos30Dias, "#d32f2f"),
-                        ("MFA", _tend.MFAUltimos30Dias, "#00796b"),
-                        ("Passwords", _tend.PasswordsUltimos30Dias, "#ff7043"),
+                        ("Usuarios", _tend.UsuariosUltimos30Dias, "var(--dat-azul)"),
+                        ("Logins", _tend.LoginsUltimos30Dias, "var(--dat-verde-osc)"),
+                        ("Emails", _tend.EmailsUltimos30Dias, "var(--dat-ambar)"),
+                        ("OAuth", _tend.OAuthUltimos30Dias, "var(--dat-purpura)"),
+                        ("Errores", _tend.ErroresUltimos30Dias, "var(--dat-rojo)"),
+                        ("MFA", _tend.MFAUltimos30Dias, "var(--dat-teal)"),
+                        ("Passwords", _tend.PasswordsUltimos30Dias, "var(--dat-naranja)"),
                     })
                     {
                         @if (datos.Count > 0)
@@ -448,33 +446,14 @@
     </MudPaper>
 </MudContainer>
 
-@* ── Inspector Lateral ── *@
-<MudDrawer @bind-Open="_drawerOpen" Anchor="Anchor.Right" Elevation="1">
-    <MudPaper Class="pa-4" Style="width:360px;height:100%;">
-        <div class="d-flex align-center mb-3">
-            <MudText Typo="Typo.h6" Class="flex-grow-1">@_inspectorTitulo</MudText>
-            <MudIconButton Icon="@Icons.Material.Filled.Close" OnClick="@(() => _drawerOpen = false)" />
-        </div>
-        @if (_inspectorLoading)
-        {
-            <MudSkeleton Width="80%" Height="20px" Class="mb-2" />
-            <MudSkeleton Width="60%" Height="20px" Class="mb-4" />
-            <MudSkeleton Width="90%" Height="60px" />
-        }
-        else
-        {
-            @_inspectorContent
-        }
-    </MudPaper>
-</MudDrawer>
-
 @code {
     private bool _loading;
-    private bool _drawerOpen;
     private string _autoRefresh = "off";
     private System.Timers.Timer? _timer;
 
-    private DashboardFiltrosDto _filtro = new();
+    // Pestaña activa y pestañas ya cargadas: cada pestaña pide su sección la primera vez que se abre.
+    private int _tabActiva;
+    private readonly HashSet<int> _tabsCargadas = [];
 
     private DashboardEstadoGeneralDto? _estadoGeneral;
     private List<ModuloEstadoDto> _modulosEstado = [];
@@ -490,9 +469,6 @@
     private DashboardEjecutivoAvanzadoDto? _avanz;
     private List<BackgroundJobDto> _bgJobs = [];
 
-    private string _inspectorTitulo = "";
-    private bool _inspectorLoading;
-    private RenderFragment _inspectorContent = builder => { };
 
     protected override async Task OnInitializedAsync()
     {
@@ -523,21 +499,11 @@
         StateHasChanged();
         try
         {
-            var tasks = new Task[]
-            {
-                CargarSeccionAsync("ejecutivo", () => Api.GetAsync<DashboardEjecutivoDto>("api/dashboard-enterprise/ejecutivo"), r => _ejec = r),
-                CargarSeccionAsync("seguridad", () => Api.GetAsync<DashboardSeguridadDto>("api/dashboard-enterprise/seguridad"), r => _seg = r),
-                CargarSeccionAsync("oauth", () => Api.GetAsync<DashboardOAuthDto>("api/dashboard-enterprise/oauth"), r => _oauth = r),
-                CargarSeccionAsync("email", () => Api.GetAsync<DashboardEmailDto>("api/dashboard-enterprise/email"), r => _email = r),
-                CargarSeccionAsync("operacional", () => Api.GetAsync<DashboardOperacionalDto>("api/dashboard-enterprise/operacional"), r => _oper = r),
-                CargarSeccionAsync("auditoria", () => Api.GetAsync<DashboardAuditoriaDto>("api/dashboard-enterprise/auditoria"), r => _aud = r),
-                CargarSeccionAsync("dispositivos", () => Api.GetAsync<DashboardDispositivosDto>("api/dashboard-enterprise/dispositivos"), r => _disp = r),
-                CargarSeccionAsync("tendencias", () => Api.GetAsync<DashboardTendenciasDto>("api/dashboard-enterprise/tendencias"), r => _tend = r),
-                CargarSeccionAsync("ejecutivo-avanzado", () => Api.GetAsync<DashboardEjecutivoAvanzadoDto>("api/dashboard-enterprise/ejecutivo-avanzado"), r => _avanz = r),
+            // «Actualizar» y el auto-refresco: estado general + pestaña activa; las demás se recargan al abrirlas.
+            _tabsCargadas.Clear();
+            await Task.WhenAll(
                 CargarSeccionAsync("estado-general", () => Api.GetAsync<DashboardEstadoGeneralDto>("api/dashboard-enterprise/estado-general"), r => { _estadoGeneral = r; _modulosEstado = ExtraerModulos(r); }),
-                CargarSeccionAsync("background", () => Api.GetAsync<List<BackgroundJobDto>>("api/dashboard-enterprise/background"), r => _bgJobs = r)
-            };
-            await Task.WhenAll(tasks);
+                CargarTabAsync(_tabActiva));
         }
         catch (Exception ex)
         {
@@ -547,6 +513,35 @@
         {
             _loading = false;
             StateHasChanged();
+        }
+    }
+
+    private async Task AbrirTabAsync(int indice)
+    {
+        _tabActiva = indice;
+        if (_tabsCargadas.Contains(indice)) return;
+        await CargarTabAsync(indice);
+        StateHasChanged();
+    }
+
+    private async Task CargarTabAsync(int indice)
+    {
+        _tabsCargadas.Add(indice);
+        switch (indice)
+        {
+            case 0: await CargarSeccionAsync("ejecutivo", () => Api.GetAsync<DashboardEjecutivoDto>("api/dashboard-enterprise/ejecutivo"), r => _ejec = r); break;
+            case 1: await CargarSeccionAsync("seguridad", () => Api.GetAsync<DashboardSeguridadDto>("api/dashboard-enterprise/seguridad"), r => _seg = r); break;
+            case 2: await CargarSeccionAsync("oauth", () => Api.GetAsync<DashboardOAuthDto>("api/dashboard-enterprise/oauth"), r => _oauth = r); break;
+            case 3: await CargarSeccionAsync("email", () => Api.GetAsync<DashboardEmailDto>("api/dashboard-enterprise/email"), r => _email = r); break;
+            case 4:
+                await Task.WhenAll(
+                    CargarSeccionAsync("operacional", () => Api.GetAsync<DashboardOperacionalDto>("api/dashboard-enterprise/operacional"), r => _oper = r),
+                    CargarSeccionAsync("background", () => Api.GetAsync<List<BackgroundJobDto>>("api/dashboard-enterprise/background"), r => _bgJobs = r));
+                break;
+            case 5: await CargarSeccionAsync("auditoria", () => Api.GetAsync<DashboardAuditoriaDto>("api/dashboard-enterprise/auditoria"), r => _aud = r); break;
+            case 6: await CargarSeccionAsync("dispositivos", () => Api.GetAsync<DashboardDispositivosDto>("api/dashboard-enterprise/dispositivos"), r => _disp = r); break;
+            case 7: await CargarSeccionAsync("tendencias", () => Api.GetAsync<DashboardTendenciasDto>("api/dashboard-enterprise/tendencias"), r => _tend = r); break;
+            case 8: await CargarSeccionAsync("ejecutivo-avanzado", () => Api.GetAsync<DashboardEjecutivoAvanzadoDto>("api/dashboard-enterprise/ejecutivo-avanzado"), r => _avanz = r); break;
         }
     }
 
@@ -571,20 +566,13 @@
         new() { Modulo = "SMTP", Estado = d.SMTP.Estado, Mensaje = d.SMTP.Mensaje },
     };
 
-    private static string _moduloColor(string e) => e switch { "yellow" => "#fbc02d", "red" => "#d32f2f", _ => "#388e3c" };
+    private static string _moduloColor(string e) => e switch { "yellow" => "var(--dat-ambar)", "red" => "var(--dat-rojo)", _ => "var(--dat-verde-osc)" };
     private static Color _moduloMudColor(string e) => e switch { "yellow" => Color.Warning, "red" => Color.Error, _ => Color.Success };
     private static string _moduloIcon(string e) => e switch { "yellow" => Icons.Material.Filled.Warning, "red" => Icons.Material.Filled.Error, _ => Icons.Material.Filled.CheckCircle };
 
-    private void AbrirInspector(string titulo, RenderFragment contenido)
-    {
-        _inspectorTitulo = titulo;
-        _inspectorContent = contenido;
-        _drawerOpen = true;
-    }
-
     private void NavegarA(string url) => Navigation.NavigateTo(url);
 
-    private readonly string[] _paleta = { "#1976d2", "#388e3c", "#fbc02d", "#d32f2f", "#7b1fa2", "#00796b", "#ff7043", "#5d4037", "#455a64", "#c2185b" };
+    private readonly string[] _paleta = { "var(--dat-azul)", "var(--dat-verde-osc)", "var(--dat-ambar)", "var(--dat-rojo)", "var(--dat-purpura)", "var(--dat-teal)", "var(--dat-naranja)", "var(--dat-marron)", "var(--dat-gris-azul)", "var(--dat-rosa)" };
 
     private async Task ExportarCsvAsync()
     {
@@ -624,7 +612,6 @@
             {
                 sb.AppendLine($"OAuth;Google;{_oauth.UsuariosGoogle}");
                 sb.AppendLine($"OAuth;GitHub;{_oauth.UsuariosGithub}");
-                sb.AppendLine($"OAuth;LinkedIn;{_oauth.UsuariosLinkedIn}");
                 sb.AppendLine($"OAuth;Facebook;{_oauth.UsuariosFacebook}");
                 sb.AppendLine($"OAuth;Instagram;{_oauth.UsuariosInstagram}");
                 sb.AppendLine($"OAuth;Errores;{_oauth.ErroresOAuth}");
@@ -672,9 +659,9 @@
                 sb.AppendLine($"Dispositivos;Paises;{_disp.PorPais.Count}");
             }
 
+            // S89 · D4 — la descarga la hace CBP.Blazor (IFileDownloadService), sin eval.
             var bytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
-            var base64 = Convert.ToBase64String(bytes);
-            await JSRuntime.InvokeVoidAsync("eval", $"var a=document.createElement('a');a.href='data:text/csv;base64,{base64}';a.download='dashboard-enterprise.csv';a.click();");
+            await Descargas.DownloadAsync("dashboard-enterprise.csv", "text/csv", bytes);
             Snackbar.Add("CSV exportado", Severity.Success);
         }
         catch (Exception ex)

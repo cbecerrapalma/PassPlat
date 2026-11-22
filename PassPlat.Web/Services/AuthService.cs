@@ -14,11 +14,13 @@ public class AuthService
     private readonly NavigationManager _nav;
     private readonly IJSRuntime _js;
 
-    public AuthService(HttpClient http, NavigationManager nav, IJSRuntime js)
+    public AuthService(HttpClient http, NavigationManager nav, IJSRuntime js, AppSettings? appSettings = null)
     {
         _http = http;
         _nav = nav;
         _js = js;
+        // S76 · D1 — la Web es el portal de una sola app (AppSettings.AppId, 1 = PASSPLAT).
+        AppId = appSettings?.AppId ?? 1;
     }
 
     public event Action? OnAuthStateChanged;
@@ -39,12 +41,25 @@ public class AuthService
     public bool EsSistema { get; private set; }
     public bool EsPlatform => !IdTenant.HasValue || IdTenant.Value == 0;
     public bool EsTenant => IdTenant.HasValue && IdTenant.Value > 0;
-    public int AppId { get; set; } = 1;
+    public int AppId { get; }
     public HashSet<string> Permisos { get; private set; } = [];
     public bool TienePermiso(string codigo) => Permisos.Contains(codigo);
     public bool IsAuthenticated => !string.IsNullOrEmpty(AccessToken);
 
-    public async Task RestoreSessionAsync(string? accessToken, string? refreshToken, int? idUsuario, int? idTenant, int? idUsuarioTenant, string? nomUsuario)
+    /// <summary>
+    /// S55.1 · D1 — donde vive la sesion. «Recordarme» la deja en <c>localStorage</c>
+    /// (sobrevive al cierre del navegador); sin el, queda en <c>sessionStorage</c>
+    /// (sobrevive a F5 en la misma pestana). El modo no cambia al renovar token,
+    /// cambiar de tenant ni entrar con un proveedor externo.
+    /// </summary>
+    public ModoPersistenciaSesion ModoPersistencia => _modoPersistencia;
+
+    private ModoPersistenciaSesion _modoPersistencia = ModoPersistenciaSesion.Pestana;
+
+    /// <summary>S76 · D5 — claim IdApp del token; null si falta o no es numero.</summary>
+    private int? _idAppToken;
+
+    public async Task RestoreSessionAsync(string? accessToken, string? refreshToken, int? idUsuario, int? idTenant, int? idUsuarioTenant, string? nomUsuario, ModoPersistenciaSesion? modo = null)
     {
         AccessToken = accessToken;
         RefreshToken = refreshToken;
@@ -52,7 +67,14 @@ public class AuthService
         IdTenant = idTenant;
         IdUsuarioTenant = idUsuarioTenant;
         NomUsuario = nomUsuario;
+        _modoPersistencia = modo ?? ModoPersistenciaSesion.Pestana;
         ParseRoleFromToken();
+        // S76 · D5 — una sesion guardada de otra app no abre el portal.
+        if (_idAppToken.HasValue && _idAppToken.Value != AppId)
+        {
+            await ClearSessionAsync();
+            return;
+        }
         if (!string.IsNullOrEmpty(accessToken))
             _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         await LoadCurrentTenantAsync();
@@ -93,6 +115,61 @@ public class AuthService
         return new LoginResult { Success = true };
     }
 
+    /// <summary>S125 · D5 — canjea el código de un solo uso del login externo por la sesión.</summary>
+    public async Task<LoginResult> CanjearCodigoExternoAsync(string codigo)
+    {
+        var response = await _http.PostAsJsonAsync("api/auth/externo/canje", new { codigo, idApp = AppId });
+        var json = await response.Content.ReadAsStringAsync();
+
+        if (!response.IsSuccessStatusCode)
+            return new LoginResult { Success = false, ErrorMessage = LeerMensaje(json) ?? "No se pudo completar el inicio de sesión." };
+
+        var body = JsonSerializer.Deserialize<AuthResponseDto>(json, _jsonOptions);
+        if (body is null || string.IsNullOrEmpty(body.AccessToken))
+            return new LoginResult { Success = false, ErrorMessage = "Respuesta inválida del servidor" };
+
+        await SetSessionFromFragmentAsync(body.AccessToken, body.RefreshToken, body.IdUsuario, body.IdTenant, body.NomUsuario, body.ReqCambioPwd);
+        return new LoginResult { Success = true };
+    }
+
+    /// <summary>S125 · D5 — tipo de MFA de un login externo pendiente; null si la referencia venció.</summary>
+    public async Task<int?> ObtenerMfaExternoAsync(string mfaRef)
+    {
+        var response = await _http.GetAsync($"api/auth/externo/mfa/{Uri.EscapeDataString(mfaRef)}");
+        if (!response.IsSuccessStatusCode)
+            return null;
+
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        return TryGetInt32(doc.RootElement, "idTipoMFA");
+    }
+
+    /// <summary>S125 · D5 — valida el MFA del login externo; devuelve la URL de la app con el código de canje.</summary>
+    public async Task<(string? UrlRetorno, string? Error)> ValidarMfaExternoAsync(string mfaRef, string codigoMFA)
+    {
+        var response = await _http.PostAsJsonAsync("api/auth/externo/mfa/validar", new { mfaRef, codigoMFA });
+        var json = await response.Content.ReadAsStringAsync();
+
+        if (!response.IsSuccessStatusCode)
+            return (null, LeerMensaje(json) ?? "Código inválido");
+
+        using var doc = JsonDocument.Parse(json);
+        var url = TryGetString(doc.RootElement, "urlRetorno");
+        return string.IsNullOrEmpty(url) ? (null, "Respuesta inválida del servidor") : (url, null);
+    }
+
+    private static string? LeerMensaje(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            return TryGetString(doc.RootElement, "mensaje");
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
     public async Task<TenantInfoResult?> GetTenantInfoAsync()
     {
         try
@@ -129,18 +206,6 @@ public class AuthService
         }
     }
 
-    public async Task<List<AppItem>> GetAppsAsync()
-    {
-        try
-        {
-            return await _http.GetFromJsonAsync<List<AppItem>>("api/apps/activas") ?? [];
-        }
-        catch
-        {
-            return [];
-        }
-    }
-
     public async Task<LoginResult> SwitchTenantAsync(int idTenant)
     {
         try
@@ -170,7 +235,7 @@ public class AuthService
             if (body is null || string.IsNullOrEmpty(body.AccessToken))
                 return new LoginResult { Success = false, ErrorMessage = "Respuesta inválida del servidor" };
 
-            await SetSessionAsync(body, rememberMe: true);
+            await SetSessionAsync(body, rememberMe: _modoPersistencia == ModoPersistenciaSesion.Local);
             return new LoginResult { Success = true };
         }
         catch (Exception ex)
@@ -235,11 +300,12 @@ public class AuthService
         }
     }
 
-    public async Task<LoginResult> CompleteExternalLoginAsync(string providerCode, string authorizationCode, string redirectUri, int idApp, int? idTenant = null)
+    // S100 · D3 — el tenant es obligatorio: sin reserva al tenant 1 (P58)
+    public async Task<LoginResult> CompleteExternalLoginAsync(string providerCode, string authorizationCode, string redirectUri, int idApp, int idTenant, bool rememberMe = false)
     {
         var response = await _http.PostAsJsonAsync("api/auth/externo/login", new
         {
-            idTenant = idTenant ?? 1,
+            idTenant,
             idApp,
             providerCode,
             authorizationCode,
@@ -281,7 +347,7 @@ public class AuthService
         if (body is null || string.IsNullOrEmpty(body.AccessToken))
             return new LoginResult { Success = false, ErrorMessage = "Respuesta inválida del servidor" };
 
-        await SetSessionAsync(body, rememberMe: true);
+        await SetSessionAsync(body, rememberMe: rememberMe);
         return new LoginResult { Success = true };
     }
 
@@ -367,19 +433,12 @@ public class AuthService
         return new LoginResult { Success = true };
     }
 
-    public async Task<string> CalcularHashAsync(string password)
-    {
-        var response = await _http.PostAsJsonAsync("api/password/calcular-hash", new { password });
-        if (!response.IsSuccessStatusCode) return "";
-        return await response.Content.ReadAsStringAsync();
-    }
-
-    public async Task<LoginResult> CambiarPasswordAsync(string currentPassword, string newPasswordHash)
+    public async Task<LoginResult> CambiarPasswordAsync(string passwordActual, string passwordNueva)
     {
         var response = await _http.PostAsJsonAsync("api/password/cambiar", new
         {
-            currentPassword,
-            newPasswordHash
+            passwordActual,
+            passwordNueva
         });
 
         if (!response.IsSuccessStatusCode)
@@ -464,7 +523,7 @@ public class AuthService
             return false;
         }
 
-        await SetSessionAsync(result, rememberMe: true);
+        await SetSessionAsync(result, rememberMe: _modoPersistencia == ModoPersistenciaSesion.Local);
         return true;
     }
 
@@ -472,6 +531,7 @@ public class AuthService
     {
         EsSistema = false;
         Permisos = [];
+        _idAppToken = null;
         if (string.IsNullOrEmpty(AccessToken)) return;
         try
         {
@@ -499,6 +559,9 @@ public class AuthService
             else
                 IdUsuarioTenant = null;
 
+            if (doc.RootElement.TryGetProperty("IdApp", out var iapp))
+                _idAppToken = int.TryParse(iapp.GetString(), out var ia) ? ia : null;
+
             if (doc.RootElement.TryGetProperty("is_system", out var sys))
                 EsSistema = sys.GetString() == "true";
             if (doc.RootElement.TryGetProperty("permiso", out var perms))
@@ -524,8 +587,12 @@ public class AuthService
         ReqCambioPwd = response.ReqCambioPwd;
         ParseRoleFromToken();
         _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", AccessToken);
+        // S55.1 · D1 — el modo lo fija el login («Recordarme») y no cambia despues.
+        _modoPersistencia = rememberMe ? ModoPersistenciaSesion.Local : ModoPersistenciaSesion.Pestana;
         if (rememberMe)
             await PersistSessionAsync();
+        else
+            await PersistSessionInTabAsync();
         OnAuthStateChanged?.Invoke();
         await LoadCurrentTenantAsync();
     }
@@ -542,7 +609,10 @@ public class AuthService
         ReqCambioPwd = reqCambioPwd;
         ParseRoleFromToken();
         _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", AccessToken);
-        await PersistSessionAsync();
+        if (_modoPersistencia == ModoPersistenciaSesion.Local)
+            await PersistSessionAsync();
+        else
+            await PersistSessionInTabAsync();
         OnAuthStateChanged?.Invoke();
         await LoadCurrentTenantAsync();
     }
@@ -596,13 +666,53 @@ public class AuthService
             await _js.InvokeVoidAsync("localStorage.setItem", "id_tenant", IdTenant?.ToString() ?? "");
             await _js.InvokeVoidAsync("localStorage.setItem", "id_usuario_tenant", IdUsuarioTenant?.ToString() ?? "");
             await _js.InvokeVoidAsync("localStorage.setItem", "nom_usuario", NomUsuario ?? "");
+            // S55.1 · D1 — nunca hay dos copias de la sesion.
+            await ClearSessionInTabAsync();
         }
         catch
         {
         }
     }
 
-    private async Task ClearPersistedSessionAsync()
+    /// <summary>
+    /// S55 · D6 (U12) — sin "Recordarme" la sesion se guarda en sessionStorage:
+    /// sobrevive a F5 en la misma pestana y desaparece al cerrarla.
+    /// </summary>
+    private async Task PersistSessionInTabAsync()
+    {
+        try
+        {
+            await _js.InvokeVoidAsync("sessionStorage.setItem", "access_token", AccessToken ?? "");
+            await _js.InvokeVoidAsync("sessionStorage.setItem", "refresh_token", RefreshToken ?? "");
+            await _js.InvokeVoidAsync("sessionStorage.setItem", "id_usuario", IdUsuario?.ToString() ?? "");
+            await _js.InvokeVoidAsync("sessionStorage.setItem", "id_tenant", IdTenant?.ToString() ?? "");
+            await _js.InvokeVoidAsync("sessionStorage.setItem", "id_usuario_tenant", IdUsuarioTenant?.ToString() ?? "");
+            await _js.InvokeVoidAsync("sessionStorage.setItem", "nom_usuario", NomUsuario ?? "");
+            // S55.1 · D1 — nunca hay dos copias de la sesion.
+            await ClearSessionInBrowserAsync();
+        }
+        catch
+        {
+        }
+    }
+
+    private async Task ClearSessionInTabAsync()
+    {
+        try
+        {
+            await _js.InvokeVoidAsync("sessionStorage.removeItem", "access_token");
+            await _js.InvokeVoidAsync("sessionStorage.removeItem", "refresh_token");
+            await _js.InvokeVoidAsync("sessionStorage.removeItem", "id_usuario");
+            await _js.InvokeVoidAsync("sessionStorage.removeItem", "id_tenant");
+            await _js.InvokeVoidAsync("sessionStorage.removeItem", "id_usuario_tenant");
+            await _js.InvokeVoidAsync("sessionStorage.removeItem", "nom_usuario");
+        }
+        catch
+        {
+        }
+    }
+
+    private async Task ClearSessionInBrowserAsync()
     {
         try
         {
@@ -617,4 +727,20 @@ public class AuthService
         {
         }
     }
+
+    private async Task ClearPersistedSessionAsync()
+    {
+        await ClearSessionInBrowserAsync();
+        await ClearSessionInTabAsync();
+    }
+}
+
+/// <summary>S55.1 · D1 — almacen donde vive la sesion de la Web.</summary>
+public enum ModoPersistenciaSesion
+{
+    /// <summary>localStorage: sobrevive al cierre del navegador («Recordarme»).</summary>
+    Local,
+
+    /// <summary>sessionStorage: sobrevive a F5 en la misma pestana.</summary>
+    Pestana
 }

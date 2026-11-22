@@ -24,7 +24,7 @@ public class AppModuloRepository : RepositoryAsync<AppModulo>, IAppModuloReposit
                 .OrderBy(am => am.Modulo != null ? am.Modulo.Orden : 0).ToListAsync(ct);
             return Result<IReadOnlyList<AppModulo>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<AppModulo>>.Failure("DB_ERROR", ex.Message);
         }
@@ -38,7 +38,7 @@ public class AppModuloRepository : RepositoryAsync<AppModulo>, IAppModuloReposit
                 .OrderBy(am => am.Modulo != null ? am.Modulo.Orden : 0).ToListAsync(ct);
             return Result<IReadOnlyList<AppModulo>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<AppModulo>>.Failure("DB_ERROR", ex.Message);
         }

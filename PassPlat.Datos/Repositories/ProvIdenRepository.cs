@@ -11,7 +11,6 @@ public interface IProvIdenRepository : IRepositoryAsync<ProvIden>
     Task<Result<ProvIden?>> ObtenerPorCodigoAsync(string codigo, CancellationToken ct = default);
     Task<Result<IReadOnlyList<ProvIden>>> ObtenerActivosAsync(CancellationToken ct = default);
     Task<Result<IReadOnlyList<ProvIden>>> ObtenerTodosOrdenadosAsync(CancellationToken ct = default);
-    Task<Result<int>> ContarActivosAsync(CancellationToken ct = default);
 }
 
 public class ProvIdenRepository : RepositoryAsync<ProvIden>, IProvIdenRepository
@@ -25,7 +24,7 @@ public class ProvIdenRepository : RepositoryAsync<ProvIden>, IProvIdenRepository
             var entity = await DbSet.FirstOrDefaultAsync(p => p.Codigo == codigo, ct);
             return Result<ProvIden?>.Success(entity, allowNull: true);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<ProvIden?>.Failure("DB_ERROR", ex.Message);
         }
@@ -38,7 +37,7 @@ public class ProvIdenRepository : RepositoryAsync<ProvIden>, IProvIdenRepository
             var list = await DbSet.Where(p => p.Activo).OrderBy(p => p.Orden).AsNoTracking().ToListAsync(ct);
             return Result<IReadOnlyList<ProvIden>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<ProvIden>>.Failure("DB_ERROR", ex.Message);
         }
@@ -51,22 +50,9 @@ public class ProvIdenRepository : RepositoryAsync<ProvIden>, IProvIdenRepository
             var list = await DbSet.OrderBy(p => p.Orden).AsNoTracking().ToListAsync(ct);
             return Result<IReadOnlyList<ProvIden>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<ProvIden>>.Failure("DB_ERROR", ex.Message);
-        }
-    }
-
-    public async Task<Result<int>> ContarActivosAsync(CancellationToken ct = default)
-    {
-        try
-        {
-            var count = await DbSet.CountAsync(p => p.Activo, ct);
-            return Result<int>.Success(count);
-        }
-        catch (Exception ex)
-        {
-            return Result<int>.Failure("DB_ERROR", ex.Message);
         }
     }
 }

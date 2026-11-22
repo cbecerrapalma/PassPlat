@@ -9,8 +9,6 @@ namespace PassPlat.Datos.Repositories;
 public interface IEmailTemplateRepository : IRepositoryAsync<EmailTemplate>
 {
     Task<Result<EmailTemplate?>> ObtenerPorNombreCulturaAsync(string nombre, string cultura, int? idTenant = null, CancellationToken ct = default);
-    Task<Result<IReadOnlyList<EmailTemplate>>> ObtenerPublicadosAsync(CancellationToken ct = default);
-    Task<Result<IReadOnlyList<EmailTemplate>>> ObtenerPorCategoriaAsync(string categoria, CancellationToken ct = default);
     Task<Result<IReadOnlyList<EmailTemplate>>> ObtenerPorTenantAsync(int idTenant, CancellationToken ct = default);
 }
 
@@ -18,12 +16,6 @@ public interface IEmailTemplatePartialRepository : IRepositoryAsync<EmailTemplat
 {
     Task<Result<EmailTemplatePartial?>> ObtenerPorNombreAsync(string nombre, CancellationToken ct = default);
     Task<Result<IReadOnlyList<EmailTemplatePartial>>> ObtenerActivosAsync(CancellationToken ct = default);
-}
-
-public interface IEmailTemplateHistorialRepository : IRepositoryAsync<EmailTemplateHistorial>
-{
-    Task<Result<IReadOnlyList<EmailTemplateHistorial>>> ObtenerPorTemplateAsync(int idTemplate, CancellationToken ct = default);
-    Task<Result<EmailTemplateHistorial?>> ObtenerVersionAsync(int idTemplate, int version, CancellationToken ct = default);
 }
 
 public class EmailTemplateRepository : RepositoryAsync<EmailTemplate>, IEmailTemplateRepository
@@ -66,35 +58,9 @@ public class EmailTemplateRepository : RepositoryAsync<EmailTemplate>, IEmailTem
 
             return Result<EmailTemplate?>.Success(null, allowNull: true);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<EmailTemplate?>.Failure("DB_ERROR", ex.Message);
-        }
-    }
-
-    public async Task<Result<IReadOnlyList<EmailTemplate>>> ObtenerPublicadosAsync(CancellationToken ct = default)
-    {
-        try
-        {
-            var list = await DbSet.Where(e => e.Estado == "publicado").OrderBy(e => e.Nombre).ToListAsync(ct);
-            return Result<IReadOnlyList<EmailTemplate>>.Success(list);
-        }
-        catch (Exception ex)
-        {
-            return Result<IReadOnlyList<EmailTemplate>>.Failure("DB_ERROR", ex.Message);
-        }
-    }
-
-    public async Task<Result<IReadOnlyList<EmailTemplate>>> ObtenerPorCategoriaAsync(string categoria, CancellationToken ct = default)
-    {
-        try
-        {
-            var list = await DbSet.Where(e => e.Categoria == categoria).OrderBy(e => e.Nombre).ToListAsync(ct);
-            return Result<IReadOnlyList<EmailTemplate>>.Success(list);
-        }
-        catch (Exception ex)
-        {
-            return Result<IReadOnlyList<EmailTemplate>>.Failure("DB_ERROR", ex.Message);
         }
     }
 
@@ -105,7 +71,7 @@ public class EmailTemplateRepository : RepositoryAsync<EmailTemplate>, IEmailTem
             var list = await DbSet.Where(e => e.IdTenant == idTenant || e.IdTenant == null).OrderBy(e => e.Nombre).ToListAsync(ct);
             return Result<IReadOnlyList<EmailTemplate>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<EmailTemplate>>.Failure("DB_ERROR", ex.Message);
         }
@@ -123,7 +89,7 @@ public class EmailTemplatePartialRepository : RepositoryAsync<EmailTemplateParti
             var entity = await DbSet.FirstOrDefaultAsync(e => e.Nombre == nombre, ct);
             return Result<EmailTemplatePartial?>.Success(entity, allowNull: true);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<EmailTemplatePartial?>.Failure("DB_ERROR", ex.Message);
         }
@@ -136,40 +102,9 @@ public class EmailTemplatePartialRepository : RepositoryAsync<EmailTemplateParti
             var list = await DbSet.Where(e => e.Activo).OrderBy(e => e.Nombre).ToListAsync(ct);
             return Result<IReadOnlyList<EmailTemplatePartial>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<EmailTemplatePartial>>.Failure("DB_ERROR", ex.Message);
-        }
-    }
-}
-
-public class EmailTemplateHistorialRepository : RepositoryAsync<EmailTemplateHistorial>, IEmailTemplateHistorialRepository
-{
-    public EmailTemplateHistorialRepository(PassPlatDbContext dbContext) : base(dbContext) { }
-
-    public async Task<Result<IReadOnlyList<EmailTemplateHistorial>>> ObtenerPorTemplateAsync(int idTemplate, CancellationToken ct = default)
-    {
-        try
-        {
-            var list = await DbSet.Where(h => h.IdTemplate == idTemplate).OrderByDescending(h => h.Version).ToListAsync(ct);
-            return Result<IReadOnlyList<EmailTemplateHistorial>>.Success(list);
-        }
-        catch (Exception ex)
-        {
-            return Result<IReadOnlyList<EmailTemplateHistorial>>.Failure("DB_ERROR", ex.Message);
-        }
-    }
-
-    public async Task<Result<EmailTemplateHistorial?>> ObtenerVersionAsync(int idTemplate, int version, CancellationToken ct = default)
-    {
-        try
-        {
-            var entity = await DbSet.FirstOrDefaultAsync(h => h.IdTemplate == idTemplate && h.Version == version, ct);
-            return Result<EmailTemplateHistorial?>.Success(entity, allowNull: true);
-        }
-        catch (Exception ex)
-        {
-            return Result<EmailTemplateHistorial?>.Failure("DB_ERROR", ex.Message);
         }
     }
 }

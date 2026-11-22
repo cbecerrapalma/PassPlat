@@ -7,37 +7,57 @@
 @using PassPlat.Web.Models
 @using PassPlat.Web.Shared
 
-@if (!Auth.TienePermiso("POLITICAS_PWD_VER"))
+@if (!Auth.TienePermiso("POLITICASPWD_VER"))
 {
-    <SinPermiso PermisoRequerido="POLITICAS_PWD_VER" />
+    <SinPermiso PermisoRequerido="POLITICASPWD_VER" />
 }
 else
 {
-<MudContainer>
-    <MudBreadcrumbs Class="mb-3">
-        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
-        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/tenants"))">Administración</MudBreadcrumbItem>
-        <MudBreadcrumbItem>Políticas de Contraseña</MudBreadcrumbItem>
-    </MudBreadcrumbs>
+<div class="iam-page">
+<MigasDePan />
 
-    <div class="mud-grid mud-grid-spacing-3 mb-4">
-        <IamKpiCard Valor="@_items.Count.ToString()" Label="Políticas" Subtexto="Registradas en sistema" Icon="@Icons.Material.Filled.Security" ColorClass="primary" Xs="12" Sm="6" Md="3" />
-        <IamKpiCard Valor="@_items.Count(p => p.Activa).ToString()" Label="Activas" Subtexto="Vigentes" Icon="@Icons.Material.Filled.CheckCircle" ColorClass="success" Xs="12" Sm="6" Md="3" />
-        <IamKpiCard Valor="@_items.Count(p => !p.Activa).ToString()" Label="Inactivas" Subtexto="Deshabilitadas" Icon="@Icons.Material.Filled.Cancel" ColorClass="warning" Xs="12" Sm="6" Md="3" />
-        <IamKpiCard Valor="@_items.Count(p => p.IdTenant is not null || p.IdApp is not null).ToString()" Label="Específicas" Subtexto="Por tenant/app" Icon="@Icons.Material.Filled.FilterAlt" ColorClass="info" Xs="12" Sm="6" Md="3" />
+    <div class="page-header">
+        <div class="page-title-row">
+            <div>
+                <h1 class="page-title">Políticas de Contraseñas</h1>
+                <p class="page-subtitle">Reglas de complejidad y vigencia por tenant o aplicación.</p>
+            </div>
+            <div class="page-actions">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@OpenCreateDialog"
+                    StartIcon="@Icons.Material.Filled.Add" Size="Size.Medium">
+                    Nueva Política
+                </MudButton>
+            </div>
+        </div>
     </div>
 
-    <MudPaper Class="pa-4 mb-4 d-flex flex-wrap align-center gap-4" Elevation="0" Outlined="true">
-        <MudText Typo="Typo.h5" Class="flex-grow-1 mb-0">Políticas de Contraseñas</MudText>
-        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium"
-            OnClick="@LoadData" Class="mr-2" />
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@OpenCreateDialog"
-            StartIcon="@Icons.Material.Filled.Add" Size="Size.Medium">
-            Nueva Política
-        </MudButton>
-    </MudPaper>
+    <div class="kpi-row mb-4">
+        <IamKpiCard Valor="@_items.Count.ToString()" Label="Políticas" Subtexto="Registradas en sistema" Icon="@Icons.Material.Filled.Security" ColorClass="primary" />
+        <IamKpiCard Valor="@_items.Count(p => p.Activa).ToString()" Label="Activas" Subtexto="Vigentes" Icon="@Icons.Material.Filled.CheckCircle" ColorClass="success" />
+        <IamKpiCard Valor="@_items.Count(p => !p.Activa).ToString()" Label="Inactivas" Subtexto="Deshabilitadas" Icon="@Icons.Material.Filled.Cancel" ColorClass="warning" />
+        <IamKpiCard Valor="@_items.Count(p => p.IdTenant is not null || p.IdApp is not null).ToString()" Label="Específicas" Subtexto="Por tenant/app" Icon="@Icons.Material.Filled.FilterAlt" ColorClass="info" />
+    </div>
 
-    <MudTable T="PoliticaPwdDto" Items="@_items" Hover="true" Breakpoint="Breakpoint.Sm">
+    <div class="content-body">
+        <div class="table-panel">
+            <div class="table-toolbar filter-row">
+                <MudTextField @bind-Value="_search" Label="Buscar política..." Variant="Variant.Outlined" Immediate="true" Clearable="true" Class="lista-filtro" />
+                <MudSelect T="string" Value="_appFiltro" ValueChanged="@OnAppChanged" Label="App" Variant="Variant.Outlined" Dense="true" Clearable="true" Class="lista-filtro">
+                    @foreach (var app in _appsFiltro)
+                    {
+                        <MudSelectItem Value="@app">@app</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudSelect T="bool?" Value="_activaFiltro" ValueChanged="@OnActivaChanged" Label="Estado" Variant="Variant.Outlined" Dense="true" Clearable="true" Class="lista-filtro">
+                    <MudSelectItem T="bool?" Value="@((bool?)true)">Activas</MudSelectItem>
+                    <MudSelectItem T="bool?" Value="@((bool?)false)">Inactivas</MudSelectItem>
+                </MudSelect>
+                <div class="toolbar-spacer"></div>
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium"
+                    OnClick="@LoadData" Class="mr-2" aria-label="Refrescar" />
+            </div>
+            <div class="table-wrap">
+    <MudTable T="PoliticaPwdDto" Items="@_itemsFiltrados" Hover="true" Breakpoint="Breakpoint.Sm">
         <ColGroup>
             <col style="width: 60px;" /><col /><col /><col /><col style="width: 140px;" /><col style="width: 90px;" /><col style="width: 60px;" />
         </ColGroup>
@@ -71,7 +91,7 @@ else
             </MudTd>
             <MudTd>
                 <div @onclick:stopPropagation="true" class="table-actions">
-                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true">
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true" AriaLabel="@($"Acciones de {context.Nombre}")">
                         <MudMenuItem OnClick="@(() => OpenEditDialog(context))">
                             <MudIcon Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Class="mr-2" />
                             Editar
@@ -104,21 +124,49 @@ else
             </div>
         </NoRecordsContent>
     </MudTable>
+            </div>
+        </div>
+    </div>
 
     <MudOverlay Visible="@_loading" Class="d-flex align-center justify-center">
         <MudProgressCircular Indeterminate="true" Size="Size.Large" />
     </MudOverlay>
-</MudContainer>
+</div>
 }
 
 @code {
     private List<PoliticaPwdDto> _items = [];
+    private List<string> _appsFiltro = [];
+    private string _search = "";
+    private string? _appFiltro;
+    private bool? _activaFiltro;
     private bool _loading;
 
     protected override async Task OnInitializedAsync()
     {
-        if (!Auth.TienePermiso("POLITICAS_PWD_VER")) return;
+        if (!Auth.TienePermiso("POLITICASPWD_VER")) return;
         await LoadData();
+    }
+
+    // S85 · D4 — buscador (Codigo/Nombre), app y estado se aplican en memoria sobre la lista cargada
+    private List<PoliticaPwdDto> _itemsFiltrados
+    {
+        get
+        {
+            var filtrados = _items;
+            if (!string.IsNullOrWhiteSpace(_search))
+            {
+                var s = _search.Trim();
+                filtrados = filtrados.Where(p =>
+                    p.Codigo.Contains(s, StringComparison.OrdinalIgnoreCase) ||
+                    p.Nombre.Contains(s, StringComparison.OrdinalIgnoreCase)).ToList();
+            }
+            if (!string.IsNullOrWhiteSpace(_appFiltro))
+                filtrados = filtrados.Where(p => p.AppNombre == _appFiltro).ToList();
+            if (_activaFiltro is bool activa)
+                filtrados = filtrados.Where(p => p.Activa == activa).ToList();
+            return filtrados;
+        }
     }
 
     private async Task LoadData()
@@ -127,6 +175,10 @@ else
         try
         {
             _items = await Api.GetAsync<List<PoliticaPwdDto>>("api/politicaspwd") ?? [];
+
+            // S85 · D4 — opciones del filtro App a partir de la lista cargada
+            _appsFiltro = _items.Select(p => p.AppNombre ?? string.Empty)
+                .Where(n => n.Length > 0).Distinct().OrderBy(n => n).ToList();
         }
         catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error al cargar: {ex.Message}", Severity.Error); }
         finally { _loading = false; }
@@ -135,17 +187,17 @@ else
     private async Task OpenCreateDialog()
     {
         var parameters = new DialogParameters { ["IsEdit"] = false };
-        var dialog = await Dialog.ShowAsync<PoliticaPwdDialog>("Nueva Política", parameters);
+        var dialog = await Dialog.ShowAsync<PoliticaPwdDialog>("Nueva Política", parameters, OpcionesDialogo.Dialogo(TamanoDialogo.Amplio));
         var result = await dialog.Result;
-        if (!result.Canceled) await LoadData();
+        if (result is { Canceled: false }) await LoadData();
     }
 
     private async Task OpenEditDialog(PoliticaPwdDto item)
     {
         var parameters = new DialogParameters { ["IsEdit"] = true, ["Politica"] = item };
-        var dialog = await Dialog.ShowAsync<PoliticaPwdDialog>("Editar Política", parameters);
+        var dialog = await Dialog.ShowAsync<PoliticaPwdDialog>("Editar Política", parameters, OpcionesDialogo.Dialogo(TamanoDialogo.Amplio));
         var result = await dialog.Result;
-        if (!result.Canceled) await LoadData();
+        if (result is { Canceled: false }) await LoadData();
     }
 
     private async Task ConfirmDesactivar(PoliticaPwdDto item)
@@ -159,7 +211,7 @@ else
         };
         var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parameters);
         var result = await dialog.Result;
-        if (!result.Canceled)
+        if (result is { Canceled: false })
         {
             try
             {
@@ -174,5 +226,15 @@ else
             }
             catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error); }
         }
+    }
+
+    private void OnAppChanged(string? app)
+    {
+        _appFiltro = app;
+    }
+
+    private void OnActivaChanged(bool? activa)
+    {
+        _activaFiltro = activa;
     }
 }

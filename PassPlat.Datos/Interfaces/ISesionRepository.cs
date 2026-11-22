@@ -13,9 +13,10 @@ public interface ISesionRepository : IRepositoryAsync<Sesion>
     Task<Result<IReadOnlyList<Sesion>>> ObtenerSesionesActivasPorUsuarioAsync(int idUsuario, int idTenant, CancellationToken ct = default);
     Task<Result<IReadOnlyList<Sesion>>> ObtenerSesionesActivasPorTenantAsync(int idTenant, CancellationToken ct = default);
     Task<Result<int>> RevocarTodasPorTenantAsync(int idTenant, CancellationToken ct = default);
+    // S57.19 H-5: revocar todas las sesiones activas de una app (desactivación de App).
+    Task<Result<int>> RevocarTodasPorAppAsync(int idApp, CancellationToken ct = default);
     Task<Result<int>> ContarSesionesActivasAsync(int idUsuario, int idTenant, CancellationToken ct = default);
     Task<Result<int>> ContarSesionesActivasPorTenantAsync(int idTenant, CancellationToken ct = default);
-    Task<Result<Sesion?>> ObtenerPorIdTokenExtAsync(string idTokenExt, CancellationToken ct = default);
     Task<Result<Sesion?>> ObtenerSesionActivaPorJtiAsync(int idUsuario, string jti, CancellationToken ct = default);
     Task<Result<Sesion?>> ObtenerPorHashRefreshAsync(string hashRefresh, CancellationToken ct = default);
     Task<Result<bool>> IntentarRotarHashRefreshAsync(Guid idSesion, string? hashRefreshEsperado, string? nuevoHashRefresh, DateTime nuevaFecExpira, CancellationToken ct = default);

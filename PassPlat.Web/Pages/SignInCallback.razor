@@ -2,7 +2,6 @@
 @layout LoginLayout
 @inject AuthService Auth
 @inject NavigationManager Nav
-@inject IJSRuntime JS
 
 <div class="login-wrapper">
     <MudPaper Elevation="0" Class="login-card px-8 py-10" Style="width: 100%; max-width: 420px; border-radius: 16px;">
@@ -48,24 +47,35 @@
 
         try
         {
-            var fragment = await JS.InvokeAsync<FragmentData>("window.AuthInterop.parseFragment");
-            await JS.InvokeVoidAsync("window.AuthInterop.clearFragment");
+            // S125 · D5 — la API devuelve un código de un solo uso en la query; los tokens ya no viajan en la URL.
+            var uri = Nav.ToAbsoluteUri(Nav.Uri);
 
-            if (fragment == null || string.IsNullOrEmpty(fragment.accessToken))
+            // S128 · D5 — un error del callback se muestra en /login, como antes de que volviera aquí.
+            var error = System.Web.HttpUtility.ParseQueryString(uri.Query).Get("error");
+            if (!string.IsNullOrEmpty(error))
             {
-                _mensaje = "No se recibieron credenciales del proveedor.";
+                Nav.NavigateTo($"/login?error={Uri.EscapeDataString(error)}", replace: true);
+                return;
+            }
+
+            var codigo = System.Web.HttpUtility.ParseQueryString(uri.Query).Get("codigo");
+
+            if (string.IsNullOrEmpty(codigo))
+            {
+                _mensaje = "No se recibió el código del proveedor.";
                 _showError = true;
                 StateHasChanged();
                 return;
             }
 
-            await Auth.SetSessionFromFragmentAsync(
-                fragment.accessToken,
-                fragment.refreshToken,
-                int.TryParse(fragment.idUsuario, out var uid) ? uid : 0,
-                int.TryParse(fragment.idTenant, out var tid) ? tid : 0,
-                fragment.nomUsuario,
-                fragment.reqCambioPwd == "true");
+            var result = await Auth.CanjearCodigoExternoAsync(codigo);
+            if (!result.Success)
+            {
+                _mensaje = result.ErrorMessage ?? "No se pudo completar el inicio de sesión.";
+                _showError = true;
+                StateHasChanged();
+                return;
+            }
 
             Nav.NavigateTo(Auth.ReqCambioPwd ? "/cambiar-password" : "/");
         }
@@ -80,15 +90,5 @@
     private void VolverLogin()
     {
         Nav.NavigateTo("/login");
-    }
-
-    private class FragmentData
-    {
-        public string? accessToken { get; set; }
-        public string? refreshToken { get; set; }
-        public string? idUsuario { get; set; }
-        public string? idTenant { get; set; }
-        public string? nomUsuario { get; set; }
-        public string? reqCambioPwd { get; set; }
     }
 }

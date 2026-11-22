@@ -15,7 +15,7 @@ public class BloqueoConfiguration : IEntityTypeConfiguration<Bloqueo>
         builder.Property(b => b.IdUsuario).IsRequired();
         builder.Property(b => b.IdTenant).IsRequired();
         builder.Property(b => b.IdTipoBloqueo).IsRequired();
-        builder.Property(b => b.FecInicio).HasDefaultValueSql("sysutcdatetime()").IsRequired();
+        builder.Property(b => b.FecInicio).HasDefaultValueSql("sysdatetime()").IsRequired();
         builder.Property(b => b.FecFin);
         builder.Property(b => b.Motivo).HasMaxLength(200).IsRequired();
         builder.Property(b => b.CodDesbloqueo).HasMaxLength(100);

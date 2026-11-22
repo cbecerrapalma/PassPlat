@@ -16,7 +16,7 @@ public class RolesHerenciaConfiguration : IEntityTypeConfiguration<RolesHerencia
         builder.Property(r => r.IdRolPadre).IsRequired();
         builder.Property(r => r.IdTenant).IsRequired();
         builder.Property(r => r.Activo).HasDefaultValue(true).IsRequired();
-        builder.Property(r => r.FecCrea).HasDefaultValueSql("sysutcdatetime()").IsRequired();
+        builder.Property(r => r.FecCrea).HasDefaultValueSql("sysdatetime()").IsRequired();
 
         builder.HasOne(r => r.RolHijo)
             .WithMany(r => r.RolesHerenciaHijos)

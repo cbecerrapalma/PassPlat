@@ -13,5 +13,4 @@ public class TiposModuloController : BaseApiController
 
     [HttpGet] public async Task<IActionResult> GetAll(CancellationToken ct) => FromResultQuery(await _service.GetAllAsync(ct: ct));
     [HttpGet("{id}")] public async Task<IActionResult> GetById(int id, CancellationToken ct) => FromResultQuery(await _service.GetByIdAsync(id, ct));
-    [HttpGet("codigo/{codigo}")] public async Task<IActionResult> GetByCodigo(string codigo, CancellationToken ct) => FromResultQuery(await _service.ObtenerPorCodigoAsync(codigo, ct));
 }

@@ -29,7 +29,7 @@ public class RolesHerenciaRepository : RepositoryAsync<RolesHerencia>, IRolesHer
                 .ToListAsync(ct);
             return Result<IReadOnlyList<RolesHerencia>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<RolesHerencia>>.Failure("DB_ERROR", ex.Message);
         }
@@ -45,7 +45,7 @@ public class RolesHerenciaRepository : RepositoryAsync<RolesHerencia>, IRolesHer
                 .ToListAsync(ct);
             return Result<IReadOnlyList<RolesHerencia>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<RolesHerencia>>.Failure("DB_ERROR", ex.Message);
         }
@@ -61,7 +61,7 @@ public class RolesHerenciaRepository : RepositoryAsync<RolesHerencia>, IRolesHer
                 .ToListAsync(ct);
             return Result<IReadOnlyList<RolesHerencia>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<RolesHerencia>>.Failure("DB_ERROR", ex.Message);
         }
@@ -74,7 +74,7 @@ public class RolesHerenciaRepository : RepositoryAsync<RolesHerencia>, IRolesHer
             var entity = await DbSet.FirstOrDefaultAsync(r => r.IdRolHijo == idRolHijo && r.IdRolPadre == idRolPadre, ct);
             return Result<RolesHerencia?>.Success(entity, allowNull: true);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<RolesHerencia?>.Failure("DB_ERROR", ex.Message);
         }

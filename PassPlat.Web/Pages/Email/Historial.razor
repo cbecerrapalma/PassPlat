@@ -1,0 +1,165 @@
+@page "/email/historial"
+@inject ApiClient Api
+@inject AuthService Auth
+@inject ISnackbar Snackbar
+@using PassPlat.Web.Models
+@using PassPlat.Web.Shared
+
+@if (!Auth.TienePermiso("EMAIL_LOG_VER"))
+{
+    <SinPermiso PermisoRequerido="EMAIL_LOG_VER" />
+}
+else
+{
+<div class="iam-page">
+<MigasDePan />
+
+    <div class="page-header">
+        <div class="page-title-row">
+            <div>
+                <h1 class="page-title">Historial de envíos</h1>
+                <p class="page-subtitle">Correos enviados por la plataforma, sus intentos y el último error registrado.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="kpi-row mb-4">
+        <IamKpiCard Valor="@_filtrados.Count().ToString()" Label="Mostrados" Subtexto="Filas en la lista" Icon="@Icons.Material.Filled.Mail" ColorClass="primary" />
+        <IamKpiCard Valor="@_filtrados.Count(e => e.Estado == "fallido").ToString()" Label="Con error" Subtexto="Envíos fallidos" Icon="@Icons.Material.Filled.ErrorOutline" ColorClass="error" />
+    </div>
+
+    <div class="content-body">
+        <div class="table-panel">
+            <div class="table-toolbar filter-row">
+                <MudSelect T="string" Label="Estado" Value="_estadoFiltro" ValueChanged="@CambiarEstado" Variant="Variant.Outlined" Dense="true"
+                    Class="lista-filtro" data-testid="historial-estado">
+                    <MudSelectItem T="string" Value="@(string.Empty)">Todos</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("pendiente")">Pendiente</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("enviado")">Enviado</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("fallido")">Fallido</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("rebotado")">Rebotado</MudSelectItem>
+                </MudSelect>
+                <MudSelect T="int" Label="Últimos" Value="_top" ValueChanged="@CambiarTop" Variant="Variant.Outlined"
+                    Dense="true" Class="lista-filtro" data-testid="historial-top">
+                    <MudSelectItem T="int" Value="@(50)">50</MudSelectItem>
+                    <MudSelectItem T="int" Value="@(100)">100</MudSelectItem>
+                    <MudSelectItem T="int" Value="@(200)">200</MudSelectItem>
+                    <MudSelectItem T="int" Value="@(500)">500</MudSelectItem>
+                </MudSelect>
+                <MudTextField @bind-Value="_busqueda" Label="Buscar destinatario o asunto..." Variant="Variant.Outlined"
+                    Immediate="true" Clearable="true" Class="lista-filtro"
+                    Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+                <div class="toolbar-spacer"></div>
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium" aria-label="Refrescar" OnClick="@Cargar" />
+            </div>
+            <div class="table-wrap">
+                <MudTable T="EmailLogDto" Items="@_filtrados" Hover="true" Loading="@_cargando" Breakpoint="Breakpoint.Sm">
+                    <HeaderContent>
+                        <MudTh>Fecha</MudTh>
+                        <MudTh>Destinatario</MudTh>
+                        <MudTh>Asunto</MudTh>
+                        <MudTh>Estado</MudTh>
+                        <MudTh>Proveedor</MudTh>
+                        <MudTh>Intentos</MudTh>
+                        <MudTh>Error</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Fecha" data-testid="envio-fila">@context.FecCrea.ToString("g")</MudTd>
+                        <MudTd DataLabel="Destinatario" data-testid="envio-destinatario">@context.Destinatario</MudTd>
+                        <MudTd DataLabel="Asunto">@context.Asunto</MudTd>
+                        <MudTd DataLabel="Estado">
+                            <MudChip T="string" Size="Size.Small" Color="@ColorEstado(context.Estado)" Variant="Variant.Outlined">
+                                @context.Estado
+                            </MudChip>
+                        </MudTd>
+                        <MudTd DataLabel="Proveedor">@(string.IsNullOrWhiteSpace(context.Proveedor) ? "—" : context.Proveedor)</MudTd>
+                        <MudTd DataLabel="Intentos">@context.Intentos</MudTd>
+                        <MudTd DataLabel="Error">
+                            @if (string.IsNullOrWhiteSpace(context.ErrorDetalle))
+                            {
+                                <span>—</span>
+                            }
+                            else
+                            {
+                                <MudTooltip Text="@context.ErrorDetalle">
+                                    <MudIcon Icon="@Icons.Material.Filled.WarningAmber" Size="Size.Small" Color="Color.Error" />
+                                </MudTooltip>
+                            }
+                        </MudTd>
+                    </RowTemplate>
+                    <NoRecordsContent>
+                        <MudText Align="Align.Center" Class="py-6">
+                            <MudIcon Icon="@Icons.Material.Filled.SearchOff" Class="mr-2" />
+                            No hay envíos registrados
+                        </MudText>
+                    </NoRecordsContent>
+                </MudTable>
+            </div>
+        </div>
+    </div>
+</div>
+}
+
+@code {
+    private List<EmailLogDto> _items = [];
+    private string? _busqueda;
+    private string _estadoFiltro = string.Empty;
+    private int _top = 200;
+    private bool _cargando;
+
+    private IEnumerable<EmailLogDto> _filtrados => string.IsNullOrWhiteSpace(_busqueda)
+        ? _items
+        : _items.Where(e => e.Destinatario.Contains(_busqueda, StringComparison.OrdinalIgnoreCase)
+            || e.Asunto.Contains(_busqueda, StringComparison.OrdinalIgnoreCase));
+
+    private static Color ColorEstado(string estado) => estado.ToLowerInvariant() switch
+    {
+        "enviado" => Color.Success,
+        "fallido" => Color.Error,
+        "pendiente" => Color.Warning,
+        "rebotado" => Color.Warning,
+        _ => Color.Default
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.TienePermiso("EMAIL_LOG_VER")) return;
+        await Cargar();
+    }
+
+    private async Task CambiarEstado(string estado)
+    {
+        _estadoFiltro = estado ?? string.Empty;
+        await Cargar();
+    }
+
+    private async Task CambiarTop(int top)
+    {
+        _top = top;
+        await Cargar();
+    }
+
+    private async Task Cargar()
+    {
+        _cargando = true;
+        try
+        {
+            var url = $"api/EmailLog?top={_top}";
+            if (!string.IsNullOrWhiteSpace(_estadoFiltro)) url += $"&estado={Uri.EscapeDataString(_estadoFiltro)}";
+            var data = await Api.GetAsync<List<EmailLogDto>>(url);
+            if (data is null)
+            {
+                _items = [];
+                Snackbar.Add(Api.LastError ?? "No se pudo cargar el historial de envíos", Severity.Error);
+                return;
+            }
+            _items = data;
+        }
+        catch (Exception ex)
+        {
+            _items = [];
+            Snackbar.Add(Api.LastError ?? $"Error al cargar: {ex.Message}", Severity.Error);
+        }
+        finally { _cargando = false; }
+    }
+}

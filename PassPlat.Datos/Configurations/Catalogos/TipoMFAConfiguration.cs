@@ -17,6 +17,6 @@ public class TipoMFAConfiguration : IEntityTypeConfiguration<TipoMFA>
         builder.Property(t => t.Prioridad).HasDefaultValue((byte)0).IsRequired();
         builder.Property(t => t.ReqConfig).HasDefaultValue(false).IsRequired();
         builder.Property(t => t.Activo).HasDefaultValue(true).IsRequired();
-        builder.Property(t => t.FecCrea).HasDefaultValueSql("sysutcdatetime()").IsRequired();
+        builder.Property(t => t.FecCrea).HasDefaultValueSql("sysdatetime()").IsRequired();
     }
 }

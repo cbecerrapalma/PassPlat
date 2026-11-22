@@ -8,26 +8,46 @@
 @using PassPlat.Aplicacion.Dtos.Core
 @using PassPlat.Aplicacion.Dtos.Catalogos
 
-<MudContainer>
-    <MudBreadcrumbs Class="mb-3">
-        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
-        <MudBreadcrumbItem>Comunicaciones</MudBreadcrumbItem>
-        <MudBreadcrumbItem>Cuentas de Correo</MudBreadcrumbItem>
-    </MudBreadcrumbs>
+<div class="iam-page">
+<MigasDePan />
 
-    <MudPaper Class="pa-4 mb-4 d-flex flex-wrap align-center gap-4" Elevation="0" Outlined="true">
-        <div>
-            <MudText Typo="Typo.h5" Class="mb-0">Cuentas de Correo</MudText>
-            <MudText Typo="Typo.body2" Class="mud-text-secondary">Gestiona proveedores y cuentas de envio para aplicaciones y tenants.</MudText>
+    <div class="page-header">
+        <div class="page-title-row">
+            <div>
+                <h1 class="page-title">Cuentas de Correo</h1>
+                <p class="page-subtitle">Gestiona proveedores y cuentas de envio para aplicaciones y tenants.</p>
+            </div>
+            @* S101 · D4 — las cuentas son catálogo global: solo el sistema escribe (la API exige SystemOnly) *@
+            @if (Auth.EsSistema)
+            {
+                <div class="page-actions">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Size="Size.Medium"
+                        OnClick="@AbrirCrear">
+                        Nueva Cuenta
+                    </MudButton>
+                </div>
+            }
         </div>
-        <MudSpacer />
-        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium" Class="mr-2" OnClick="@ReCargar" />
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Size="Size.Medium"
-            OnClick="@AbrirCrear">
-            Nueva Cuenta
-        </MudButton>
-    </MudPaper>
+    </div>
 
+    <div class="content-body">
+        <div class="table-panel">
+            <div class="table-toolbar filter-row">
+                <MudTextField @bind-Value="_search" Label="Buscar cuenta..." Variant="Variant.Outlined" Immediate="true" Clearable="true" Class="lista-filtro" />
+                <MudSelect T="string" Value="_proveedorFiltro" ValueChanged="@OnProveedorChanged" Label="Proveedor" Variant="Variant.Outlined" Dense="true" Clearable="true" Class="lista-filtro">
+                    @foreach (var prov in _proveedoresFiltro)
+                    {
+                        <MudSelectItem Value="@prov">@prov</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudSelect T="bool?" Value="_activoFiltro" ValueChanged="@OnActivoChanged" Label="Estado" Variant="Variant.Outlined" Dense="true" Clearable="true" Class="lista-filtro">
+                    <MudSelectItem T="bool?" Value="@((bool?)true)">Activos</MudSelectItem>
+                    <MudSelectItem T="bool?" Value="@((bool?)false)">Inactivos</MudSelectItem>
+                </MudSelect>
+                <div class="toolbar-spacer"></div>
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium" Class="mr-2" OnClick="@ReCargar" aria-label="Refrescar" />
+            </div>
+            <div class="table-wrap">
     @if (_cargando)
     {
         <MudPaper Elevation="0" Outlined="true" Class="pa-4">
@@ -44,14 +64,17 @@
             <MudIcon Icon="@Icons.Material.Filled.MailOutline" Size="Size.Large" Class="mb-4 mud-text-secondary" />
             <MudText Typo="Typo.h6" Class="mb-2">Sin cuentas de correo</MudText>
             <MudText Typo="Typo.body2" Class="mud-text-secondary mb-4">Configure la primera cuenta de envio SMTP para comenzar.</MudText>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@AbrirCrear">
-                Crear Primera Cuenta
-            </MudButton>
+            @if (Auth.EsSistema)
+            {
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@AbrirCrear">
+                    Crear Primera Cuenta
+                </MudButton>
+            }
         </MudPaper>
     }
     else
     {
-        <MudTable @ref="_table" T="EmailAccountDto" Items="@_items" Hover="true" Breakpoint="Breakpoint.Sm">
+        <MudTable @ref="_table" T="EmailAccountDto" Items="@_itemsFiltrados" Hover="true" Breakpoint="Breakpoint.Sm">
             <ColGroup>
                 <col />
                 <col style="width: 120px;" />
@@ -95,7 +118,10 @@
                     <MudText Typo="Typo.body2" Class="mud-text-secondary">@(context.FecMod?.ToString("g") ?? context.FecCrea.ToString("g"))</MudText>
                 </MudTd>
                 <MudTd DataLabel="">
-                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => AbrirEditar(context))" />
+                    @if (Auth.EsSistema)
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => AbrirEditar(context))" aria-label="Editar" />
+                    }
                 </MudTd>
             </RowTemplate>
             <PagerContent>
@@ -109,6 +135,9 @@
             </NoRecordsContent>
         </MudTable>
     }
+            </div>
+        </div>
+    </div>
 
     @if (_selectedAccount is not null)
     {
@@ -126,13 +155,17 @@
                         }
                     </div>
                 </div>
-                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
-                    StartIcon="@Icons.Material.Filled.Edit" OnClick="@(() => AbrirEditar(_selectedAccount))">
-                    Editar
-                </MudButton>
+                @if (Auth.EsSistema)
+                {
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                        StartIcon="@Icons.Material.Filled.Edit" OnClick="@(() => AbrirEditar(_selectedAccount))">
+                        Editar
+                    </MudButton>
+                }
             </div>
 
-            <MudTabs Class="pa-0" Elevation="0" Position="Position.Left" HideSlider="true">
+            @* S96.1 · D7 — pestañas arriba (patrón detail-tabs): las verticales sacaban la cuadrícula del panel a 375 px *@
+            <MudTabs Class="pa-0 detail-tabs" Elevation="0" Position="Position.Top">
                 <MudTabPanel Text="Info">
                     <div class="pa-4">
                         <MudText Typo="Typo.subtitle2" Class="mud-text-secondary mb-2">INFORMACION GENERAL</MudText>
@@ -198,11 +231,15 @@
             </MudTabs>
         </MudPaper>
     }
-</MudContainer>
+</div>
 
 @code {
     private MudTable<EmailAccountDto>? _table;
     private List<EmailAccountDto> _items = [];
+    private List<string> _proveedoresFiltro = [];
+    private string _search = "";
+    private string? _proveedorFiltro;
+    private bool? _activoFiltro;
     private EmailAccountDto? _selectedAccount;
     private bool _cargando;
 
@@ -212,6 +249,28 @@
         await CargarDatos();
     }
 
+    // S85 · D4 — buscador (Nombre/FromAddress/Host), proveedor y estado se aplican en memoria
+    private List<EmailAccountDto> _itemsFiltrados
+    {
+        get
+        {
+            var filtrados = _items;
+            if (!string.IsNullOrWhiteSpace(_search))
+            {
+                var s = _search.Trim();
+                filtrados = filtrados.Where(a =>
+                    (a.Nombre ?? string.Empty).Contains(s, StringComparison.OrdinalIgnoreCase) ||
+                    (a.FromAddress ?? string.Empty).Contains(s, StringComparison.OrdinalIgnoreCase) ||
+                    (a.Host ?? string.Empty).Contains(s, StringComparison.OrdinalIgnoreCase)).ToList();
+            }
+            if (!string.IsNullOrWhiteSpace(_proveedorFiltro))
+                filtrados = filtrados.Where(a => a.ProviderNombre == _proveedorFiltro).ToList();
+            if (_activoFiltro is bool activo)
+                filtrados = filtrados.Where(a => a.Activo == activo).ToList();
+            return filtrados;
+        }
+    }
+
     private async Task CargarDatos()
     {
         _cargando = true;
@@ -219,6 +278,10 @@
         {
             _items = await Api.GetAsync<List<EmailAccountDto>>("api/emailaccounts") ?? [];
             _selectedAccount = _items.FirstOrDefault();
+
+            // S85 · D4 — opciones del filtro Proveedor a partir de la lista cargada
+            _proveedoresFiltro = _items.Select(a => a.ProviderNombre ?? string.Empty)
+                .Where(n => n.Length > 0).Distinct().OrderBy(n => n).ToList();
         }
         catch (Exception ex)
         {
@@ -235,7 +298,7 @@
 
     private async Task AbrirCrear()
     {
-        var dialog = await Dialog.ShowAsync<EmailAccountDialog>("Nueva Cuenta de Correo", _dialogOptions);
+        var dialog = await Dialog.ShowAsync<EmailAccountDialog>("Nueva Cuenta de Correo", OpcionesDialogo.Dialogo(TamanoDialogo.Estandar));
         var result = await dialog.Result;
         if (result is { Canceled: false })
         {
@@ -251,7 +314,7 @@
             ["IsEdit"] = true,
             ["Account"] = item
         };
-        var dialog = await Dialog.ShowAsync<EmailAccountDialog>("Editar Cuenta de Correo", parameters, _dialogOptions);
+        var dialog = await Dialog.ShowAsync<EmailAccountDialog>("Editar Cuenta de Correo", parameters, OpcionesDialogo.Dialogo(TamanoDialogo.Estandar));
         var result = await dialog.Result;
         if (result is { Canceled: false })
         {
@@ -260,5 +323,13 @@
         }
     }
 
-    private static readonly DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Large, FullWidth = true, CloseButton = true };
+    private void OnProveedorChanged(string? proveedor)
+    {
+        _proveedorFiltro = proveedor;
+    }
+
+    private void OnActivoChanged(bool? activo)
+    {
+        _activoFiltro = activo;
+    }
 }

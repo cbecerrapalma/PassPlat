@@ -10,6 +10,7 @@ public interface IEmailLogRepository : IRepositoryAsync<EmailLog>
 {
     Task<Result<IReadOnlyList<EmailLog>>> ObtenerPendientesAsync(CancellationToken ct = default);
     Task<Result<IReadOnlyList<EmailLog>>> ObtenerPorUsuarioAsync(int idUsuario, CancellationToken ct = default);
+    Task<Result<IReadOnlyList<EmailLog>>> ObtenerRecientesAsync(int? idTenant, string? estado, int? idUsuario, int top, CancellationToken ct = default);
     Task<Result<bool>> ExisteNotificacionNuevaIpAsync(int idUsuario, string direccionIP, CancellationToken ct = default);
 }
 
@@ -27,7 +28,7 @@ public class EmailLogRepository : RepositoryAsync<EmailLog>, IEmailLogRepository
                 .ToListAsync(ct);
             return Result<IReadOnlyList<EmailLog>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<EmailLog>>.Failure("DB_ERROR", ex.Message);
         }
@@ -43,7 +44,25 @@ public class EmailLogRepository : RepositoryAsync<EmailLog>, IEmailLogRepository
                 .ToListAsync(ct);
             return Result<IReadOnlyList<EmailLog>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return Result<IReadOnlyList<EmailLog>>.Failure("DB_ERROR", ex.Message);
+        }
+    }
+
+    // S109 · D6 — historial general: filtros en la consulta, más recientes primero y tope de filas
+    public async Task<Result<IReadOnlyList<EmailLog>>> ObtenerRecientesAsync(int? idTenant, string? estado, int? idUsuario, int top, CancellationToken ct = default)
+    {
+        try
+        {
+            var consulta = DbSet.AsNoTracking();
+            if (idTenant is not null) consulta = consulta.Where(el => el.IdTenant == idTenant);
+            if (!string.IsNullOrWhiteSpace(estado)) consulta = consulta.Where(el => el.Estado == estado);
+            if (idUsuario is not null) consulta = consulta.Where(el => el.IdUsuario == idUsuario);
+            var list = await consulta.OrderByDescending(el => el.FecCrea).Take(top).ToListAsync(ct);
+            return Result<IReadOnlyList<EmailLog>>.Success(list);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<EmailLog>>.Failure("DB_ERROR", ex.Message);
         }
@@ -60,7 +79,7 @@ public class EmailLogRepository : RepositoryAsync<EmailLog>, IEmailLogRepository
                     && el.ExtraJson.Contains("NewIp"), ct);
             return Result<bool>.Success(exists);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<bool>.Failure("DB_ERROR", ex.Message);
         }

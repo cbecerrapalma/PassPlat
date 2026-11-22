@@ -1,40 +1,37 @@
-using System.IdentityModel.Tokens.Jwt;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using CBP.Results;
 using Microsoft.Extensions.Logging;
-using Microsoft.IdentityModel.Tokens;
 using PassPlat.Aplicacion.OAuth;
 using PassPlat.Aplicacion.Services.OAuth;
 
 namespace PassPlat.Aplicacion.Services;
 
+/// <summary>
+/// S129 · D2 — Google solo OAuth2: canje del código y perfil por <c>/oauth2/v3/userinfo</c> con el access_token.
+/// Sin id_token, JWKS, issuer ni nonce.
+/// </summary>
 public class GoogleIdentityProvider : IExternalIdentityProvider
 {
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly IJwksStore _jwksStore;
     private readonly ILogger<GoogleIdentityProvider> _logger;
 
-    private const string JwksUri = "https://www.googleapis.com/oauth2/v3/certs";
-    private const string Issuer = "https://accounts.google.com";
+    private const string TokenEndpoint = "https://oauth2.googleapis.com/token";
+    private const string UserInfoEndpoint = "https://www.googleapis.com/oauth2/v3/userinfo";
 
     private static readonly OAuthProviderDescriptor DescriptorInstance = new(
         Code: "GOOGLE",
-        Capabilities: OAuthProviderCapabilities.Oidc | OAuthProviderCapabilities.Pkce
-                    | OAuthProviderCapabilities.RefreshToken | OAuthProviderCapabilities.Jwks
-                    | OAuthProviderCapabilities.UserInfo | OAuthProviderCapabilities.Nonce,
-        SupportsJwksRotation: true,
-        SupportsNonce: true,
+        Capabilities: OAuthProviderCapabilities.Pkce | OAuthProviderCapabilities.RefreshToken
+                    | OAuthProviderCapabilities.UserInfo,
         RequiresPkce: true,
         RequiresOfflineAccess: true,
         SupportsRefreshTokenRotation: true);
 
-    public GoogleIdentityProvider(IHttpClientFactory httpClientFactory, IJwksStore jwksStore, ILogger<GoogleIdentityProvider> logger)
+    public GoogleIdentityProvider(IHttpClientFactory httpClientFactory, ILogger<GoogleIdentityProvider> logger)
     {
         _httpClientFactory = httpClientFactory;
-        _jwksStore = jwksStore;
         _logger = logger;
     }
 
@@ -43,17 +40,16 @@ public class GoogleIdentityProvider : IExternalIdentityProvider
     public OAuthProviderDescriptor Descriptor => DescriptorInstance;
 
     public async Task<Result<ExternalIdentityClaims>> ValidateAndExtractClaimsAsync(
-        string authorizationCode, string redirectUri, string clientId, string clientSecret, string? scopes, string? codeVerifier = null, string? nonce = null, CancellationToken ct = default)
+        string authorizationCode, string redirectUri, string clientId, string clientSecret, string? scopes, string? codeVerifier = null, CancellationToken ct = default)
     {
         using var _ = _logger.BeginScope(new Dictionary<string, object>
         {
-            ["GoogleAuthzCode"] = authorizationCode[..Math.Min(authorizationCode.Length, 12)],
             ["GoogleRedirectUri"] = redirectUri
         });
 
         _logger.LogInformation(OAuthEventIds.TokenRequest,
-            "[A] Token exchange iniciado | ClientId={ClientId} | RedirectUri={RedirectUri} | HasCodeVerifier={HasCV} | HasNonce={HasNonce}",
-            clientId[..Math.Min(clientId.Length, 20)], redirectUri, !string.IsNullOrWhiteSpace(codeVerifier), !string.IsNullOrWhiteSpace(nonce));
+            "[A] Token exchange iniciado | ClientId={ClientId} | RedirectUri={RedirectUri} | HasCodeVerifier={HasCV}",
+            clientId[..Math.Min(clientId.Length, 20)], redirectUri, !string.IsNullOrWhiteSpace(codeVerifier));
 
         try
         {
@@ -70,13 +66,12 @@ public class GoogleIdentityProvider : IExternalIdentityProvider
             if (!string.IsNullOrEmpty(codeVerifier))
                 tokenParams["code_verifier"] = codeVerifier;
 
+            // S129 · D10 — sin valores: ni code ni code_verifier en el log.
             _logger.LogInformation(OAuthEventIds.TokenRequest,
-                "[A] POST a https://oauth2.googleapis.com/token | Params={Params}",
-                string.Join(", ", tokenParams.Where(k => k.Key != "client_secret").Select(k => $"{k.Key}={k.Value}")));
+                "[A] POST a {TokenEndpoint} | Params={Params} | HasCodeVerifier={HasCV}",
+                TokenEndpoint, string.Join(", ", tokenParams.Keys.Where(k => k != "client_secret")), !string.IsNullOrWhiteSpace(codeVerifier));
 
-            var tokenResponse = await client.PostAsync(
-                "https://oauth2.googleapis.com/token",
-                new FormUrlEncodedContent(tokenParams), ct);
+            var tokenResponse = await client.PostAsync(TokenEndpoint, new FormUrlEncodedContent(tokenParams), ct);
 
             _logger.LogInformation(OAuthEventIds.TokenResponse,
                 "[B] Token endpoint respondió | StatusCode={StatusCode} | Success={Success}",
@@ -88,131 +83,55 @@ public class GoogleIdentityProvider : IExternalIdentityProvider
                 _logger.LogError(OAuthEventIds.TokenResponseBody,
                     "[B] Token endpoint ERROR | StatusCode={StatusCode} | Body={Body}",
                     (int)tokenResponse.StatusCode, errorBody);
-                return Result<ExternalIdentityClaims>.Failure("PROVIDER_ERROR", $"Error al intercambiar código por token en Google. HTTP {(int)tokenResponse.StatusCode}: {errorBody}");
+                return Result<ExternalIdentityClaims>.Failure("PROVIDER_ERROR", $"Error al intercambiar código por token en Google. HTTP {(int)tokenResponse.StatusCode}");
             }
 
             var tokenData = await tokenResponse.Content.ReadFromJsonAsync<GoogleTokenResponse>(ct);
             _logger.LogInformation(OAuthEventIds.TokenResponse,
-                "[C] Token response parseado | HasIdToken={HasIdToken} | HasAccessToken={HasAT} | HasRefreshToken={HasRT} | ExpiresIn={ExpIn}",
-                tokenData?.IdToken != null, tokenData?.AccessToken != null, tokenData?.RefreshToken != null, tokenData?.ExpiresIn);
+                "[C] Token response parseado | HasAccessToken={HasAT} | HasRefreshToken={HasRT} | ExpiresIn={ExpIn}",
+                !string.IsNullOrEmpty(tokenData?.AccessToken), tokenData?.RefreshToken != null, tokenData?.ExpiresIn);
 
-            if (tokenData?.IdToken == null)
-            {
-                _logger.LogError(OAuthEventIds.TokenResponseBody,
-                    "[C] No se recibió id_token de Google | AccessToken={AT}", tokenData?.AccessToken != null ? "presente" : "ausente");
-                return Result<ExternalIdentityClaims>.Failure("PROVIDER_ERROR", "No se recibió id_token de Google");
-            }
+            if (string.IsNullOrEmpty(tokenData?.AccessToken))
+                return Result<ExternalIdentityClaims>.Failure("PROVIDER_ERROR", "No se recibió access_token de Google");
 
-            _logger.LogInformation(OAuthEventIds.TokenJwksFetch,
-                "[D] Obteniendo JWKS desde {JwksUri}", JwksUri);
-            var handler = new JwtSecurityTokenHandler();
-
-            var keysResult = await _jwksStore.GetSigningKeysAsync(JwksUri, ct);
-            if (keysResult.IsFailure)
-            {
-                _logger.LogError(OAuthEventIds.TokenJwksResult,
-                    "[D] Error obteniendo JWKS | Code={ErrorCode}", keysResult.Error?.Code);
-                return Result<ExternalIdentityClaims>.Failure(keysResult.Error!);
-            }
-
-            _logger.LogInformation(OAuthEventIds.TokenJwksResult,
-                "[D] JWKS obtenido | KeyCount={Count}", keysResult.Value.Count);
-
-            _logger.LogInformation(OAuthEventIds.TokenValidation,
-                "[E] Validando id_token | Issuer={Issuer} | Audience={Audience} | ClockSkew=5min",
-                Issuer, clientId[..Math.Min(clientId.Length, 20)]);
-
-            var validationParameters = new TokenValidationParameters
-            {
-                IssuerSigningKeys = keysResult.Value,
-                ValidIssuer = Issuer,
-                ValidAudience = clientId,
-                ClockSkew = TimeSpan.FromMinutes(5),
-                ValidateLifetime = true,
-                ValidateIssuer = true,
-                ValidateAudience = true,
-                ValidateIssuerSigningKey = true
-            };
-
-            var principal = handler.ValidateToken(tokenData.IdToken, validationParameters, out var validatedToken);
-            var jwt = (JwtSecurityToken)validatedToken;
-
-            _logger.LogInformation(OAuthEventIds.TokenValidation,
-                "[E] id_token válido | Claims={Count}", jwt.Claims.Count());
-
-            var sub = jwt.Claims.FirstOrDefault(c => c.Type == "sub")?.Value ?? string.Empty;
-            if (string.IsNullOrEmpty(sub))
-            {
-                _logger.LogError(OAuthEventIds.TokenClaims, "[F] id_token sin claim 'sub'");
-                return Result<ExternalIdentityClaims>.Failure("MISSING_SUB_CLAIM", "id_token no contiene el claim obligatorio 'sub'");
-            }
-
-            var email = jwt.Claims.FirstOrDefault(c => c.Type == "email")?.Value;
-            var emailVerified = jwt.Claims.FirstOrDefault(c => c.Type == "email_verified")?.Value == "true";
-            var name = jwt.Claims.FirstOrDefault(c => c.Type == "name")?.Value;
-            var picture = jwt.Claims.FirstOrDefault(c => c.Type == "picture")?.Value;
-            var tokenNonce = jwt.Claims.FirstOrDefault(c => c.Type == "nonce")?.Value;
+            using var perfilRequest = new HttpRequestMessage(HttpMethod.Get, UserInfoEndpoint);
+            perfilRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokenData.AccessToken);
+            var perfilResponse = await client.SendAsync(perfilRequest, ct);
 
             _logger.LogInformation(OAuthEventIds.TokenClaims,
-                "[F] Claims extraídos | Sub={Sub} | Email={Email} | EmailVerified={EmailV} | Name={Name} | HasAvatar={HasAvatar} | TokenNonce={TokenNonce}",
-                sub, email ?? "(sin email)", emailVerified, name ?? "(sin nombre)", !string.IsNullOrWhiteSpace(picture), tokenNonce ?? "(sin nonce)");
+                "[D] Perfil de Google respondió | StatusCode={StatusCode}", (int)perfilResponse.StatusCode);
 
-            if (!string.IsNullOrEmpty(nonce))
+            if (!perfilResponse.IsSuccessStatusCode)
+                return Result<ExternalIdentityClaims>.Failure("PROVIDER_ERROR", $"Error al obtener el perfil de Google. HTTP {(int)perfilResponse.StatusCode}");
+
+            var perfil = await perfilResponse.Content.ReadFromJsonAsync<GoogleUserInfoResponse>(ct);
+            if (string.IsNullOrWhiteSpace(perfil?.Sub))
             {
-                _logger.LogInformation(OAuthEventIds.TokenNonceCheck,
-                    "[G] Verificando nonce | ExpectedNonce={Expected} | TokenNonce={TokenNonce}",
-                    nonce[..Math.Min(nonce.Length, 12)], tokenNonce?[..Math.Min(tokenNonce?.Length ?? 0, 12)] ?? "(null)");
-                if (tokenNonce != nonce)
-                {
-                    _logger.LogError(OAuthEventIds.TokenNonceCheck, "[G] NONCE_MISMATCH");
-                    return Result<ExternalIdentityClaims>.Failure("NONCE_MISMATCH", "Nonce del id_token no coincide con el enviado");
-                }
-                _logger.LogInformation(OAuthEventIds.TokenNonceCheck, "[G] Nonce OK");
+                _logger.LogError(OAuthEventIds.TokenClaims, "[D] Perfil de Google sin 'sub'");
+                return Result<ExternalIdentityClaims>.Failure("USERINFO_INVALIDO", "El perfil de Google no trae sub");
             }
+
+            _logger.LogInformation(OAuthEventIds.TokenClaims,
+                "[E] Claims extraídos | Sub={Sub} | EmailVerified={EmailV} | HasEmail={HasEmail} | HasAvatar={HasAvatar}",
+                perfil.Sub, perfil.EmailVerified == true, !string.IsNullOrWhiteSpace(perfil.Email), !string.IsNullOrWhiteSpace(perfil.Picture));
 
             var metadata = new
             {
                 tokenData.AccessToken,
                 tokenData.RefreshToken,
-                tokenData.ExpiresIn,
-                tokenData.IdToken
+                tokenData.ExpiresIn
             };
-
-            var scope = tokenData.Scope;
-
-            _logger.LogInformation(OAuthEventIds.TokenClaims,
-                "[H] Claims procesados OK | MetadataJson len={Len}", JsonSerializer.Serialize(metadata).Length);
 
             return Result<ExternalIdentityClaims>.Success(new ExternalIdentityClaims
             {
-                Sub = sub,
-                Email = email,
-                EmailVerificado = emailVerified,
-                Nombre = name,
-                Avatar = picture,
-                Scope = scope,
+                Sub = perfil.Sub,
+                Email = perfil.Email,
+                EmailVerificado = perfil.EmailVerified == true,
+                Nombre = perfil.Name,
+                Avatar = perfil.Picture,
+                Scope = tokenData.Scope,
                 MetadataJson = JsonSerializer.Serialize(metadata)
             });
-        }
-        catch (SecurityTokenExpiredException)
-        {
-            _logger.LogError(OAuthEventIds.TokenValidation, "Id_token expirado");
-            return Result<ExternalIdentityClaims>.Failure("TOKEN_EXPIRED", "El id_token de Google ha expirado");
-        }
-        catch (SecurityTokenInvalidAudienceException)
-        {
-            _logger.LogError(OAuthEventIds.TokenValidation, "Audience mismatch | Expected={Audience}", clientId);
-            return Result<ExternalIdentityClaims>.Failure("AUD_MISMATCH", "El audience del id_token no coincide con el client_id");
-        }
-        catch (SecurityTokenInvalidIssuerException)
-        {
-            _logger.LogError(OAuthEventIds.TokenValidation, "Issuer mismatch | Expected={Issuer}", Issuer);
-            return Result<ExternalIdentityClaims>.Failure("ISSUER_MISMATCH", "El issuer del id_token no coincide");
-        }
-        catch (SecurityTokenSignatureKeyNotFoundException)
-        {
-            _logger.LogError(OAuthEventIds.TokenValidation, "Signature key no encontrada en JWKS");
-            return Result<ExternalIdentityClaims>.Failure("SIGNATURE_INVALID", "La firma del id_token de Google no es válida");
         }
         catch (Exception ex)
         {
@@ -235,9 +154,7 @@ public class GoogleIdentityProvider : IExternalIdentityProvider
                 ["grant_type"] = "refresh_token"
             };
 
-            var response = await client.PostAsync(
-                "https://oauth2.googleapis.com/token",
-                new FormUrlEncodedContent(refreshParams), ct);
+            var response = await client.PostAsync(TokenEndpoint, new FormUrlEncodedContent(refreshParams), ct);
 
             if (!response.IsSuccessStatusCode)
                 return Result<TokenRefreshResult>.Failure("REFRESH_ERROR", "Error al renovar token en Google");
@@ -259,15 +176,14 @@ public class GoogleIdentityProvider : IExternalIdentityProvider
         }
     }
 
-    public Task<Result<string>> GenerateAuthorizationUrlAsync(string redirectUri, string clientId, string? scopes, string? state = null, string? codeChallenge = null, string? nonce = null, CancellationToken ct = default)
+    public Task<Result<string>> GenerateAuthorizationUrlAsync(string redirectUri, string clientId, string? scopes, string? state = null, string? codeChallenge = null, CancellationToken ct = default)
     {
-        var scope = Uri.EscapeDataString(scopes ?? "openid email profile");
+        var scope = Uri.EscapeDataString(scopes ?? "email profile");
         var redirect = Uri.EscapeDataString(redirectUri);
         var s = !string.IsNullOrEmpty(state) ? $"&state={Uri.EscapeDataString(state)}" : "";
         var pkce = !string.IsNullOrEmpty(codeChallenge) ? $"&code_challenge={Uri.EscapeDataString(codeChallenge)}&code_challenge_method=S256" : "";
-        var n = !string.IsNullOrEmpty(nonce) ? $"&nonce={Uri.EscapeDataString(nonce)}" : "";
         var offline = "&access_type=offline&prompt=consent";
-        var url = $"https://accounts.google.com/o/oauth2/v2/auth?client_id={Uri.EscapeDataString(clientId)}&response_type=code&redirect_uri={redirect}&scope={scope}{offline}{s}{pkce}{n}";
+        var url = $"https://accounts.google.com/o/oauth2/v2/auth?client_id={Uri.EscapeDataString(clientId)}&response_type=code&redirect_uri={redirect}&scope={scope}{offline}{s}{pkce}";
         return Task.FromResult(Result<string>.Success(url));
     }
 }
@@ -290,8 +206,20 @@ internal class GoogleTokenResponse
     public string? RefreshToken { get; set; }
     [JsonPropertyName("expires_in")]
     public int ExpiresIn { get; set; }
-    [JsonPropertyName("id_token")]
-    public string? IdToken { get; set; }
     [JsonPropertyName("scope")]
     public string? Scope { get; set; }
+}
+
+internal class GoogleUserInfoResponse
+{
+    [JsonPropertyName("sub")]
+    public string? Sub { get; set; }
+    [JsonPropertyName("email")]
+    public string? Email { get; set; }
+    [JsonPropertyName("email_verified")]
+    public bool? EmailVerified { get; set; }
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+    [JsonPropertyName("picture")]
+    public string? Picture { get; set; }
 }

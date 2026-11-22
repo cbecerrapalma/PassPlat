@@ -7,49 +7,50 @@
 @using PassPlat.Web.Models
 @using PassPlat.Web.Shared
 
-@if (!Auth.TienePermiso("CONFIG_APP_VER"))
+@if (!Auth.TienePermiso("CONFIGAPP_VER"))
 {
-    <SinPermiso PermisoRequerido="CONFIG_APP_VER" />
+    <SinPermiso PermisoRequerido="CONFIGAPP_VER" />
 }
 else
 {
-<MudContainer>
-    <MudBreadcrumbs Class="mb-3">
-        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
-        <MudBreadcrumbItem>Catálogos</MudBreadcrumbItem>
-        <MudBreadcrumbItem>Configuración de Tenants</MudBreadcrumbItem>
-    </MudBreadcrumbs>
-    <MudPaper Class="pa-4 mb-4 d-flex flex-wrap align-center gap-4" Elevation="0" Outlined="true">
-        <MudText Typo="Typo.h5" Class="flex-grow-1 mb-0">Configuración de Tenants</MudText>
-        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium"
-            OnClick="@LoadData" Class="mr-2" />
-    </MudPaper>
+<div class="iam-page">
+<MigasDePan />
 
-    <MudGrid Class="mb-4">
-        <MudItem xs12 md4>
-            <MudAutocomplete T="TenantDto" @bind-Value="_tenantSelected"
-                SearchFunc="@SearchTenants" ToStringFunc="@(t => t is null ? "" : $"{t.Nombre} ({t.Codigo})")"
-                Label="Tenant" Variant="Variant.Outlined" />
-        </MudItem>
-        <MudItem xs12 md2>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@LoadData" FullWidth="true" Class="mt-4">
-                Buscar
-            </MudButton>
-        </MudItem>
-        <MudItem xs12 md2>
-            <MudButton Variant="Variant.Outlined" Color="Color.Info" OnClick="@ObtenerCount" FullWidth="true" Class="mt-4">
-                Contar
-            </MudButton>
-        </MudItem>
-    </MudGrid>
+    <div class="page-header">
+        <div class="page-title-row">
+            <div>
+                <h1 class="page-title">Configuración de Tenants</h1>
+                <p class="page-subtitle">Configuración de seguridad de cada tenant.</p>
+            </div>
+        </div>
+    </div>
 
-    @if (_totalCount > 0)
-    {
-        <MudAlert Severity="Severity.Info" Class="mb-4">
-            Total configuraciones registradas: @_totalCount
-        </MudAlert>
-    }
+    <div class="content-body">
+        <div class="table-panel">
+            <div class="table-toolbar filter-row">
+                <SelectorCatalogo T="TenantDto" Class="lista-filtro" Items="_tenants" @bind-Value="_tenantSelected"
+                    SearchTextSelector="@(t => $"{t.Nombre} {t.Codigo}")"
+                    ToStringFunc="@(t => t is null ? "" : $"{t.Nombre} ({t.Codigo})")"
+                    Label="Tenant" Variant="Variant.Outlined" />
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@LoadData">
+                    Buscar
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Info" OnClick="@ObtenerCount">
+                    Contar
+                </MudButton>
+                <div class="toolbar-spacer"></div>
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium"
+                    OnClick="@LoadData" aria-label="Refrescar" />
+            </div>
 
+            @if (_totalCount > 0)
+            {
+                <MudAlert Severity="Severity.Info" Class="mb-4">
+                    Total configuraciones registradas: @_totalCount
+                </MudAlert>
+            }
+
+            <div class="table-wrap">
     <MudTable T="ConfigTenantDto" Items="@_items" Hover="true" Breakpoint="Breakpoint.Sm" Class="mt-2">
         <ColGroup>
             <col style="width: 80px;" />
@@ -83,7 +84,7 @@ else
             <MudTd DataLabel="Acciones">
                 <MudTooltip Text="Actualizar Pepper">
                     <MudIconButton Icon="@Icons.Material.Filled.Shield" Size="Size.Small" Color="Color.Warning"
-                        OnClick="@(() => ActualizarPepper(context))" />
+                        OnClick="@(() => ActualizarPepper(context))" aria-label="Seguridad" />
                 </MudTooltip>
             </MudTd>
         </RowTemplate>
@@ -97,13 +98,16 @@ else
             </MudText>
         </NoRecordsContent>
     </MudTable>
+            </div>
+        </div>
+    </div>
 
     <MudOverlay Visible="@_loading" />
     @if (_loading)
     {
         <MudProgressCircular Indeterminate="true" Class="mt-4" />
     }
-</MudContainer>
+</div>
 }
 
 @code {
@@ -113,14 +117,6 @@ else
     private int _totalCount;
     private TenantDto? _tenantSelected;
     private List<TenantDto> _tenants = [];
-
-    private async Task<IEnumerable<TenantDto>> SearchTenants(string? text, CancellationToken ct)
-    {
-        if (string.IsNullOrWhiteSpace(text)) return _tenants.Take(10);
-        return _tenants.Where(t =>
-            t.Nombre.Contains(text, StringComparison.OrdinalIgnoreCase) ||
-            t.Codigo.Contains(text, StringComparison.OrdinalIgnoreCase)).Take(10);
-    }
 
     private async Task LoadData()
     {
@@ -162,9 +158,9 @@ else
         {
             ["ConfigTenant"] = item
         };
-        var dialog = await Dialog.ShowAsync<PepperVersionDialog>("Actualizar Pepper Version", parameters);
+        var dialog = await Dialog.ShowAsync<PepperVersionDialog>("Actualizar Pepper Version", parameters, OpcionesDialogo.Dialogo(TamanoDialogo.Compacto));
         var result = await dialog.Result;
-        if (!result.Canceled)
+        if (result is { Canceled: false })
             await LoadData();
     }
 }

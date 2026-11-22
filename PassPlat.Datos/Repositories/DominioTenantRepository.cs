@@ -27,7 +27,7 @@ public class DominioTenantRepository : RepositoryAsync<DominioTenant>, IDominioT
             var list = await DbSet.Where(d => d.IdTenant == idTenant).ToListAsync(ct);
             return Result<IReadOnlyList<DominioTenant>>.Success(list);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<IReadOnlyList<DominioTenant>>.Failure("DB_ERROR", ex.Message);
         }
@@ -41,7 +41,7 @@ public class DominioTenantRepository : RepositoryAsync<DominioTenant>, IDominioT
                 .FirstOrDefaultAsync(d => d.Dominio == dominio, ct);
             return Result<DominioTenant?>.Success(entity, allowNull: true);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<DominioTenant?>.Failure("DB_ERROR", ex.Message);
         }
@@ -54,7 +54,7 @@ public class DominioTenantRepository : RepositoryAsync<DominioTenant>, IDominioT
             var existe = await DbSet.AnyAsync(d => d.IdTenant == idTenant && d.Dominio == dominio, ct);
             return Result<bool>.Success(existe);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<bool>.Failure("DB_ERROR", ex.Message);
         }
@@ -68,7 +68,7 @@ public class DominioTenantRepository : RepositoryAsync<DominioTenant>, IDominioT
             DbSet.Add(dominioTenant);
             return Result<DominioTenant>.Success(dominioTenant);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result<DominioTenant>.Failure("DB_ERROR", ex.Message);
         }
@@ -81,7 +81,7 @@ public class DominioTenantRepository : RepositoryAsync<DominioTenant>, IDominioT
             Update(entity);
             return Result.Success();
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result.Failure("DB_ERROR", ex.Message);
         }
@@ -94,7 +94,7 @@ public class DominioTenantRepository : RepositoryAsync<DominioTenant>, IDominioT
             Remove(entity);
             return Result.Success();
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return Result.Failure("DB_ERROR", ex.Message);
         }

@@ -15,6 +15,6 @@ public class TipoAuditoriaConfiguration : IEntityTypeConfiguration<TipoAuditoria
         builder.Property(t => t.Nombre).HasMaxLength(100).IsRequired();
         builder.Property(t => t.Descripcion).HasMaxLength(200);
         builder.Property(t => t.Activo).HasDefaultValue(true).IsRequired();
-        builder.Property(t => t.FecCrea).HasDefaultValueSql("sysutcdatetime()").IsRequired();
+        builder.Property(t => t.FecCrea).HasDefaultValueSql("sysdatetime()").IsRequired();
     }
 }

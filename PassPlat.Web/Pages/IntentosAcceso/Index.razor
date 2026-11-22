@@ -6,91 +6,96 @@
 @using PassPlat.Web.Models
 @using PassPlat.Web.Shared
 
-@if (!Auth.TienePermiso("INTENTOS_ACCESO_VER"))
+@if (!Auth.TienePermiso("INTENTOSACCESO_VER"))
 {
-    <SinPermiso PermisoRequerido="INTENTOS_ACCESO_VER" />
+    <SinPermiso PermisoRequerido="INTENTOSACCESO_VER" />
 }
 else
 {
-<MudContainer>
-    <MudBreadcrumbs Class="mb-3">
-        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/"))">Panel Principal</MudBreadcrumbItem>
-        <MudBreadcrumbItem OnClick="@(() => Navigation.NavigateTo("/auditoria"))">Auditoría</MudBreadcrumbItem>
-        <MudBreadcrumbItem>Intentos de Acceso</MudBreadcrumbItem>
-    </MudBreadcrumbs>
+<div class="iam-page">
+<MigasDePan />
 
-    <MudPaper Class="pa-4 mb-4 d-flex flex-wrap align-center gap-4" Elevation="0" Outlined="true">
-        <MudText Typo="Typo.h5" Class="flex-grow-1 mb-0">Intentos de Acceso</MudText>
-        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium" OnClick="@LoadData" />
-    </MudPaper>
+    <div class="page-header">
+        <div class="page-title-row">
+            <div>
+                <h1 class="page-title">Intentos de Acceso</h1>
+                <p class="page-subtitle">Intentos de inicio de sesión exitosos y fallidos por usuario.</p>
+            </div>
+        </div>
+    </div>
 
-    <MudGrid Class="mb-4">
-        <MudItem xs="12" sm="6" md="3" lg="3">
+    <div class="kpi-row mb-4">
+        <div>
             <IamKpiCard Label="Total Intentos" Valor="@KpiTotal" Icon="@Icons.Material.Filled.Login" ColorClass="info" />
-        </MudItem>
-        <MudItem xs="12" sm="6" md="3" lg="3">
+        </div>
+        <div>
             <IamKpiCard Label="Exitosos" Valor="@KpiExitosos" Icon="@Icons.Material.Filled.CheckCircle" ColorClass="success" />
-        </MudItem>
-        <MudItem xs="12" sm="6" md="3" lg="3">
+        </div>
+        <div>
             <IamKpiCard Label="Fallidos" Valor="@KpiFallidos" Icon="@Icons.Material.Filled.Cancel" ColorClass="error" />
-        </MudItem>
-        <MudItem xs="12" sm="6" md="3" lg="3">
+        </div>
+        <div>
             <IamKpiCard Label="Usuarios" Valor="@KpiUsuarios" Icon="@Icons.Material.Filled.Person" ColorClass="primary" />
-        </MudItem>
-    </MudGrid>
+        </div>
+    </div>
 
-    <MudPaper Class="pa-4 mb-4" Elevation="0" Outlined="true">
-        <MudGrid>
-            <MudItem xs="12" sm="6" md="4">
-                <MudTextField @bind-Value="_search" Label="Buscar usuario..." Variant="Variant.Outlined" Immediate="true" Clearable="true" FullWidth="true" />
-            </MudItem>
-            <MudItem xs="12" sm="6" md="3">
-                <MudSelect T="string" @bind-Value="_filterResultado" Label="Resultado" Variant="Variant.Outlined" Clearable="true" FullWidth="true">
+    <div class="content-body">
+        <div class="table-panel">
+            <div class="table-toolbar filter-row">
+                <MudTextField @bind-Value="_search" Class="lista-filtro" Label="Buscar usuario..." Variant="Variant.Outlined" Immediate="true" Clearable="true" />
+                <MudSelect T="string" @bind-Value="_filterResultado" Class="lista-filtro" Label="Resultado" Variant="Variant.Outlined" Dense="true" Clearable="true">
                     <MudSelectItem Value="@("Exitoso")">Exitoso</MudSelectItem>
                     <MudSelectItem Value="@("Fallido")">Fallido</MudSelectItem>
                 </MudSelect>
-            </MudItem>
-            <MudItem xs="12" sm="6" md="3" Class="d-flex align-end">
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@LoadData" FullWidth="true">Buscar</MudButton>
-            </MudItem>
-        </MudGrid>
-    </MudPaper>
-
-    <MudTable T="IntentoAccesoDto" Items="@_filteredItems" Hover="true" Breakpoint="Breakpoint.Sm"
-        SelectedItem="@_selected" SelectedItemChanged="@OnSelectedItemChanged">
-        <ColGroup>
-            <col style="width: 80px;" />
-            <col />
-            <col />
-            <col />
-            <col />
-            <col style="width: 100px;" />
-            <col style="width: 160px;" />
-        </ColGroup>
-        <HeaderContent>
-            <MudTh>Id</MudTh>
-            <MudTh>Usuario</MudTh>
-            <MudTh>Resultado</MudTh>
-            <MudTh>IP</MudTh>
-            <MudTh>Detalle</MudTh>
-            <MudTh>Respuesta</MudTh>
-            <MudTh>Fecha</MudTh>
-        </HeaderContent>
-        <RowTemplate>
-            <MudTd DataLabel="Id">@context.Id</MudTd>
-            <MudTd DataLabel="Usuario">@context.NomUsuarioIntentado</MudTd>
-            <MudTd DataLabel="Resultado">
-                <MudChip T="string" Size="Size.Small" Color="@(context.Exitoso ? Color.Success : Color.Error)">
-                    @context.ResultadoNombre
-                </MudChip>
-            </MudTd>
-            <MudTd DataLabel="IP">@context.IPDireccion</MudTd>
-            <MudTd DataLabel="Detalle">@context.DetResultado</MudTd>
-            <MudTd DataLabel="Respuesta">@(context.TpoRespuesta.HasValue ? $"{context.TpoRespuesta}ms" : "-")</MudTd>
-            <MudTd DataLabel="Fecha">@context.FecIntento.ToLocalTime().ToString("g")</MudTd>
-        </RowTemplate>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@LoadData">Buscar</MudButton>
+                <div class="toolbar-spacer"></div>
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium" OnClick="@LoadData" aria-label="Refrescar" />
+            </div>
+            <div class="table-wrap">
+    <MudDataGrid T="IntentoAccesoDto" Items="@_filteredItems" Hover="true" Dense="false"
+        Filterable="false" SortMode="SortMode.None" Groupable="false" MultiSelection="false"
+        ShowColumnOptions="false">
+        <Columns>
+            <HierarchyColumn T="IntentoAccesoDto" />
+            <TemplateColumn T="IntentoAccesoDto" Title="Id" HeaderStyle="width:80px;">
+                <CellTemplate>@context.Item.Id</CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn T="IntentoAccesoDto" Title="Usuario">
+                <CellTemplate>@context.Item.NomUsuarioIntentado</CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn T="IntentoAccesoDto" Title="Resultado">
+                <CellTemplate>
+                    <MudChip T="string" Size="Size.Small" Color="@(context.Item.Exitoso ? Color.Success : Color.Error)">
+                        @context.Item.ResultadoNombre
+                    </MudChip>
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn T="IntentoAccesoDto" Title="IP">
+                <CellTemplate>@context.Item.IPDireccion</CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn T="IntentoAccesoDto" Title="Detalle">
+                <CellTemplate>@context.Item.DetResultado</CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn T="IntentoAccesoDto" Title="Respuesta" HeaderStyle="width:100px;">
+                <CellTemplate>@(context.Item.TpoRespuesta.HasValue ? $"{context.Item.TpoRespuesta}ms" : "-")</CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn T="IntentoAccesoDto" Title="Fecha" HeaderStyle="width:160px;">
+                <CellTemplate>@context.Item.FecIntento.ToString("g")</CellTemplate>
+            </TemplateColumn>
+        </Columns>
+        <ChildRowContent>
+            <div class="pa-4">
+                @foreach (var (prop, valor) in _detalleTecnico(context.Item))
+                {
+                    <div class="d-flex align-center mb-2" style="gap:8px;">
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="min-width:140px;">@prop:</MudText>
+                        <MudText Typo="Typo.body2">@valor</MudText>
+                    </div>
+                }
+            </div>
+        </ChildRowContent>
         <PagerContent>
-            <MudTablePager PageSizeOptions="new int[]{10, 25, 50}" />
+            <MudDataGridPager PageSizeOptions="new int[]{10, 25, 50}" />
         </PagerContent>
         <NoRecordsContent>
             <MudText Align="Align.Center" Class="py-6">
@@ -98,36 +103,17 @@ else
                 No hay registros
             </MudText>
         </NoRecordsContent>
-    </MudTable>
+    </MudDataGrid>
+            </div>
+        </div>
+    </div>
 
     <MudOverlay Visible="@_loading" />
     @if (_loading)
     {
         <MudProgressCircular Indeterminate="true" Class="mt-4" />
     }
-</MudContainer>
-
-@if (_selected is not null)
-{
-    <IamInspector Titulo="Detalle del Intento" Width="500px" OnClose="@(() => _selected = null)">
-        <MudTabs Rounded="true" Border="true" Class="mt-4">
-            <MudTab Text="Información">
-                <MudPaper Elevation="0" Class="pa-4">
-                    <MudTable T="(string, string)" Items="@_detailRows(_selected)" Hover="false" Outlined="false">
-                        <HeaderContent>
-                            <MudTh>Propiedad</MudTh>
-                            <MudTh>Valor</MudTh>
-                        </HeaderContent>
-                        <RowTemplate>
-                            <MudTd><strong>@context.Item1</strong></MudTd>
-                            <MudTd>@context.Item2</MudTd>
-                        </RowTemplate>
-                    </MudTable>
-                </MudPaper>
-            </MudTab>
-        </MudTabs>
-    </IamInspector>
-}
+</div>
 }
 
 @code {
@@ -147,32 +133,26 @@ else
     private bool _loading;
     private string _search = "";
     private string? _filterResultado;
-    private IntentoAccesoDto? _selected;
 
     private string KpiTotal => _items.Count.ToString();
     private string KpiExitosos => _items.Count(i => i.Exitoso).ToString();
     private string KpiFallidos => _items.Count(i => !i.Exitoso).ToString();
     private string KpiUsuarios => _items.Select(i => i.NomUsuarioIntentado).Distinct().Count().ToString();
 
-    private List<(string, string)> _detailRows(IntentoAccesoDto item) =>
+    private List<(string, string)> _detalleTecnico(IntentoAccesoDto item) =>
     [
-        ("Usuario", item.NomUsuarioIntentado),
-        ("Resultado", item.ResultadoNombre ?? "-"),
         ("Exitoso", item.Exitoso ? "Sí" : "No"),
-        ("IP", item.IPDireccion ?? "-"),
-        ("Detalle", item.DetResultado ?? "-"),
         ("Tpo. Respuesta", item.TpoRespuesta.HasValue ? $"{item.TpoRespuesta}ms" : "-"),
         ("Código Respuesta", item.CodRespuesta?.ToString() ?? "-"),
         ("Id Dispositivo", item.IdDisp?.ToString() ?? "-"),
         ("Id Agente", item.IdAgente?.ToString() ?? "-"),
         ("Id IP", item.IdIP?.ToString() ?? "-"),
-        ("Id App", item.IdApp?.ToString() ?? "-"),
-        ("Fecha", item.FecIntento.ToLocalTime().ToString("G"))
+        ("Id App", item.IdApp?.ToString() ?? "-")
     ];
 
     protected override async Task OnInitializedAsync()
     {
-        if (!Auth.TienePermiso("INTENTOS_ACCESO_VER")) return;
+        if (!Auth.TienePermiso("INTENTOSACCESO_VER")) return;
         await LoadData();
     }
 
@@ -194,10 +174,5 @@ else
         {
             _loading = false;
         }
-    }
-
-    private void OnSelectedItemChanged(IntentoAccesoDto? item)
-    {
-        _selected = item;
     }
 }

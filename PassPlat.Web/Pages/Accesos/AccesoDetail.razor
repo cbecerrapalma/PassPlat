@@ -1,0 +1,350 @@
+@page "/acceso/{idUsuario:int}/{id:int}"
+@inject ApiClient Api
+@inject AuthService Auth
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@inject NavigationManager Navigation
+@using PassPlat.Web.Models
+@using PassPlat.Web.Shared
+
+@if (!Auth.TienePermiso("ACCESOS_VER"))
+{
+    <SinPermiso PermisoRequerido="ACCESOS_VER" />
+}
+else
+{
+<div class="iam-page">
+<MigasDePan Padre="@ListaUrl" Actual="@(_acceso is null ? "Acceso" : $"{_acceso.UsuarioNombre} · {_acceso.AppNombre}")" />
+
+    @if (_cargando && _acceso is null)
+    {
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="100%" Height="300px" Style="border-radius:10px;" />
+    }
+    else if (_acceso is null)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-3">Acceso no encontrado</MudAlert>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="@VolverALista">Atrás</MudButton>
+    }
+    else
+    {
+        <div class="page-header">
+            <div class="page-title-row">
+                <div style="display:flex;gap:12px;align-items:center;">
+                    <h1 class="page-title">@_acceso.UsuarioNombre · @_acceso.AppNombre</h1>
+                    <span class="badge @(_acceso.Activo ? "badge-active" : "badge-inactive")">
+                        <span class="badge-dot"></span>@(_acceso.Activo ? "Activo" : "Inactivo")
+                    </span>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <MudButton Variant="Variant.Outlined" OnClick="@VolverALista" StartIcon="@Icons.Material.Filled.ArrowBack">Atrás</MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => AbrirReasignar(_acceso))" StartIcon="@Icons.Material.Filled.Add">Reasignar</MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="@(() => RevocarAcceso(_acceso))" Disabled="@_revocando" StartIcon="@Icons.Material.Filled.Block">Revocar</MudButton>
+                </div>
+            </div>
+            <p class="page-subtitle">@_acceso.RolNombre · @_acceso.TenantNombre</p>
+        </div>
+
+        <MudTabs ActivePanelIndex="_tabIndex" ActivePanelIndexChanged="@OnTabChanged" Class="detail-tabs" TabPanelsClass="pt-3">
+            <MudTabPanel Text="Información" Icon="@Icons.Material.Filled.Info">
+                <div class="detail-section">
+                    <div class="detail-section-title">Detalles del Acceso</div>
+                    <div class="field-row"><div class="field-label">Usuario</div><div class="field-value mono">@_acceso.UsuarioNombre</div></div>
+                    <div class="field-row"><div class="field-label">Tenant</div><div class="field-value"><span class="badge badge-default">@_acceso.TenantNombre</span></div></div>
+                    <div class="field-row"><div class="field-label">Aplicación</div><div class="field-value"><span class="assign-chip sys">@_acceso.AppNombre</span></div></div>
+                    <div class="field-row"><div class="field-label">Rol</div><div class="field-value">@_acceso.RolNombre</div></div>
+                    <div class="field-row"><div class="field-label">Inicio</div><div class="field-value" style="font-family:'JetBrains Mono',monospace;font-size:12px;">@_acceso.FecAsignacion.ToString("dd/MM/yyyy")</div></div>
+                    <div class="field-row"><div class="field-label">Fin</div><div class="field-value" style="color:var(--text-muted);font-size:12px;">—</div></div>
+                    <div class="field-row"><div class="field-label">Creado</div><div class="field-value" style="font-size:12px;">@_acceso.FecAsignacion.ToString("dd MMM yyyy")</div></div>
+                </div>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Usuario" Icon="@Icons.Material.Filled.Person">
+                <div class="detail-section">
+                    <div class="detail-section-title">Información del Usuario</div>
+                    @if (_selectedUser is null)
+                    {
+                        <div class="field-row"><div class="field-label">Usuario</div><div class="field-value mono">@_acceso.UsuarioNombre</div></div>
+                    }
+                    else
+                    {
+                        <div class="field-row"><div class="field-label">Usuario</div><div class="field-value mono">@_selectedUser.NomUsuario</div></div>
+                        <div class="field-row"><div class="field-label">Nombre</div><div class="field-value">@_selectedUser.Nombre @_selectedUser.Apellido</div></div>
+                        <div class="field-row"><div class="field-label">Email</div><div class="field-value mono" style="font-size:11px;">@_selectedUser.Email</div></div>
+                        <div class="field-row">
+                            <div class="field-label">Estado</div>
+                            <div class="field-value">
+                                <span class="badge @(_selectedUser.Eliminado ? "badge-inactive" : "badge-active")">
+                                    <span class="badge-dot"></span>@(_selectedUser.Eliminado ? "Inactivo" : "Activo")
+                                </span>
+                            </div>
+                        </div>
+                        <div class="field-row"><div class="field-label">Email Verif.</div><div class="field-value"><span class="badge @(_selectedUser.EmailVerificado ? "badge-active" : "badge-default")">@(_selectedUser.EmailVerificado ? "Verificado" : "Pendiente")</span></div></div>
+                        <div class="field-row"><div class="field-label">Creado</div><div class="field-value">@(_selectedUser.FecCrea?.ToString("dd MMM yyyy") ?? "—")</div></div>
+                    }
+                </div>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Aplicación" Icon="@Icons.Material.Filled.Apps">
+                <div class="detail-section">
+                    <div class="detail-section-title">Información de la Aplicación</div>
+                    @if (_appDetail is null && _loadingApp)
+                    {
+                        <div style="padding:12px;text-align:center;"><span style="color:var(--text-muted);font-size:12px;">Cargando aplicación…</span></div>
+                    }
+                    else if (_appDetail is null)
+                    {
+                        <div class="field-row"><div class="field-label">Nombre</div><div class="field-value">@_acceso.AppNombre</div></div>
+                    }
+                    else
+                    {
+                        <div class="field-row"><div class="field-label">Nombre</div><div class="field-value">@_appDetail.Nombre</div></div>
+                        <div class="field-row"><div class="field-label">Código</div><div class="field-value mono">@_appDetail.Codigo</div></div>
+                        <div class="field-row"><div class="field-label">URL Base</div><div class="field-value" style="font-size:11px;font-family:'JetBrains Mono',monospace;word-break:break-all;">@_appDetail.UrlBase</div></div>
+                        <div class="field-row">
+                            <div class="field-label">Estado</div>
+                            <div class="field-value">
+                                <span class="badge @(_appDetail.Activa ? "badge-active" : "badge-inactive")">
+                                    <span class="badge-dot"></span>@(_appDetail.Activa ? "Activa" : "Inactiva")
+                                </span>
+                            </div>
+                        </div>
+                        <div class="field-row"><div class="field-label">Creado</div><div class="field-value">@_appDetail.FecCrea.ToString("dd MMM yyyy")</div></div>
+                    }
+                </div>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Tenant" Icon="@Icons.Material.Filled.Business">
+                <div class="detail-section">
+                    <div class="detail-section-title">Información del Tenant</div>
+                    @if (_tenantDetail is null && _loadingTenant)
+                    {
+                        <div style="padding:12px;text-align:center;"><span style="color:var(--text-muted);font-size:12px;">Cargando tenant…</span></div>
+                    }
+                    else if (_tenantDetail is null)
+                    {
+                        <div class="field-row"><div class="field-label">Nombre</div><div class="field-value">@_acceso.TenantNombre</div></div>
+                    }
+                    else
+                    {
+                        <div class="field-row"><div class="field-label">Nombre</div><div class="field-value">@_tenantDetail.Nombre</div></div>
+                        <div class="field-row"><div class="field-label">Código</div><div class="field-value mono">@_tenantDetail.Codigo</div></div>
+                        <div class="field-row">
+                            <div class="field-label">Estado</div>
+                            <div class="field-value">
+                                <span class="badge @(_tenantDetail.Activo ? "badge-active" : "badge-inactive")">
+                                    <span class="badge-dot"></span>@(_tenantDetail.Activo ? "Activo" : "Inactivo")
+                                </span>
+                            </div>
+                        </div>
+                        <div class="field-row"><div class="field-label">Sistema</div><div class="field-value"><span class="badge @(_tenantDetail.EsSistema ? "badge-active" : "badge-default")">@(_tenantDetail.EsSistema ? "Sí" : "No")</span></div></div>
+                        <div class="field-row"><div class="field-label">Creado</div><div class="field-value">@_tenantDetail.FecCrea.ToString("dd MMM yyyy")</div></div>
+                    }
+                </div>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Rol" Icon="@Icons.Material.Filled.Security">
+                <div class="detail-section">
+                    <div class="detail-section-title">Información del Rol</div>
+                    @if (_rolDetail is null && _loadingRol)
+                    {
+                        <div style="padding:12px;text-align:center;"><span style="color:var(--text-muted);font-size:12px;">Cargando rol…</span></div>
+                    }
+                    else if (_rolDetail is null)
+                    {
+                        <div class="field-row"><div class="field-label">Nombre</div><div class="field-value">@_acceso.RolNombre</div></div>
+                    }
+                    else
+                    {
+                        <div class="field-row"><div class="field-label">Nombre</div><div class="field-value">@_rolDetail.Nombre</div></div>
+                        <div class="field-row"><div class="field-label">Código</div><div class="field-value mono">@_rolDetail.Codigo</div></div>
+                        <div class="field-row"><div class="field-label">Descripción</div><div class="field-value" style="font-size:12px;">@_rolDetail.Descripcion</div></div>
+                        <div class="field-row"><div class="field-label">Tenant</div><div class="field-value">@_rolDetail.TenantNombre</div></div>
+                        <div class="field-row">
+                            <div class="field-label">Estado</div>
+                            <div class="field-value">
+                                <span class="badge @(_rolDetail.Activo ? "badge-active" : "badge-inactive")">
+                                    <span class="badge-dot"></span>@(_rolDetail.Activo ? "Activo" : "Inactivo")
+                                </span>
+                            </div>
+                        </div>
+                        <div class="field-row"><div class="field-label">Creado</div><div class="field-value">@_rolDetail.FecCrea.ToString("dd MMM yyyy")</div></div>
+                    }
+                </div>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Auditoría" Icon="@Icons.Material.Filled.History">
+                <div class="detail-section">
+                    <div class="detail-section-title">Auditoría del Acceso</div>
+                    <div class="audit-entry">
+                        <div class="audit-icon" style="background:rgba(99,102,241,.12);color:var(--dat-indigo);">
+                            <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="6" r="4"/><path d="M6 4v2l1.5 1"/></svg>
+                        </div>
+                        <div class="audit-content">
+                            <div class="audit-text">Acceso creado</div>
+                            <div class="audit-action">@_acceso.RolNombre · @_acceso.AppNombre</div>
+                            <div class="audit-meta">@_acceso.FecAsignacion.ToString("dd MMM yyyy HH:mm")</div>
+                        </div>
+                    </div>
+                    <div class="field-row" style="margin-top:14px;">
+                        <div class="field-label">Estado actual</div>
+                        <div class="field-value">
+                            <span class="badge @(_acceso.Activo ? "badge-active" : "badge-inactive")">
+                                <span class="badge-dot"></span>@(_acceso.Activo ? "Activo" : "Inactivo")
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </MudTabPanel>
+        </MudTabs>
+    }
+</div>
+}
+
+@code {
+    [Parameter] public int IdUsuario { get; set; }
+    [Parameter] public int Id { get; set; }
+
+    private AccesoDto? _acceso;
+    private List<UsuarioDto> _usuarios = [];
+    private int _tabIndex;
+    private bool _cargando = true;
+    private bool _revocando;
+
+    // Datos de las pestañas, carga perezosa (antes en el inspector de Accesos/Index).
+    private UsuarioDto? _selectedUser;
+    private AppDto? _appDetail;
+    private bool _loadingApp;
+    private TenantDto? _tenantDetail;
+    private bool _loadingTenant;
+    private RolDto? _rolDetail;
+    private bool _loadingRol;
+
+    private string ListaUrl => $"/accesos?usuario={IdUsuario}";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!Auth.TienePermiso("ACCESOS_VER")) return;
+        _cargando = true;
+        _tabIndex = 0;
+        _selectedUser = null;
+        _appDetail = null;
+        _tenantDetail = null;
+        _rolDetail = null;
+        try
+        {
+            _usuarios = await Api.GetAsync<List<UsuarioDto>>("api/usuarios") ?? [];
+            var accesos = await Api.GetAsync<List<AccesoDto>>($"api/accesos/usuario/{IdUsuario}") ?? [];
+            _acceso = accesos.FirstOrDefault(a => a.Id == Id);
+        }
+        catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error al cargar: {ex.Message}", Severity.Error); }
+        finally { _cargando = false; }
+    }
+
+    private void VolverALista() => Navigation.NavigateTo(ListaUrl);
+
+    private async Task OnTabChanged(int tab)
+    {
+        _tabIndex = tab;
+        if (_acceso is null) return;
+
+        if (tab == 1 && _selectedUser is null)
+            _selectedUser = _usuarios.FirstOrDefault(u => u.Id == _acceso.IdUsuario);
+        else if (tab == 2 && _appDetail is null && !_loadingApp)
+            await CargarApp(_acceso);
+        else if (tab == 3 && _tenantDetail is null && !_loadingTenant)
+            await CargarTenant(_acceso);
+        else if (tab == 4 && _rolDetail is null && !_loadingRol)
+            await CargarRol(_acceso);
+    }
+
+    private async Task CargarApp(AccesoDto acceso)
+    {
+        // S113 · D4 — sin APPS_VER la pestaña muestra solo el nombre que trae el Acceso
+        if (!Auth.TienePermiso("APPS_VER")) return;
+        _loadingApp = true;
+        try
+        {
+            _appDetail = await Api.GetAsync<AppDto>($"api/apps/{acceso.IdApp}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar app: {ex.Message}", Severity.Error);
+        }
+        finally { _loadingApp = false; }
+    }
+
+    private async Task CargarTenant(AccesoDto acceso)
+    {
+        // S113 · D4 — sin TENANTS_VER la pestaña muestra solo el nombre que trae el Acceso
+        if (!Auth.TienePermiso("TENANTS_VER")) return;
+        _loadingTenant = true;
+        try
+        {
+            _tenantDetail = await Api.GetAsync<TenantDto>($"api/tenants/{acceso.IdTenant}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar tenant: {ex.Message}", Severity.Error);
+        }
+        finally { _loadingTenant = false; }
+    }
+
+    private async Task CargarRol(AccesoDto acceso)
+    {
+        _loadingRol = true;
+        try
+        {
+            _rolDetail = await Api.GetAsync<RolDto>($"api/roles/{acceso.IdRol}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(Api.LastError ?? $"Error al cargar rol: {ex.Message}", Severity.Error);
+        }
+        finally { _loadingRol = false; }
+    }
+
+    private async Task RevocarAcceso(AccesoDto acceso)
+    {
+        var parameters = new DialogParameters
+        {
+            ["Title"] = "Confirmar",
+            ["Message"] = $"Revocar acceso de {acceso.UsuarioNombre} en {acceso.AppNombre} ({acceso.RolNombre})?",
+            ["ConfirmText"] = "Si",
+            ["CancelText"] = "Cancelar",
+            ["ConfirmColor"] = Color.Error
+        };
+        var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parameters);
+        var result = await dialog.Result;
+        if (result is not { Canceled: false }) return;
+
+        _revocando = true;
+        try
+        {
+            var ok = await Api.PostAsync<object>($"api/accesos/revocar/{acceso.IdUsuario}/{acceso.IdApp}", new { });
+            if (ok is not null)
+            {
+                Snackbar.Add("Acceso revocado", Severity.Success);
+                VolverALista();
+            }
+            else Snackbar.Add(Api.LastError ?? "Error al revocar acceso", Severity.Error);
+        }
+        catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error: {ex.Message}", Severity.Error); }
+        finally { _revocando = false; }
+    }
+
+    private async Task AbrirReasignar(AccesoDto acceso)
+    {
+        var parametros = new DialogParameters<AccesoDialog>
+        {
+            { x => x.UsuarioIdPreseleccionado, acceso.IdUsuario },
+            { x => x.AppIdPreseleccionado, acceso.IdApp }
+        };
+        var dialog = await Dialog.ShowAsync<AccesoDialog>("Asignar Acceso", parametros, OpcionesDialogo.Dialogo(TamanoDialogo.Compacto));
+        var result = await dialog.Result;
+        if (result is not { Canceled: false }) return;
+
+        // Tras reasignar, la lista muestra al usuario asignado (H8).
+        var idUsuarioLista = result.Data is int idUsuarioAsignado ? idUsuarioAsignado : IdUsuario;
+        Navigation.NavigateTo($"/accesos?usuario={idUsuarioLista}");
+    }
+}

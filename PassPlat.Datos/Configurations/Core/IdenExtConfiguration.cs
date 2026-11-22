@@ -24,7 +24,6 @@ public class IdenExtConfiguration : IEntityTypeConfiguration<IdenExt>
         builder.Property(i => i.ClaimsJson).HasColumnType("nvarchar(max)");
         builder.Property(i => i.AccessToken).HasColumnType("varbinary(2000)");
         builder.Property(i => i.RefreshToken).HasColumnType("varbinary(2000)");
-        builder.Property(i => i.IdToken).HasColumnType("varbinary(3000)");
         builder.Property(i => i.TokenExpiration);
         builder.Property(i => i.CorrelationId);
         builder.Property(i => i.EsPrincipal).HasDefaultValue(false).IsRequired();
@@ -42,7 +41,7 @@ public class IdenExtConfiguration : IEntityTypeConfiguration<IdenExt>
         builder.Property(i => i.FecEliminacion);
         builder.Property(i => i.IdUsuarioElimina);
         builder.Property(i => i.UltimoLogin);
-        builder.Property(i => i.FecCrea).HasDefaultValueSql("sysutcdatetime()");
+        builder.Property(i => i.FecCrea).HasDefaultValueSql("sysdatetime()");
         builder.Property(i => i.FecMod);
 
         builder.HasOne(i => i.Usuario)
@@ -85,7 +84,7 @@ public class IdenExtConfiguration : IEntityTypeConfiguration<IdenExt>
             .HasForeignKey(i => i.UltimoTenant)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasIndex(i => new { i.IdProvIden, i.SubExterno }).IsUnique().HasDatabaseName("UK_IdenExt_ProveedorSub");
+        builder.HasIndex(i => new { i.IdProvIden, i.SubExterno }).IsUnique().HasFilter("Eliminado = 0").HasDatabaseName("UK_IdenExt_ProveedorSub"); // S124 · D2
         builder.HasIndex(i => new { i.IdUsuario, i.IdProvIden }).IsUnique().HasDatabaseName("UK_IdenExt_UsuarioProveedor");
         builder.HasIndex(i => i.IdUsuario).HasFilter("Eliminado = 0").HasDatabaseName("IX_IdenExt_Usuario");
         builder.HasIndex(i => i.EmailExterno).HasFilter("EmailExterno IS NOT NULL AND Eliminado = 0").HasDatabaseName("IX_IdenExt_EmailExterno");

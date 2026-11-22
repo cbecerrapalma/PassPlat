@@ -21,7 +21,7 @@ public class HistorialIdenExtConfiguration : IEntityTypeConfiguration<HistorialI
         builder.Property(h => h.ValorNuevo).HasMaxLength(1000);
         builder.Property(h => h.EsAutomatico).HasDefaultValue(false).IsRequired();
         builder.Property(h => h.CorrelationId);
-        builder.Property(h => h.FecCambio).HasDefaultValueSql("sysutcdatetime()");
+        builder.Property(h => h.FecCambio).HasDefaultValueSql("sysdatetime()");
 
         builder.HasOne(h => h.Tenant)
             .WithMany()

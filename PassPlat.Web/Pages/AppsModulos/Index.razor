@@ -1,0 +1,187 @@
+@page "/admin/apps-modulos"
+@inject ApiClient Api
+@inject AuthService Auth
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@using PassPlat.Web.Models
+@using PassPlat.Web.Shared
+
+@if (!Auth.TienePermiso("APPSMODULOS_VER"))
+{
+    <SinPermiso PermisoRequerido="APPSMODULOS_VER" />
+}
+else
+{
+<div class="iam-page">
+<MigasDePan />
+
+    <div class="page-header">
+        <div class="page-title-row">
+            <div>
+                <h1 class="page-title">Apps x Módulos</h1>
+                <p class="page-subtitle">Módulos del catálogo disponibles en cada aplicación.</p>
+            </div>
+            <div class="page-actions">
+                @if (PuedeEscribir && _idApp > 0)
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@AbrirAsignar"
+                        StartIcon="@Icons.Material.Filled.Add" Size="Size.Medium" data-testid="appsmodulos-asignar">
+                        Asignar módulo
+                    </MudButton>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="kpi-row mb-4">
+        <IamKpiCard Valor="@_items.Count.ToString()" Label="Módulos asignados" Subtexto="En la app elegida" Icon="@Icons.Material.Filled.Extension" ColorClass="primary" />
+    </div>
+
+    <div class="content-body">
+        <div class="table-panel">
+            <div class="table-toolbar filter-row">
+                <MudSelect T="int" Label="App" Value="_idApp" ValueChanged="@CambiarApp" Variant="Variant.Outlined"
+                    Dense="true" Class="lista-filtro" data-testid="appsmodulos-app"
+                    ToStringFunc="@(id => NombreApp(id))">
+                    <MudSelectItem T="int" Value="@(0)">Elige una app</MudSelectItem>
+                    @foreach (var app in _apps)
+                    {
+                        <MudSelectItem T="int" Value="@app.Id">@app.Nombre</MudSelectItem>
+                    }
+                </MudSelect>
+                <div class="toolbar-spacer"></div>
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Medium" aria-label="Refrescar" OnClick="@CargarModulos" />
+            </div>
+            @if (_idApp == 0)
+            {
+                <div class="table-wrap">
+                    <MudText Align="Align.Center" Class="py-6" data-testid="appsmodulos-vacio">
+                        <MudIcon Icon="@Icons.Material.Filled.Apps" Class="mr-2" />
+                        Elige una app
+                    </MudText>
+                </div>
+            }
+            else
+            {
+                <div class="table-wrap">
+                    <MudTable T="AppModuloDto" Items="@_items" Hover="true" Loading="@_cargando" Breakpoint="Breakpoint.Sm">
+                        <HeaderContent>
+                            <MudTh>Código</MudTh>
+                            <MudTh>Módulo</MudTh>
+                            <MudTh>Creado</MudTh>
+                            <MudTh>Acciones</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Código" data-testid="appmodulo-fila">@(context.ModuloCodigo ?? context.IdModulo.ToString())</MudTd>
+                            <MudTd DataLabel="Módulo">@(context.ModuloNombre ?? "—")</MudTd>
+                            <MudTd DataLabel="Creado">@context.FecCrea.ToString("g")</MudTd>
+                            <MudTd DataLabel="Acciones">
+                                @if (PuedeEscribir)
+                                {
+                                    <MudIconButton Icon="@Icons.Material.Filled.LinkOff" Size="Size.Small" Color="Color.Error"
+                                        aria-label="Quitar módulo" data-testid="appmodulo-quitar"
+                                        OnClick="@(() => ConfirmarQuitar(context))" />
+                                }
+                                else
+                                {
+                                    <span>—</span>
+                                }
+                            </MudTd>
+                        </RowTemplate>
+                        <NoRecordsContent>
+                            <MudText Align="Align.Center" Class="py-6">
+                                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Class="mr-2" />
+                                La app no tiene módulos asignados
+                            </MudText>
+                        </NoRecordsContent>
+                    </MudTable>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+}
+
+@code {
+    private List<AppModuloDto> _items = [];
+    private List<AppDto> _apps = [];
+    private int _idApp;
+    private bool _cargando;
+
+    private bool PuedeEscribir => Auth.EsSistema && Auth.TienePermiso("APPS_EDITAR");
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Auth.TienePermiso("APPSMODULOS_VER")) return;
+        try { _apps = await Api.GetAsync<List<AppDto>>("api/apps") ?? []; }
+        catch (Exception ex) { Snackbar.Add(Api.LastError ?? $"Error al cargar apps: {ex.Message}", Severity.Error); }
+    }
+
+    private string NombreApp(int id) => id == 0 ? "Elige una app" : _apps.FirstOrDefault(a => a.Id == id)?.Nombre ?? id.ToString();
+
+    private async Task CambiarApp(int id)
+    {
+        _idApp = id;
+        await CargarModulos();
+    }
+
+    private async Task CargarModulos()
+    {
+        if (_idApp <= 0) { _items = []; return; }
+        _cargando = true;
+        try
+        {
+            var data = await Api.GetAsync<List<AppModuloDto>>($"api/AppsModulos/app/{_idApp}");
+            if (data is null)
+            {
+                _items = [];
+                Snackbar.Add(Api.LastError ?? "No se pudieron cargar los módulos de la app", Severity.Error);
+                return;
+            }
+            _items = data;
+        }
+        catch (Exception ex)
+        {
+            _items = [];
+            Snackbar.Add(Api.LastError ?? $"Error al cargar: {ex.Message}", Severity.Error);
+        }
+        finally { _cargando = false; }
+    }
+
+    private async Task AbrirAsignar()
+    {
+        var parametros = new DialogParameters
+        {
+            ["IdApp"] = _idApp,
+            ["IdsAsignados"] = _items.Select(m => m.IdModulo).ToList()
+        };
+        var dialog = await Dialog.ShowAsync<AsignarModuloDialog>("Asignar módulo", parametros, OpcionesDialogo.Dialogo(TamanoDialogo.Compacto));
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            Snackbar.Add("Módulo asignado", Severity.Success);
+            await CargarModulos();
+        }
+    }
+
+    private async Task ConfirmarQuitar(AppModuloDto item)
+    {
+        var parametros = new DialogParameters
+        {
+            ["Title"] = "Quitar módulo",
+            ["Message"] = $"¿Quitar el módulo {item.ModuloNombre} de la app?",
+            ["ConfirmText"] = "Quitar",
+            ["CancelText"] = "Cancelar",
+            ["ConfirmColor"] = Color.Error
+        };
+        var dialog = await Dialog.ShowAsync<ConfirmDialog>("", parametros);
+        var result = await dialog.Result;
+        if (result is not { Canceled: false }) return;
+        if (await Api.DeleteAsync($"api/AppsModulos/{item.Id}"))
+        {
+            Snackbar.Add("Módulo quitado", Severity.Success);
+            await CargarModulos();
+        }
+        else Snackbar.Add(Api.LastError ?? "Error al quitar el módulo", Severity.Error);
+    }
+}

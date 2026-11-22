@@ -12,8 +12,7 @@ namespace PassPlat.Aplicacion.Services;
 
 public interface IEmailLogService : IServiceAsync<EmailLog, EmailLogDto>
 {
-    Task<Result<IReadOnlyList<EmailLogDto>>> ObtenerPendientesAsync(CancellationToken ct = default);
-    Task<Result<IReadOnlyList<EmailLogDto>>> ObtenerPorUsuarioAsync(int idUsuario, CancellationToken ct = default);
+    Task<Result<IReadOnlyList<EmailLogDto>>> ObtenerRecientesAsync(int? alcanceTenant, string? estado, int? idUsuario, int top, CancellationToken ct = default);
 }
 
 public class EmailLogService : ServiceAsync<EmailLog, EmailLogDto>, IEmailLogService
@@ -23,17 +22,13 @@ public class EmailLogService : ServiceAsync<EmailLog, EmailLogDto>, IEmailLogSer
     public EmailLogService(IEmailLogRepository repo, IMapper mapper)
         : base(repo, mapper) { _repo = repo; }
 
-    public async Task<Result<IReadOnlyList<EmailLogDto>>> ObtenerPendientesAsync(CancellationToken ct = default)
+    // S109 · D6 — historial general: tope 1..500, acotado al tenant de la sesión y con los mismos filtros
+    public async Task<Result<IReadOnlyList<EmailLogDto>>> ObtenerRecientesAsync(int? alcanceTenant, string? estado, int? idUsuario, int top, CancellationToken ct = default)
     {
-        var result = await _repo.ObtenerPendientesAsync(ct);
+        var limite = top <= 0 ? 1 : top > 500 ? 500 : top;
+        var result = await _repo.ObtenerRecientesAsync(alcanceTenant, estado, idUsuario, limite, ct);
         if (result.IsFailure) return Result<IReadOnlyList<EmailLogDto>>.Failure(result.Error!);
-        return Result<IReadOnlyList<EmailLogDto>>.Success(Mapper.Map<IReadOnlyList<EmailLogDto>>(result.Value));
-    }
-
-    public async Task<Result<IReadOnlyList<EmailLogDto>>> ObtenerPorUsuarioAsync(int idUsuario, CancellationToken ct = default)
-    {
-        var result = await _repo.ObtenerPorUsuarioAsync(idUsuario, ct);
-        if (result.IsFailure) return Result<IReadOnlyList<EmailLogDto>>.Failure(result.Error!);
-        return Result<IReadOnlyList<EmailLogDto>>.Success(Mapper.Map<IReadOnlyList<EmailLogDto>>(result.Value));
+        var lista = result.Value!.Where(el => alcanceTenant is null || el.IdTenant == alcanceTenant).ToList();
+        return Result<IReadOnlyList<EmailLogDto>>.Success(Mapper.Map<IReadOnlyList<EmailLogDto>>(lista));
     }
 }

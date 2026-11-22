@@ -8,7 +8,7 @@ using PassPlat.Datos;
 
 namespace PassPlat.WebAPI.Controllers;
 
-[Authorize(Policy = "CONFIG_APP_VER")]
+[Authorize(Policy = "CONFIGAPP_VER")]
 public class ConfigTenantsController : BaseApiController
 {
     private readonly IConfigTenantService _service;

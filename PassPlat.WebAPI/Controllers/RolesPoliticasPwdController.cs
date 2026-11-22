@@ -8,7 +8,7 @@ using PassPlat.Datos;
 
 namespace PassPlat.WebAPI.Controllers;
 
-[Authorize(Policy = "POLITICAS_PWD_VER")]
+[Authorize(Policy = "POLITICASPWD_VER")]
 public class RolesPoliticasPwdController : BaseApiController
 {
     private readonly IRolPoliticaPwdService _service;
@@ -20,14 +20,19 @@ public class RolesPoliticasPwdController : BaseApiController
     }
 
     [HttpGet("rol/{idRol}")] public async Task<IActionResult> GetByRol(int idRol, CancellationToken ct) => FromResultQuery(await _service.ObtenerPorRolAsync(idRol));
-    [HttpPost] public async Task<IActionResult> Create([FromBody] CrearRolPoliticaPwdDto dto, CancellationToken ct)
+    // S102 · D6 — la clase lee con _VER; asignar y quitar la política exigen _EDITAR
+    [HttpPost]
+    [Authorize(Policy = "POLITICASPWD_EDITAR")]
+    public async Task<IActionResult> Create([FromBody] CrearRolPoliticaPwdDto dto, CancellationToken ct)
     {
         var result = await _service.CrearAsync(dto);
         if (result.IsFailure) return FromResult(result);
         await _uow.SaveChangesAsync(ct);
         return CreatedAtAction(nameof(GetByRol), new { idRol = dto.IdRol }, result.Value);
     }
-    [HttpPost("{id}/desactivar")] public async Task<IActionResult> Desactivar(int id, CancellationToken ct)
+    [HttpPost("{id}/desactivar")]
+    [Authorize(Policy = "POLITICASPWD_EDITAR")]
+    public async Task<IActionResult> Desactivar(int id, CancellationToken ct)
     {
         var result = await _service.DesactivarAsync(id, ct);
         if (result.IsFailure) return FromResult(result);

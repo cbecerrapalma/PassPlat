@@ -2,13 +2,16 @@ using CBP.Results;
 using PassPlat.Aplicacion.Dtos.Core;
 using PassPlat.Datos.Repositories;
 using PassPlat.Dominio.Constants;
+using PassPlat.Dominio.Entities.Catalogos;
 
 namespace PassPlat.Aplicacion.Services.OAuth;
 
 public interface IExternalLoginProviderService
 {
-    Task<Result<IReadOnlyList<ExternalLoginProviderDto>>> ObtenerDisponiblesAsync(int idTenant, CancellationToken ct = default);
-    Task<Result<IReadOnlyList<ProviderAvailabilityResultDto>>> ObtenerDiagnosticoAsync(int idTenant, CancellationToken ct = default);
+    // S126 · D5/D9 — por proveedor: la configuración válida del tenant o, si no tiene, la de PLATFORM; y solo las que sirven a la App
+    Task<Result<IReadOnlyList<ExternalLoginProviderDto>>> ObtenerDisponiblesAsync(int idTenant, int idApp, CancellationToken ct = default);
+    // S126 · D9 — la misma regla para un proveedor: null = no hay; PROVIDER_NOT_ENABLED_FOR_APP = la del tenant no sirve a esa App
+    Task<Result<ConfProvIden?>> ResolverConfiguracionAsync(int idTenant, int idProvIden, int idApp, CancellationToken ct = default);
 }
 
 public class ExternalLoginProviderService : IExternalLoginProviderService
@@ -30,24 +33,26 @@ public class ExternalLoginProviderService : IExternalLoginProviderService
         _tenantRepo = tenantRepo;
     }
 
-    public async Task<Result<IReadOnlyList<ExternalLoginProviderDto>>> ObtenerDisponiblesAsync(int idTenant, CancellationToken ct = default)
+    public async Task<Result<IReadOnlyList<ExternalLoginProviderDto>>> ObtenerDisponiblesAsync(int idTenant, int idApp, CancellationToken ct = default)
     {
         try
         {
-            var propios = await ObtenerValidosAsync(idTenant, esDePlataforma: false, ct);
-
-            if (propios.Count == 0 && await DebeHeredarProveedoresPlataformaAsync(ct))
-            {
-                var plataforma = await ObtenerTenantPlataformaAsync(ct);
-                if (plataforma is not null && plataforma.Id != idTenant)
+            var lista = (await ObtenerEfectivasAsync(idTenant, ct))
+                .Where(e => e.Conf.SirveParaApp(idApp))
+                .OrderBy(e => e.Conf.OrdenVisual)
+                .Select(e => new ExternalLoginProviderDto
                 {
-                    var heredados = await ObtenerValidosAsync(plataforma.Id, esDePlataforma: true, ct);
-                    if (heredados.Count > 0)
-                        return Result<IReadOnlyList<ExternalLoginProviderDto>>.Success(heredados);
-                }
-            }
+                    Codigo = e.Conf.ProvIden!.Codigo,
+                    Nombre = e.Conf.Tooltip ?? e.Conf.ProvIden.Nombre,
+                    Icono = e.Conf.ProvIden.Icono ?? e.Conf.ProvIden.Codigo.ToLowerInvariant(),
+                    Color = e.Conf.Color,
+                    Tooltip = e.Conf.Tooltip,
+                    OrdenVisual = e.Conf.OrdenVisual,
+                    EsDePlataforma = e.EsDePlataforma
+                })
+                .ToList();
 
-            return Result<IReadOnlyList<ExternalLoginProviderDto>>.Success(propios);
+            return Result<IReadOnlyList<ExternalLoginProviderDto>>.Success(lista);
         }
         catch (Exception ex)
         {
@@ -55,38 +60,45 @@ public class ExternalLoginProviderService : IExternalLoginProviderService
         }
     }
 
-    public async Task<Result<IReadOnlyList<ProviderAvailabilityResultDto>>> ObtenerDiagnosticoAsync(int idTenant, CancellationToken ct = default)
+    public async Task<Result<ConfProvIden?>> ResolverConfiguracionAsync(int idTenant, int idProvIden, int idApp, CancellationToken ct = default)
     {
         try
         {
-            var configsResult = await _repo.ObtenerPorTenantAsync(idTenant, ct);
-            if (configsResult.IsFailure || configsResult.Value is null || configsResult.Value.Count == 0)
-                return Result<IReadOnlyList<ProviderAvailabilityResultDto>>.Success([]);
-
-            var result = configsResult.Value
-                .OrderBy(c => c.OrdenVisual)
-                .Select(c =>
-                {
-                    var validation = _validator.Validar(c);
-                    return new ProviderAvailabilityResultDto
-                    {
-                        Codigo = c.ProvIden?.Codigo ?? "",
-                        Nombre = c.Tooltip ?? c.ProvIden?.Nombre ?? "",
-                        Disponible = validation.Disponible,
-                        Motivo = validation.Motivo
-                    };
-                })
-                .ToList();
-
-            return Result<IReadOnlyList<ProviderAvailabilityResultDto>>.Success(result);
+            var conf = (await ObtenerEfectivasAsync(idTenant, ct))
+                .Where(e => e.Conf.IdProvIden == idProvIden)
+                .Select(e => e.Conf)
+                .FirstOrDefault();
+            if (conf is not null && !conf.SirveParaApp(idApp))
+                return Result<ConfProvIden?>.Failure("PROVIDER_NOT_ENABLED_FOR_APP", "El proveedor no está habilitado para esta aplicación");
+            return Result<ConfProvIden?>.Success(conf, allowNull: true);
         }
         catch (Exception ex)
         {
-            return Result<IReadOnlyList<ProviderAvailabilityResultDto>>.Failure("DB_ERROR", ex.Message);
+            return Result<ConfProvIden?>.Failure("DB_ERROR", ex.Message);
         }
     }
 
-    private async Task<IReadOnlyList<ExternalLoginProviderDto>> ObtenerValidosAsync(int idTenant, bool esDePlataforma, CancellationToken ct)
+    // S126 · D9 — una por proveedor: la válida del tenant; si el tenant no tiene una válida de ese proveedor
+    // y MostrarProveedoresPlataforma está activo, la válida de PLATFORM (antes: solo si el tenant no tenía ninguna)
+    private async Task<List<(ConfProvIden Conf, bool EsDePlataforma)>> ObtenerEfectivasAsync(int idTenant, CancellationToken ct)
+    {
+        var propias = await ObtenerValidasAsync(idTenant, ct);
+        var efectivas = propias.Select(c => (Conf: c, EsDePlataforma: false)).ToList();
+
+        if (!await DebeHeredarProveedoresPlataformaAsync(ct))
+            return efectivas;
+        var plataforma = await ObtenerTenantPlataformaAsync(ct);
+        if (plataforma is null || plataforma.Id == idTenant)
+            return efectivas;
+
+        var conPropia = propias.Select(c => c.IdProvIden).ToHashSet();
+        efectivas.AddRange((await ObtenerValidasAsync(plataforma.Id, ct))
+            .Where(c => !conPropia.Contains(c.IdProvIden))
+            .Select(c => (Conf: c, EsDePlataforma: true)));
+        return efectivas;
+    }
+
+    private async Task<IReadOnlyList<ConfProvIden>> ObtenerValidasAsync(int idTenant, CancellationToken ct)
     {
         var configsResult = await _repo.ObtenerPorTenantAsync(idTenant, ct);
         if (configsResult.IsFailure || configsResult.Value is null || configsResult.Value.Count == 0)
@@ -94,17 +106,6 @@ public class ExternalLoginProviderService : IExternalLoginProviderService
 
         return configsResult.Value
             .Where(c => _validator.Validar(c).Disponible)
-            .OrderBy(c => c.OrdenVisual)
-            .Select(c => new ExternalLoginProviderDto
-            {
-                Codigo = c.ProvIden!.Codigo,
-                Nombre = c.Tooltip ?? c.ProvIden.Nombre,
-                Icono = c.ProvIden.Icono ?? c.ProvIden.Codigo.ToLowerInvariant(),
-                Color = c.Color,
-                Tooltip = c.Tooltip,
-                OrdenVisual = c.OrdenVisual,
-                EsDePlataforma = esDePlataforma
-            })
             .ToList();
     }
 
