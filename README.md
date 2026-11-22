@@ -2,7 +2,7 @@
 
 **Plataforma de identidad y acceso (IAM) multi-tenant en .NET 10**
 
-Gestión centralizada de usuarios, aplicaciones, tenants, roles, permisos y auditoría para un ecosistema de aplicaciones, con autenticación moderna, MFA, OAuth y correo transaccional. Es el proveedor de identidad de [InventaNet](https://github.com/cbecerrapalma/InventaNet) y se construye sobre el framework [CBP](https://github.com/cbecerrapalma/CBP).
+Gestión centralizada de usuarios, aplicaciones, tenants, roles, permisos y auditoría para un ecosistema de aplicaciones, con autenticación propia, MFA, login externo OAuth 2.0 y correo transaccional. Es el proveedor de identidad de [InventaNet](https://github.com/cbecerrapalma/InventaNet) y se construye sobre el framework [CBP](https://github.com/cbecerrapalma/CBP).
 
 > Proyecto en desarrollo: enfocado en arquitectura limpia, seguridad y multi-tenancy; aún no está en producción.
 
@@ -12,28 +12,29 @@ Gestión centralizada de usuarios, aplicaciones, tenants, roles, permisos y audi
 - Catálogo de acceso por aplicación: las aplicaciones cliente publican sus módulos y permisos, y PassPlat los administra
 - Autenticación: login, refresh token, bloqueo por intentos, recuperación y cambio de contraseña, sesiones y dispositivos confiables
 - Políticas de contraseña: historial, expiración y medidor de fortaleza
-- MFA con TOTP
-- OAuth2 / OIDC con proveedores externos: Google, Microsoft, GitHub, Facebook e Instagram
+- MFA con código de un solo uso enviado por correo
+- Login externo OAuth 2.0 con Google, Microsoft, GitHub, Facebook e Instagram; cada aplicación elige qué proveedores muestra
 - Correo transaccional con plantillas editables y cola en segundo plano
 - Eventos de dominio y patrón Outbox
-- Auditoría y dashboards operacional y enterprise
+- Auditoría, panel de inicio, dashboard enterprise y estado de las tareas en segundo plano
 - Tareas en segundo plano: expiración de contraseñas y rotación de tokens externos
 - `PassPlat.Client`: cliente HTTP para que otras aplicaciones consuman la API
 
 ## Multi-tenancy
 
 - Ámbito de plataforma (`is_system`) y ámbito de tenant (`IdTenant`)
-- `UsuarioTenant` (pertenencia de un usuario a tenants), selector de tenant y `ITenantContext`
+- `UsuarioTenant` (pertenencia de un usuario a tenants), cambio de tenant en la sesión e `ITenantContext` de CBP
 - Aislamiento por `IdTenant` con claves foráneas `Restrict` e índices filtrados
 
 ## Seguridad
 
 - JWT HS256 (`CBP.Authentication.JwtBearer`)
 - Hash de contraseñas Argon2id con pepper; PBKDF2 soportado por CBP
-- OAuth2 / OIDC con Authorization Code + PKCE S256, `state`/`nonce`, protección contra replay y callback del lado del servidor
+- OAuth 2.0 Authorization Code con `state`, protección contra replay y callback del lado del servidor; PKCE S256 con Google y Microsoft
+- La identidad externa sale del endpoint de perfil del proveedor, llamado con el access token: sin OpenID Connect (sin `id_token`, JWKS ni `nonce`)
 - MFA local después del login externo
 - AES-256 para secretos y refresh tokens guardados
-- Correlación de peticiones con W3C Trace Context
+- Correlación de peticiones con `X-Correlation-ID`
 
 ## Arquitectura
 
@@ -66,7 +67,7 @@ PassPlat.Dominio   (entidades, fábricas, reglas de dominio)
 
 ## Tecnologías
 
-C# · .NET 10 · ASP.NET Core · Blazor WebAssembly · MudBlazor 9.13.0 · Entity Framework Core 10.0.13 (SQL Server) · OAuth2/OIDC · JWT · Argon2id · MailKit/MimeKit 5.0 · Fluid 2.41 · BlazorMonaco 3.5 · AutoMapper 17 · FluentValidation 12.2 · xUnit v3 · Moq · bUnit
+C# · .NET 10 · ASP.NET Core · Blazor WebAssembly · MudBlazor 9.13.0 · Entity Framework Core 10.0.13 (SQL Server) · OAuth 2.0 · JWT · Argon2id · MailKit/MimeKit 5.0 · Fluid 2.41 · BlazorMonaco 3.5 · AutoMapper 17 · FluentValidation 12.2 · xUnit v3 · Moq · bUnit
 
 ## Compilar
 
